@@ -1,0 +1,11 @@
+has name = "Sprout"
+has count = 3
+
+action greet(person)
+    print("Hello " + person)
+end
+
+repeat count times
+    greet(name)
+end
+
