@@ -35,7 +35,20 @@ pub fn parse_profile(source: &SourceFile, profile: SyntaxProfile) -> ParseResult
             diagnostics: lexed.diagnostics,
         };
     }
-    Parser::new(lexed.tokens, profile).parse()
+    let tokens = if profile == SyntaxProfile::Advanced {
+        match add_indentation(lexed.tokens) {
+            Ok(tokens) => tokens,
+            Err(diagnostic) => {
+                return ParseResult {
+                    program: None,
+                    diagnostics: vec![diagnostic],
+                };
+            }
+        }
+    } else {
+        lexed.tokens
+    };
+    Parser::new(tokens, profile).parse()
 }
 
 struct Parser {
@@ -88,10 +101,7 @@ impl Parser {
         match self.profile {
             SyntaxProfile::Guided => self.guided_statement(),
             SyntaxProfile::Structured => self.structured_statement(),
-            SyntaxProfile::Advanced => {
-                Err(self
-                    .expected("Advanced syntax support is not available in this parser milestone."))
-            }
+            SyntaxProfile::Advanced => self.advanced_statement(),
         }
     }
 
@@ -346,6 +356,264 @@ impl Parser {
                 .tokens
                 .get(self.current + 1)
                 .is_some_and(|token| matches!(token.kind, TokenKind::Identifier(_)))
+    }
+
+    fn advanced_statement(&mut self) -> Result<Statement, Diagnostic> {
+        if self.take(&TokenKind::Class).is_some() {
+            return self.advanced_class_statement();
+        }
+        if self.take(&TokenKind::If).is_some() {
+            return self.advanced_if_statement();
+        }
+        if self.take(&TokenKind::Repeat).is_some() {
+            return self.advanced_repeat_statement();
+        }
+        if self.take(&TokenKind::While).is_some() {
+            return self.advanced_while_statement();
+        }
+        if self.take(&TokenKind::Return).is_some() {
+            return self.advanced_return_statement();
+        }
+        if self.is_advanced_function() {
+            return self.advanced_function_statement();
+        }
+        if self.is_advanced_variable() {
+            return self.advanced_variable_statement();
+        }
+        if self.is_advanced_assignment() {
+            return self.advanced_assignment_statement();
+        }
+        let expression = self.expression()?;
+        self.finish_advanced_statement()?;
+        Ok(Node::new(
+            StatementKind::Expression(expression.clone()),
+            expression.span,
+        ))
+    }
+
+    fn advanced_variable_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let (name, start) = self.expect_identifier("Expected a variable name.")?;
+        self.expect(
+            &TokenKind::ColonEqual,
+            "Expected `:=` after the variable name.",
+        )?;
+        let initializer = self.expression()?;
+        self.finish_advanced_statement()?;
+        let span = start.merge(&initializer.span);
+        Ok(Node::new(
+            StatementKind::Variable { name, initializer },
+            span,
+        ))
+    }
+
+    fn advanced_assignment_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let (name, start) = self.expect_identifier("Expected an assignment target.")?;
+        let compound = self.take(&TokenKind::PlusEqual).is_some();
+        if !compound {
+            self.expect(&TokenKind::Equal, "Expected `=` or `+=` in assignment.")?;
+        }
+        let right = self.expression()?;
+        let value = if compound {
+            let left = Node::new(ExpressionKind::Variable(name.clone()), start.clone());
+            let span = start.merge(&right.span);
+            Node::new(
+                ExpressionKind::Binary {
+                    left: Box::new(left),
+                    operator: BinaryOperator::Add,
+                    right: Box::new(right),
+                },
+                span,
+            )
+        } else {
+            right
+        };
+        self.finish_advanced_statement()?;
+        let span = start.merge(&value.span);
+        Ok(Node::new(StatementKind::Assignment { name, value }, span))
+    }
+
+    fn advanced_function_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let (name, start) = self.expect_identifier("Expected an action name.")?;
+        self.expect(&TokenKind::LeftParen, "Expected `(` after the action name.")?;
+        let mut parameters = Vec::new();
+        if !self.check(&TokenKind::RightParen) {
+            loop {
+                parameters.push(self.expect_identifier("Expected a parameter name.")?.0);
+                if self.take(&TokenKind::Colon).is_some() {
+                    self.expect_identifier("Expected a type after `:`.")?;
+                }
+                if self.take(&TokenKind::Comma).is_none() {
+                    break;
+                }
+            }
+        }
+        self.expect(&TokenKind::RightParen, "Expected `)` after parameters.")?;
+        let (body, end) = self.advanced_block("action")?;
+        Ok(Node::new(
+            StatementKind::Function {
+                name,
+                parameters,
+                body,
+            },
+            start.merge(&end),
+        ))
+    }
+
+    fn advanced_class_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        let (name, _) = self.expect_identifier("Expected a class name.")?;
+        let (methods, end) = self.advanced_block("class")?;
+        if methods
+            .iter()
+            .any(|method| !matches!(method.kind, StatementKind::Function { .. }))
+        {
+            return Err(Diagnostic::error(
+                "SPT100",
+                "Unexpected syntax",
+                "Only actions may be declared directly inside a class.",
+                start,
+            ));
+        }
+        Ok(Node::new(
+            StatementKind::Class { name, methods },
+            start.merge(&end),
+        ))
+    }
+
+    fn advanced_if_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        let condition = self.expression()?;
+        let (then_branch, mut end) = self.advanced_block("if")?;
+        let else_branch = if self.take(&TokenKind::Else).is_some() {
+            let (branch, branch_end) = self.advanced_block("else")?;
+            end = branch_end;
+            branch
+        } else {
+            Vec::new()
+        };
+        Ok(Node::new(
+            StatementKind::If {
+                condition,
+                then_branch,
+                else_branch,
+            },
+            start.merge(&end),
+        ))
+    }
+
+    fn advanced_repeat_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        let count = self.expression()?;
+        let (body, end) = self.advanced_block("repeat")?;
+        Ok(Node::new(
+            StatementKind::Repeat { count, body },
+            start.merge(&end),
+        ))
+    }
+
+    fn advanced_while_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        let condition = self.expression()?;
+        let (body, end) = self.advanced_block("while")?;
+        Ok(Node::new(
+            StatementKind::While { condition, body },
+            start.merge(&end),
+        ))
+    }
+
+    fn advanced_return_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        let value = if self.check(&TokenKind::Newline) || self.check(&TokenKind::Dedent) {
+            None
+        } else {
+            Some(self.expression()?)
+        };
+        let end = value
+            .as_ref()
+            .map_or_else(|| start.clone(), |expression| expression.span.clone());
+        self.finish_advanced_statement()?;
+        Ok(Node::new(StatementKind::Return(value), start.merge(&end)))
+    }
+
+    fn advanced_block(
+        &mut self,
+        description: &str,
+    ) -> Result<(Vec<Statement>, SourceSpan), Diagnostic> {
+        self.expect(
+            &TokenKind::Arrow,
+            &format!("Expected `=>` before the {description} body."),
+        )?;
+        self.require_line_break(&format!(
+            "Expected a new line before the {description} body."
+        ))?;
+        self.expect(
+            &TokenKind::Indent,
+            &format!("Expected an indented {description} body."),
+        )?;
+        self.skip_newlines();
+        let body = self.block_until(&[TokenKind::Dedent]);
+        let end = self.expect(
+            &TokenKind::Dedent,
+            &format!("Expected the end of the indented {description} body."),
+        )?;
+        self.skip_newlines();
+        Ok((body, end.span))
+    }
+
+    fn finish_advanced_statement(&mut self) -> Result<(), Diagnostic> {
+        if self.check(&TokenKind::Newline)
+            || self.check(&TokenKind::Dedent)
+            || self.check(&TokenKind::Eof)
+        {
+            self.skip_newlines();
+            Ok(())
+        } else {
+            Err(self.expected("Expected the statement to end here."))
+        }
+    }
+
+    fn is_advanced_variable(&self) -> bool {
+        matches!(self.peek().kind, TokenKind::Identifier(_))
+            && self
+                .tokens
+                .get(self.current + 1)
+                .is_some_and(|token| same_kind(&token.kind, &TokenKind::ColonEqual))
+    }
+
+    fn is_advanced_assignment(&self) -> bool {
+        matches!(self.peek().kind, TokenKind::Identifier(_))
+            && self.tokens.get(self.current + 1).is_some_and(|token| {
+                same_kind(&token.kind, &TokenKind::Equal)
+                    || same_kind(&token.kind, &TokenKind::PlusEqual)
+            })
+    }
+
+    fn is_advanced_function(&self) -> bool {
+        if !matches!(self.peek().kind, TokenKind::Identifier(_))
+            || !self
+                .tokens
+                .get(self.current + 1)
+                .is_some_and(|token| same_kind(&token.kind, &TokenKind::LeftParen))
+        {
+            return false;
+        }
+        let mut depth = 0usize;
+        for (index, token) in self.tokens.iter().enumerate().skip(self.current + 1) {
+            match token.kind {
+                TokenKind::LeftParen => depth += 1,
+                TokenKind::RightParen => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        return self
+                            .tokens
+                            .get(index + 1)
+                            .is_some_and(|next| same_kind(&next.kind, &TokenKind::Arrow));
+                    }
+                }
+                _ => {}
+            }
+        }
+        false
     }
 
     fn variable_statement(&mut self) -> Result<Statement, Diagnostic> {
@@ -721,6 +989,75 @@ impl Parser {
     }
 }
 
+fn add_indentation(tokens: Vec<Token>) -> Result<Vec<Token>, Diagnostic> {
+    let mut output = Vec::with_capacity(tokens.len());
+    let mut indents = vec![0usize];
+    let mut current = 0usize;
+    let mut delimiter_depth = 0usize;
+
+    while current < tokens.len() {
+        if same_kind(&tokens[current].kind, &TokenKind::Newline) {
+            while current < tokens.len() && same_kind(&tokens[current].kind, &TokenKind::Newline) {
+                output.push(tokens[current].clone());
+                current += 1;
+            }
+            if current >= tokens.len() || delimiter_depth > 0 {
+                continue;
+            }
+            let next = &tokens[current];
+            let indentation = if same_kind(&next.kind, &TokenKind::Eof) {
+                0
+            } else {
+                next.span.start_column.saturating_sub(1)
+            };
+            let active = *indents.last().expect("indentation stack is never empty");
+            if indentation > active {
+                indents.push(indentation);
+                output.push(Token {
+                    kind: TokenKind::Indent,
+                    span: next.span.clone(),
+                });
+            } else if indentation < active {
+                while indentation < *indents.last().expect("indentation stack is never empty") {
+                    indents.pop();
+                    output.push(Token {
+                        kind: TokenKind::Dedent,
+                        span: next.span.clone(),
+                    });
+                }
+                if indentation != *indents.last().expect("indentation stack is never empty") {
+                    return Err(Diagnostic::error(
+                        "SPT005",
+                        "Inconsistent indentation",
+                        "This line does not align with an enclosing Advanced block.",
+                        next.span.clone(),
+                    ));
+                }
+            }
+            continue;
+        }
+
+        let token = tokens[current].clone();
+        match token.kind {
+            TokenKind::LeftParen => delimiter_depth += 1,
+            TokenKind::RightParen => delimiter_depth = delimiter_depth.saturating_sub(1),
+            TokenKind::Eof => {
+                while indents.len() > 1 {
+                    indents.pop();
+                    output.push(Token {
+                        kind: TokenKind::Dedent,
+                        span: token.span.clone(),
+                    });
+                }
+            }
+            _ => {}
+        }
+        output.push(token);
+        current += 1;
+    }
+    Ok(output)
+}
+
 fn same_kind(left: &TokenKind, right: &TokenKind) -> bool {
     discriminant(left) == discriminant(right)
 }
@@ -794,5 +1131,61 @@ mod tests {
             program.statements[2].kind,
             StatementKind::Repeat { .. }
         ));
+    }
+
+    #[test]
+    fn parses_indentation_aware_advanced_profile() {
+        let result = parse_profile(
+            &SourceFile::new(
+                "advanced.spr",
+                "score := 0\naddScore(amount: Int) =>\n    score += amount\nrepeat 3 =>\n    addScore(1)\n",
+            ),
+            SyntaxProfile::Advanced,
+        );
+        assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
+        let program = result.program.unwrap();
+        assert_eq!(program.statements.len(), 3);
+        let StatementKind::Function { body, .. } = &program.statements[1].kind else {
+            panic!("expected canonical function")
+        };
+        let StatementKind::Assignment { value, .. } = &body[0].kind else {
+            panic!("expected canonical assignment")
+        };
+        assert!(matches!(value.kind, ExpressionKind::Binary { .. }));
+    }
+
+    #[test]
+    fn advanced_profile_rejects_inconsistent_dedent() {
+        let result = parse_profile(
+            &SourceFile::new("bad-advanced.spr", "if true =>\n    print(1)\n  print(2)\n"),
+            SyntaxProfile::Advanced,
+        );
+        assert_eq!(result.diagnostics[0].code, "SPT005");
+        assert_eq!(result.diagnostics[0].span.start_line, 3);
+    }
+
+    #[test]
+    fn all_profiles_produce_semantically_equivalent_canonical_ast() {
+        let cases = [
+            (
+                SyntaxProfile::Guided,
+                "has score = 0\naction addScore(amount)\n  score = score + amount\nend\nrepeat 3 times\n  addScore(1)\nend\nprint(score)\n",
+            ),
+            (
+                SyntaxProfile::Structured,
+                "int score = 0;\nvoid addScore(int amount) {\n  score = score + amount;\n}\nrepeat (3) {\n  addScore(1);\n}\nprint(score);\n",
+            ),
+            (
+                SyntaxProfile::Advanced,
+                "score := 0\naddScore(amount: Int) =>\n  score += amount\nrepeat 3 =>\n  addScore(1)\nprint(score)\n",
+            ),
+        ];
+        let programs = cases.map(|(profile, text)| {
+            let result = parse_profile(&SourceFile::new("profile.spr", text), profile);
+            assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
+            result.program.unwrap()
+        });
+        assert!(programs[0].semantically_equivalent(&programs[1]));
+        assert!(programs[1].semantically_equivalent(&programs[2]));
     }
 }
