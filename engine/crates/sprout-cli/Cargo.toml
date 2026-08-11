@@ -1,0 +1,17 @@
+[package]
+name = "sprout-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "sprout"
+path = "src/main.rs"
+
+[dependencies]
+sprout-core = { path = "../sprout-core" }
+
+[lints]
+workspace = true
+
