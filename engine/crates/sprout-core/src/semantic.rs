@@ -327,7 +327,14 @@ impl Analyzer {
                             operand_type
                         }
                     }
-                    UnaryOperator::Not => Type::Bool,
+                    UnaryOperator::Not => {
+                        if operand_type != Type::Bool && operand_type != Type::Unknown {
+                            self.invalid_operator("not", &operand_type, None, &expression.span);
+                            Type::Unknown
+                        } else {
+                            Type::Bool
+                        }
+                    }
                 }
             }
             ExpressionKind::Binary {
@@ -763,6 +770,18 @@ mod tests {
         assert_eq!(assignment.diagnostics[0].code, "SPT211");
         let operator = analyze_source("print(true + 1)\n");
         assert_eq!(operator.diagnostics[0].code, "SPT215");
+    }
+
+    #[test]
+    fn validates_unary_operator_types() {
+        let result = analyze_source("print(not 1)\n");
+        assert_eq!(result.diagnostics.len(), 1);
+        assert_eq!(result.diagnostics[0].code, "SPT215");
+        assert_eq!(result.diagnostics[0].span.start_column, 7);
+        assert_eq!(
+            result.diagnostics[0].message,
+            "Operator `not` cannot be applied to `Int`."
+        );
     }
 
     #[test]
