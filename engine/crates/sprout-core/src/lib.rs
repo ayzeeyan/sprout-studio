@@ -8,6 +8,7 @@ pub mod diagnostic;
 pub mod lexer;
 pub mod parser;
 pub mod runtime;
+pub mod semantic;
 pub mod source;
 pub mod token;
 
