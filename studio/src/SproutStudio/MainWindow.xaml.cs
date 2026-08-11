@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SproutStudio.Core;
 using SproutStudio.Interop;
+using SproutStudio.Toolchains;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -12,17 +13,21 @@ public sealed partial class MainWindow : Window
 {
     private readonly StudioSession _session;
     private readonly ProjectWorkspace _projects;
+    private readonly ToolchainManager _toolchains;
+    private readonly bool _openToolchainsOnActivation;
     private readonly ObservableCollection<ProjectFileItem> _workspace = [];
     private readonly ObservableCollection<RecentProject> _recentProjects = [];
     private readonly ObservableCollection<string> _console = [];
     private readonly ObservableCollection<ProblemItem> _problems = [];
     private bool _updatingEditor;
 
-    public MainWindow()
+    public MainWindow(bool openToolchainsOnActivation = false)
     {
         var nativeClient = new NativeSproutEngineClient();
         _session = new StudioSession(nativeClient);
         _projects = new ProjectWorkspace(nativeClient);
+        _toolchains = ToolchainManager.CreateDefault();
+        _openToolchainsOnActivation = openToolchainsOnActivation;
         InitializeComponent();
         WorkspaceList.ItemsSource = _workspace;
         RecentProjectsList.ItemsSource = _recentProjects;
@@ -44,6 +49,17 @@ public sealed partial class MainWindow : Window
         catch (Exception exception)
         {
             ShowHostFailure("Could not load recent projects", exception);
+        }
+        if (_openToolchainsOnActivation)
+        {
+            try
+            {
+                await ShowToolchainSettingsAsync();
+            }
+            catch (Exception exception)
+            {
+                ShowHostFailure("Could not open toolchain settings", exception);
+            }
         }
     }
 
@@ -179,6 +195,36 @@ public sealed partial class MainWindow : Window
     private async void RunButton_Click(object sender, RoutedEventArgs args)
     {
         await ExecuteAsync(run: true);
+    }
+
+    private async void ToolchainsButton_Click(object sender, RoutedEventArgs args)
+    {
+        try
+        {
+            await ShowToolchainSettingsAsync();
+        }
+        catch (Exception exception)
+        {
+            ShowHostFailure("Could not open toolchain settings", exception);
+        }
+    }
+
+    private async Task ShowToolchainSettingsAsync()
+    {
+        string previousTitle = Title;
+        Title = "Sprout Studio — Toolchain Settings";
+        try
+        {
+            var dialog = new ToolchainSettingsDialog(
+                _toolchains,
+                WindowNative.GetWindowHandle(this));
+            await dialog.ShowAsync(((FrameworkElement)Content).XamlRoot);
+            StatusText.Text = "Toolchain settings updated";
+        }
+        finally
+        {
+            Title = previousTitle;
+        }
     }
 
     private async Task ExecuteAsync(bool run)
@@ -341,6 +387,7 @@ public sealed partial class MainWindow : Window
         SaveButton.IsEnabled = !busy;
         NewProjectButton.IsEnabled = !busy;
         OpenProjectButton.IsEnabled = !busy;
+        ToolchainsButton.IsEnabled = !busy;
         ProfileCombo.IsEnabled = !busy && _projects.CurrentProject is null;
         StatusText.Text = status;
     }

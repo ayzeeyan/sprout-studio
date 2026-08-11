@@ -131,9 +131,12 @@ public sealed partial class RustToolchainAdapter : IToolchainAdapter
             status = IsCustom(candidate.Source)
                 ? ToolchainStatus.CustomLocation
                 : ToolchainStatus.Ready;
-            message = status == ToolchainStatus.CustomLocation
-                ? "Rust is ready from the saved custom location."
-                : "Rust is installed and validated.";
+            message = candidate.Source switch
+            {
+                ToolchainLocationSource.Configured => "Rust is ready from the saved custom location.",
+                ToolchainLocationSource.Explicit => "Rust is ready from the selected custom location.",
+                _ => "Rust is installed and validated.",
+            };
         }
 
         return new ToolchainDetectionResult(
@@ -143,7 +146,9 @@ public sealed partial class RustToolchainAdapter : IToolchainAdapter
             candidate.Source,
             rustcPath,
             rustc.Version,
-            components.All(component => component.Valid) ? Capabilities : ToolchainCapability.None,
+            status is ToolchainStatus.Ready or ToolchainStatus.CustomLocation
+                ? Capabilities
+                : ToolchainCapability.None,
             components,
             message);
     }
@@ -195,8 +200,11 @@ public sealed partial class RustToolchainAdapter : IToolchainAdapter
         string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         if (!string.IsNullOrWhiteSpace(programFiles))
         {
-            yield return Path.Combine(programFiles, "Rust stable GNU 1.95", "bin");
             yield return Path.Combine(programFiles, "Rust", "bin");
+            foreach (string directory in Directory.EnumerateDirectories(programFiles, "Rust*"))
+            {
+                yield return Path.Combine(directory, "bin");
+            }
         }
     }
 }
@@ -330,9 +338,12 @@ public sealed partial class GoToolchainAdapter : IToolchainAdapter
             status = IsCustom(candidate.Source)
                 ? ToolchainStatus.CustomLocation
                 : ToolchainStatus.Ready;
-            message = status == ToolchainStatus.CustomLocation
-                ? "Go is ready from the saved custom location."
-                : "Go is installed and validated.";
+            message = candidate.Source switch
+            {
+                ToolchainLocationSource.Configured => "Go is ready from the saved custom location.",
+                ToolchainLocationSource.Explicit => "Go is ready from the selected custom location.",
+                _ => "Go is installed and validated.",
+            };
         }
 
         return new ToolchainDetectionResult(
@@ -342,7 +353,9 @@ public sealed partial class GoToolchainAdapter : IToolchainAdapter
             candidate.Source,
             goPath,
             go.Version,
-            components.All(component => component.Valid) ? Capabilities : ToolchainCapability.None,
+            status is ToolchainStatus.Ready or ToolchainStatus.CustomLocation
+                ? Capabilities
+                : ToolchainCapability.None,
             components,
             message);
     }

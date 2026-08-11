@@ -101,7 +101,7 @@ public sealed class ToolchainSettingsStore
             throw new InvalidOperationException("Toolchain settings path has no parent directory.");
         }
         Directory.CreateDirectory(directory);
-        string temporaryPath = _settingsPath + $".{Environment.ProcessId}.tmp";
+        string temporaryPath = _settingsPath + $".{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
         try
         {
             string json = JsonSerializer.Serialize(document, JsonOptions);

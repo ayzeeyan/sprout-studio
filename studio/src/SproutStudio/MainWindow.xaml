@@ -44,6 +44,8 @@
             </AppBarElementContainer>
             <AppBarButton x:Name="CheckButton" Icon="Accept" Label="Check" Click="CheckButton_Click" />
             <AppBarButton x:Name="RunButton" Icon="Play" Label="Run" Click="RunButton_Click" />
+            <AppBarSeparator />
+            <AppBarButton x:Name="ToolchainsButton" Icon="Setting" Label="Toolchains" Click="ToolchainsButton_Click" />
         </CommandBar>
 
         <Grid Grid.Row="1">

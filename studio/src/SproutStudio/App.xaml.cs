@@ -13,7 +13,10 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
+        bool openToolchains = Environment.GetCommandLineArgs()
+            .Skip(1)
+            .Contains("--open-toolchains", StringComparer.OrdinalIgnoreCase);
+        _window = new MainWindow(openToolchains);
         _window.Activate();
     }
 }

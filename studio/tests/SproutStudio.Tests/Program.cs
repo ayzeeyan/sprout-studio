@@ -42,6 +42,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Go detector validates go and gofmt", GoDetectorValidatesCompleteToolchain),
     ("Toolchain settings persist and clear custom paths", ToolchainSettingsPersistCustomPaths),
     ("Toolchain manager builds safe action requests", ToolchainManagerBuildsSafeActionRequests),
+    ("Live toolchain detection returns structured states", LiveToolchainDetectionReturnsStructuredStates),
     ("WinUI application starts and responds", WinUiApplicationStarts),
 };
 
@@ -584,6 +585,37 @@ static async Task ToolchainManagerBuildsSafeActionRequests()
     }
 }
 
+static async Task LiveToolchainDetectionReturnsStructuredStates()
+{
+    string directory = TemporaryDirectory("live-toolchain-detection");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        ToolchainManager manager = ToolchainManager.CreateDefault(
+            Path.Combine(directory, "toolchains.json"));
+        IReadOnlyList<ToolchainDetectionResult> results = await manager.DetectAllAsync();
+        Assert(
+            results.Select(item => item.Id).Order().SequenceEqual(["go", "rust"]),
+            "registered toolchains were missing");
+        foreach (ToolchainDetectionResult result in results)
+        {
+            Assert(
+                !string.IsNullOrWhiteSpace(result.Message),
+                $"{result.DisplayName} did not explain its status");
+            if (result.Status != ToolchainStatus.NotInstalled)
+            {
+                Assert(
+                    result.Components.Count > 0,
+                    $"{result.DisplayName} did not return component validation");
+            }
+        }
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
 static async Task WinUiApplicationStarts()
 {
     string repositoryRoot = FindRepositoryRoot();
@@ -605,11 +637,14 @@ static async Task WinUiApplicationStarts()
         "SproutStudio.exe");
     Assert(File.Exists(executable), $"Sprout Studio executable was not built at {executable}");
 
-    using var process = Process.Start(new ProcessStartInfo(executable)
+    var startInfo = new ProcessStartInfo(executable)
     {
-        UseShellExecute = true,
+        UseShellExecute = false,
         WorkingDirectory = Path.GetDirectoryName(executable),
-    }) ?? throw new InvalidOperationException("Could not start Sprout Studio.");
+    };
+    startInfo.ArgumentList.Add("--open-toolchains");
+    using var process = Process.Start(startInfo)
+        ?? throw new InvalidOperationException("Could not start Sprout Studio.");
     try
     {
         DateTime deadline = DateTime.UtcNow.AddSeconds(10);
@@ -623,13 +658,15 @@ static async Task WinUiApplicationStarts()
                     $"Sprout Studio exited during startup with code {process.ExitCode}.");
             }
         }
-        while (process.MainWindowHandle == IntPtr.Zero && DateTime.UtcNow < deadline);
+        while ((!process.MainWindowTitle.Contains("Toolchain Settings", StringComparison.Ordinal)
+                || process.MainWindowHandle == IntPtr.Zero)
+            && DateTime.UtcNow < deadline);
 
         Assert(process.MainWindowHandle != IntPtr.Zero, "Sprout Studio did not create a main window.");
         Assert(process.Responding, "Sprout Studio created a window but is not responding.");
         Assert(
-            process.MainWindowTitle.Contains("Sprout Studio", StringComparison.Ordinal),
-            "Sprout Studio created an unexpected main window.");
+            process.MainWindowTitle.Contains("Toolchain Settings", StringComparison.Ordinal),
+            "Sprout Studio did not open the functional Toolchain Settings surface.");
         Assert(process.CloseMainWindow(), "Sprout Studio did not accept a normal close request.");
         Assert(await WaitForExitAsync(process, TimeSpan.FromSeconds(5)), "Sprout Studio did not exit cleanly.");
     }
