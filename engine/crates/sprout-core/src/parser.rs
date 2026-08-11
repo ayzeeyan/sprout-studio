@@ -13,8 +13,21 @@ pub struct ParseResult {
     pub diagnostics: Vec<Diagnostic>,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SyntaxProfile {
+    #[default]
+    Guided,
+    Structured,
+    Advanced,
+}
+
 /// Parses Guided syntax into the canonical Sprout AST.
 pub fn parse(source: &SourceFile) -> ParseResult {
+    parse_profile(source, SyntaxProfile::Guided)
+}
+
+/// Parses one syntax profile into the shared canonical AST.
+pub fn parse_profile(source: &SourceFile, profile: SyntaxProfile) -> ParseResult {
     let lexed = lex(source);
     if !lexed.diagnostics.is_empty() {
         return ParseResult {
@@ -22,21 +35,23 @@ pub fn parse(source: &SourceFile) -> ParseResult {
             diagnostics: lexed.diagnostics,
         };
     }
-    Parser::new(lexed.tokens).parse()
+    Parser::new(lexed.tokens, profile).parse()
 }
 
 struct Parser {
     tokens: Vec<Token>,
     current: usize,
     diagnostics: Vec<Diagnostic>,
+    profile: SyntaxProfile,
 }
 
 impl Parser {
-    fn new(tokens: Vec<Token>) -> Self {
+    fn new(tokens: Vec<Token>, profile: SyntaxProfile) -> Self {
         Self {
             tokens,
             current: 0,
             diagnostics: Vec::new(),
+            profile,
         }
     }
 
@@ -70,6 +85,17 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Statement, Diagnostic> {
+        match self.profile {
+            SyntaxProfile::Guided => self.guided_statement(),
+            SyntaxProfile::Structured => self.structured_statement(),
+            SyntaxProfile::Advanced => {
+                Err(self
+                    .expected("Advanced syntax support is not available in this parser milestone."))
+            }
+        }
+    }
+
+    fn guided_statement(&mut self) -> Result<Statement, Diagnostic> {
         if self.take(&TokenKind::Has).is_some() {
             self.variable_statement()
         } else if self.take(&TokenKind::Action).is_some() {
@@ -95,6 +121,231 @@ impl Parser {
                 expression.span,
             ))
         }
+    }
+
+    fn structured_statement(&mut self) -> Result<Statement, Diagnostic> {
+        if self.take(&TokenKind::Class).is_some() {
+            return self.structured_class_statement();
+        }
+        if self.take(&TokenKind::If).is_some() {
+            return self.structured_if_statement();
+        }
+        if self.take(&TokenKind::Repeat).is_some() {
+            return self.structured_repeat_statement();
+        }
+        if self.take(&TokenKind::While).is_some() {
+            return self.structured_while_statement();
+        }
+        if self.take(&TokenKind::Return).is_some() {
+            return self.structured_return_statement();
+        }
+        if self.is_structured_declaration() {
+            return self.structured_declaration();
+        }
+        if self.is_assignment() {
+            return self.structured_assignment();
+        }
+        let expression = self.expression()?;
+        self.finish_structured_statement()?;
+        Ok(Node::new(
+            StatementKind::Expression(expression.clone()),
+            expression.span,
+        ))
+    }
+
+    fn structured_declaration(&mut self) -> Result<Statement, Diagnostic> {
+        let type_token = self.advance().clone();
+        let (name, _) = self.expect_identifier("Expected a name after the type.")?;
+        if self.take(&TokenKind::LeftParen).is_some() {
+            self.structured_function_after_name(type_token.span, name)
+        } else {
+            self.expect(&TokenKind::Equal, "Expected `=` after the variable name.")?;
+            let initializer = self.expression()?;
+            self.finish_structured_statement()?;
+            let span = type_token.span.merge(&initializer.span);
+            Ok(Node::new(
+                StatementKind::Variable { name, initializer },
+                span,
+            ))
+        }
+    }
+
+    fn structured_function_after_name(
+        &mut self,
+        start: SourceSpan,
+        name: String,
+    ) -> Result<Statement, Diagnostic> {
+        let mut parameters = Vec::new();
+        if !self.check(&TokenKind::RightParen) {
+            loop {
+                self.expect_identifier("Expected a parameter type.")?;
+                parameters.push(self.expect_identifier("Expected a parameter name.")?.0);
+                if self.take(&TokenKind::Comma).is_none() {
+                    break;
+                }
+            }
+        }
+        self.expect(&TokenKind::RightParen, "Expected `)` after parameters.")?;
+        self.skip_newlines();
+        self.expect(
+            &TokenKind::LeftBrace,
+            "Expected `{` before the action body.",
+        )?;
+        self.skip_newlines();
+        let body = self.block_until(&[TokenKind::RightBrace]);
+        let end = self.expect(
+            &TokenKind::RightBrace,
+            "Expected `}` after the action body.",
+        )?;
+        self.skip_newlines();
+        Ok(Node::new(
+            StatementKind::Function {
+                name,
+                parameters,
+                body,
+            },
+            start.merge(&end.span),
+        ))
+    }
+
+    fn structured_class_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        let (name, _) = self.expect_identifier("Expected a class name.")?;
+        self.skip_newlines();
+        self.expect(&TokenKind::LeftBrace, "Expected `{` before the class body.")?;
+        self.skip_newlines();
+        let mut methods = Vec::new();
+        while !self.at_end() && !self.check(&TokenKind::RightBrace) {
+            if !self.is_structured_declaration() {
+                return Err(self.expected("Expected a typed action declaration in the class."));
+            }
+            let type_token = self.advance().clone();
+            let (method_name, _) = self.expect_identifier("Expected an action name.")?;
+            self.expect(&TokenKind::LeftParen, "Expected `(` after the action name.")?;
+            methods.push(self.structured_function_after_name(type_token.span, method_name)?);
+            self.skip_newlines();
+        }
+        let end = self.expect(&TokenKind::RightBrace, "Expected `}` after the class body.")?;
+        self.skip_newlines();
+        Ok(Node::new(
+            StatementKind::Class { name, methods },
+            start.merge(&end.span),
+        ))
+    }
+
+    fn structured_if_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        self.expect(&TokenKind::LeftParen, "Expected `(` after `if`.")?;
+        let condition = self.expression()?;
+        self.expect(&TokenKind::RightParen, "Expected `)` after the condition.")?;
+        self.skip_newlines();
+        self.expect(&TokenKind::LeftBrace, "Expected `{` before the `if` body.")?;
+        self.skip_newlines();
+        let then_branch = self.block_until(&[TokenKind::RightBrace]);
+        let mut end = self.expect(&TokenKind::RightBrace, "Expected `}` after the `if` body.")?;
+        self.skip_newlines();
+        let else_branch = if self.take(&TokenKind::Else).is_some() {
+            self.skip_newlines();
+            self.expect(&TokenKind::LeftBrace, "Expected `{` after `else`.")?;
+            self.skip_newlines();
+            let branch = self.block_until(&[TokenKind::RightBrace]);
+            end = self.expect(
+                &TokenKind::RightBrace,
+                "Expected `}` after the `else` body.",
+            )?;
+            self.skip_newlines();
+            branch
+        } else {
+            Vec::new()
+        };
+        Ok(Node::new(
+            StatementKind::If {
+                condition,
+                then_branch,
+                else_branch,
+            },
+            start.merge(&end.span),
+        ))
+    }
+
+    fn structured_repeat_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        self.expect(&TokenKind::LeftParen, "Expected `(` after `repeat`.")?;
+        let count = self.expression()?;
+        self.expect(
+            &TokenKind::RightParen,
+            "Expected `)` after the repeat count.",
+        )?;
+        self.skip_newlines();
+        self.expect(
+            &TokenKind::LeftBrace,
+            "Expected `{` before the repeat body.",
+        )?;
+        self.skip_newlines();
+        let body = self.block_until(&[TokenKind::RightBrace]);
+        let end = self.expect(
+            &TokenKind::RightBrace,
+            "Expected `}` after the repeat body.",
+        )?;
+        self.skip_newlines();
+        Ok(Node::new(
+            StatementKind::Repeat { count, body },
+            start.merge(&end.span),
+        ))
+    }
+
+    fn structured_while_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        self.expect(&TokenKind::LeftParen, "Expected `(` after `while`.")?;
+        let condition = self.expression()?;
+        self.expect(&TokenKind::RightParen, "Expected `)` after the condition.")?;
+        self.skip_newlines();
+        self.expect(&TokenKind::LeftBrace, "Expected `{` before the while body.")?;
+        self.skip_newlines();
+        let body = self.block_until(&[TokenKind::RightBrace]);
+        let end = self.expect(&TokenKind::RightBrace, "Expected `}` after the while body.")?;
+        self.skip_newlines();
+        Ok(Node::new(
+            StatementKind::While { condition, body },
+            start.merge(&end.span),
+        ))
+    }
+
+    fn structured_return_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        let value = if self.check(&TokenKind::Semicolon) {
+            None
+        } else {
+            Some(self.expression()?)
+        };
+        let end = value
+            .as_ref()
+            .map_or_else(|| start.clone(), |expression| expression.span.clone());
+        self.finish_structured_statement()?;
+        Ok(Node::new(StatementKind::Return(value), start.merge(&end)))
+    }
+
+    fn structured_assignment(&mut self) -> Result<Statement, Diagnostic> {
+        let (name, start) = self.expect_identifier("Expected an assignment target.")?;
+        self.expect(&TokenKind::Equal, "Expected `=` in assignment.")?;
+        let value = self.expression()?;
+        self.finish_structured_statement()?;
+        let span = start.merge(&value.span);
+        Ok(Node::new(StatementKind::Assignment { name, value }, span))
+    }
+
+    fn finish_structured_statement(&mut self) -> Result<(), Diagnostic> {
+        self.expect(&TokenKind::Semicolon, "Expected `;` after the statement.")?;
+        self.skip_newlines();
+        Ok(())
+    }
+
+    fn is_structured_declaration(&self) -> bool {
+        matches!(self.peek().kind, TokenKind::Identifier(_))
+            && self
+                .tokens
+                .get(self.current + 1)
+                .is_some_and(|token| matches!(token.kind, TokenKind::Identifier(_)))
     }
 
     fn variable_statement(&mut self) -> Result<Statement, Diagnostic> {
@@ -518,5 +769,30 @@ mod tests {
         assert!(result.program.is_none());
         assert_eq!(result.diagnostics[0].code, "SPT100");
         assert_eq!(result.diagnostics[0].span.start_line, 3);
+    }
+
+    #[test]
+    fn parses_structured_profile_into_canonical_nodes() {
+        let result = parse_profile(
+            &SourceFile::new(
+                "structured.spr",
+                "int score = 0;\nvoid addScore(int amount) {\n  score = score + amount;\n}\nrepeat (3) {\n  addScore(1);\n}\n",
+            ),
+            SyntaxProfile::Structured,
+        );
+        assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
+        let program = result.program.unwrap();
+        assert!(matches!(
+            program.statements[0].kind,
+            StatementKind::Variable { .. }
+        ));
+        assert!(matches!(
+            program.statements[1].kind,
+            StatementKind::Function { .. }
+        ));
+        assert!(matches!(
+            program.statements[2].kind,
+            StatementKind::Repeat { .. }
+        ));
     }
 }

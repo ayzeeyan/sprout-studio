@@ -49,14 +49,28 @@ impl<'a> Lexer<'a> {
                 '"' => self.string(start),
                 '(' => self.single(TokenKind::LeftParen, start),
                 ')' => self.single(TokenKind::RightParen, start),
+                '{' => self.single(TokenKind::LeftBrace, start),
+                '}' => self.single(TokenKind::RightBrace, start),
                 ',' => self.single(TokenKind::Comma, start),
                 '.' => self.single(TokenKind::Dot, start),
-                '+' => self.single(TokenKind::Plus, start),
+                ':' => self.one_or_two(TokenKind::Colon, TokenKind::ColonEqual, start),
+                ';' => self.single(TokenKind::Semicolon, start),
+                '+' => self.one_or_two(TokenKind::Plus, TokenKind::PlusEqual, start),
                 '-' => self.single(TokenKind::Minus, start),
                 '*' => self.single(TokenKind::Star, start),
                 '/' => self.single(TokenKind::Slash, start),
                 '%' => self.single(TokenKind::Percent, start),
-                '=' => self.one_or_two(TokenKind::Equal, TokenKind::EqualEqual, start),
+                '=' => {
+                    self.advance();
+                    let kind = if self.take('=') {
+                        TokenKind::EqualEqual
+                    } else if self.take('>') {
+                        TokenKind::Arrow
+                    } else {
+                        TokenKind::Equal
+                    };
+                    self.push(kind, start);
+                }
                 '!' => {
                     self.advance();
                     if self.take('=') {
