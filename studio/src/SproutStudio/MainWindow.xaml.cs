@@ -84,7 +84,26 @@ public sealed partial class MainWindow : Window
         try
         {
             _session.UpdateSource(Editor.Text);
-            await _session.SaveDocumentAsync();
+            if (_session.Document.FilePath is null)
+            {
+                var picker = new FileSavePicker
+                {
+                    SuggestedFileName = Path.GetFileNameWithoutExtension(_session.Document.DisplayName),
+                };
+                picker.FileTypeChoices.Add("Sprout source", [".spr"]);
+                InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+                Windows.Storage.StorageFile? file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+                await _session.SaveDocumentAsAsync(file.Path);
+                RefreshDocument();
+            }
+            else
+            {
+                await _session.SaveDocumentAsync();
+            }
             StatusText.Text = $"Saved {_session.Document.DisplayName}";
         }
         catch (Exception exception)
@@ -213,8 +232,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        int start = (int)Math.Clamp(problem.Diagnostic.Span.Start, 0, Editor.Text.Length);
-        int end = (int)Math.Clamp(problem.Diagnostic.Span.End, start, Editor.Text.Length);
+        int start = SourceTextCoordinates.Utf8OffsetToUtf16Index(
+            Editor.Text,
+            problem.Diagnostic.Span.Start);
+        int end = SourceTextCoordinates.Utf8OffsetToUtf16Index(
+            Editor.Text,
+            problem.Diagnostic.Span.End);
         Editor.Focus(FocusState.Programmatic);
         Editor.Select(start, Math.Max(1, end - start));
     }
@@ -259,7 +282,7 @@ public sealed partial class MainWindow : Window
         EditorTabTitle.Text = _session.Document.DisplayName;
         Title = $"{_session.Document.DisplayName} — Sprout Studio";
         ProfileCombo.SelectedIndex = (int)_session.Document.Profile;
-        SaveButton.IsEnabled = _session.Document.FilePath is not null;
+        SaveButton.IsEnabled = true;
         ProfileCombo.IsEnabled = _projects.CurrentProject is null;
         RefreshWorkspace();
         RefreshResults();
@@ -315,7 +338,7 @@ public sealed partial class MainWindow : Window
         CheckButton.IsEnabled = !busy;
         NewButton.IsEnabled = !busy;
         OpenButton.IsEnabled = !busy;
-        SaveButton.IsEnabled = !busy && _session.Document.FilePath is not null;
+        SaveButton.IsEnabled = !busy;
         NewProjectButton.IsEnabled = !busy;
         OpenProjectButton.IsEnabled = !busy;
         ProfileCombo.IsEnabled = !busy && _projects.CurrentProject is null;
@@ -391,6 +414,8 @@ public sealed partial class MainWindow : Window
                 item.Title,
                 item.Message,
                 new SourceSpan(item.Path ?? "sprout.toml", 0, 0, 1, 1, 1, 1),
+                [],
+                [],
                 []);
             _problems.Add(new ProblemItem(diagnostic));
         }
@@ -407,6 +432,8 @@ public sealed partial class MainWindow : Window
             title,
             exception.Message,
             new SourceSpan(_session.Document.DisplayName, 0, 0, 1, 1, 1, 1),
+            [],
+            [],
             []);
         _problems.Add(new ProblemItem(diagnostic));
         StatusText.Text = title;
@@ -434,9 +461,16 @@ public sealed class ProblemItem
 
     public string Title => Diagnostic.Title;
 
-    public string Message => Diagnostic.Suggestions.Count == 0
-        ? Diagnostic.Message
-        : $"{Diagnostic.Message} {string.Join(" ", Diagnostic.Suggestions)}";
+    public string Message
+    {
+        get
+        {
+            IEnumerable<string> details = Diagnostic.Suggestions.Concat(
+                Diagnostic.RelatedInformation.Select(item => item.Message));
+            string suffix = string.Join(" ", details);
+            return suffix.Length == 0 ? Diagnostic.Message : $"{Diagnostic.Message} {suffix}";
+        }
+    }
 
     public string Location => $"{Diagnostic.Span.StartLine}:{Diagnostic.Span.StartColumn}";
 }

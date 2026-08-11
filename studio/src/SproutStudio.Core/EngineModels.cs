@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace SproutStudio.Core;
 
 public enum EngineOperation
@@ -28,13 +30,24 @@ public sealed record SourceSpan(
     int EndLine,
     int EndColumn);
 
+public sealed record DiagnosticRelatedInformation(
+    string Message,
+    SourceSpan Span);
+
+public sealed record DiagnosticFix(
+    string Title,
+    string Replacement,
+    SourceSpan Span);
+
 public sealed record StudioDiagnostic(
     string Code,
     string Severity,
     string Title,
     string Message,
     SourceSpan Span,
-    IReadOnlyList<string> Suggestions);
+    IReadOnlyList<string> Suggestions,
+    IReadOnlyList<DiagnosticRelatedInformation> RelatedInformation,
+    IReadOnlyList<DiagnosticFix> OptionalFixes);
 
 public sealed record EngineResponse(
     int ApiVersion,
@@ -49,3 +62,18 @@ public interface IEngineClient
         CancellationToken cancellationToken = default);
 }
 
+public static class SourceTextCoordinates
+{
+    public static int Utf8OffsetToUtf16Index(string source, long byteOffset)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (byteOffset <= 0)
+        {
+            return 0;
+        }
+
+        byte[] utf8 = Encoding.UTF8.GetBytes(source);
+        int boundedOffset = (int)Math.Min(byteOffset, utf8.LongLength);
+        return Encoding.UTF8.GetCharCount(utf8, 0, boundedOffset);
+    }
+}

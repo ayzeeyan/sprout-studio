@@ -233,24 +233,38 @@ fn response_json(output: Vec<String>, diagnostics: &[Diagnostic]) -> String {
         push_json_string(&mut json, &diagnostic.title);
         json.push_str(",\"message\":");
         push_json_string(&mut json, &diagnostic.message);
-        json.push_str(",\"span\":{\"file\":");
-        push_json_string(&mut json, &diagnostic.span.file);
-        let _ = write!(
-            json,
-            ",\"start\":{},\"end\":{},\"startLine\":{},\"startColumn\":{},\"endLine\":{},\"endColumn\":{}",
-            diagnostic.span.start,
-            diagnostic.span.end,
-            diagnostic.span.start_line,
-            diagnostic.span.start_column,
-            diagnostic.span.end_line,
-            diagnostic.span.end_column
-        );
-        json.push_str("},\"suggestions\":[");
+        json.push_str(",\"span\":");
+        push_span_json(&mut json, &diagnostic.span);
+        json.push_str(",\"relatedInformation\":[");
+        for (related_index, related) in diagnostic.related_information.iter().enumerate() {
+            if related_index > 0 {
+                json.push(',');
+            }
+            json.push_str("{\"message\":");
+            push_json_string(&mut json, &related.message);
+            json.push_str(",\"span\":");
+            push_span_json(&mut json, &related.span);
+            json.push('}');
+        }
+        json.push_str("],\"suggestions\":[");
         for (suggestion_index, suggestion) in diagnostic.suggestions.iter().enumerate() {
             if suggestion_index > 0 {
                 json.push(',');
             }
             push_json_string(&mut json, suggestion);
+        }
+        json.push_str("],\"optionalFixes\":[");
+        for (fix_index, fix) in diagnostic.optional_fixes.iter().enumerate() {
+            if fix_index > 0 {
+                json.push(',');
+            }
+            json.push_str("{\"title\":");
+            push_json_string(&mut json, &fix.title);
+            json.push_str(",\"replacement\":");
+            push_json_string(&mut json, &fix.replacement);
+            json.push_str(",\"span\":");
+            push_span_json(&mut json, &fix.span);
+            json.push('}');
         }
         json.push_str("]}");
     }
@@ -343,8 +357,18 @@ fn internal_error(message: &str) -> String {
         "{\"apiVersion\":1,\"success\":false,\"output\":[],\"diagnostics\":[{\"code\":\"SPT900\",\"severity\":\"error\",\"title\":\"Engine failure\",\"message\":",
     );
     push_json_string(&mut json, message);
-    json.push_str(",\"span\":{\"file\":\"<engine>\",\"start\":0,\"end\":0,\"startLine\":1,\"startColumn\":1,\"endLine\":1,\"endColumn\":1},\"suggestions\":[]}]}");
+    json.push_str(",\"span\":{\"file\":\"<engine>\",\"start\":0,\"end\":0,\"startLine\":1,\"startColumn\":1,\"endLine\":1,\"endColumn\":1},\"relatedInformation\":[],\"suggestions\":[],\"optionalFixes\":[]}]}");
     json
+}
+
+fn push_span_json(output: &mut String, span: &sprout_core::source::SourceSpan) {
+    output.push_str("{\"file\":");
+    push_json_string(output, &span.file);
+    let _ = write!(
+        output,
+        ",\"start\":{},\"end\":{},\"startLine\":{},\"startColumn\":{},\"endLine\":{},\"endColumn\":{}}}",
+        span.start, span.end, span.start_line, span.start_column, span.end_line, span.end_column
+    );
 }
 
 fn push_json_string(output: &mut String, value: &str) {
@@ -394,6 +418,20 @@ mod tests {
         .unwrap();
         assert!(response.contains("\"code\":\"SPT201\""));
         assert!(response.contains("\"startLine\":1,\"startColumn\":7"));
+    }
+
+    #[test]
+    fn response_preserves_suggestions_and_machine_applicable_fixes() {
+        let response = process(
+            SPROUT_OPERATION_CHECK,
+            SPROUT_PROFILE_GUIDED,
+            "broken.spr",
+            "has attack = 1\nprint(attck)\n",
+        )
+        .unwrap();
+        assert!(response.contains("\"suggestions\":[\"Did you mean `attack`?\"]"));
+        assert!(response.contains("\"replacement\":\"attack\""));
+        assert!(response.contains("\"optionalFixes\":[{"));
     }
 
     #[test]

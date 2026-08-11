@@ -3,7 +3,7 @@
 use crate::ast::{
     BinaryOperator, Expression, ExpressionKind, Program, Statement, StatementKind, UnaryOperator,
 };
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, DiagnosticFix, RelatedInformation};
 use crate::source::SourceSpan;
 use std::collections::HashMap;
 
@@ -429,6 +429,11 @@ impl Analyzer {
                         diagnostic
                             .suggestions
                             .push(format!("Did you mean `{candidate}`?"));
+                        diagnostic.optional_fixes.push(DiagnosticFix::replacement(
+                            format!("Replace `{name}` with `{candidate}`"),
+                            candidate,
+                            member_span.clone(),
+                        ));
                     }
                     self.diagnostics.push(diagnostic);
                     Type::Unknown
@@ -518,11 +523,9 @@ impl Analyzer {
                 format!("`{name}` is already declared in this scope."),
                 span.clone(),
             );
-            diagnostic.suggestions.push(format!(
-                "The earlier declaration is at {}:{}:{}.",
-                previous.declared_at.file,
-                previous.declared_at.start_line,
-                previous.declared_at.start_column
+            diagnostic.related_information.push(RelatedInformation::new(
+                "The earlier declaration is here.",
+                previous.declared_at.clone(),
             ));
             self.diagnostics.push(diagnostic);
             return;
@@ -614,6 +617,11 @@ impl Analyzer {
             diagnostic
                 .suggestions
                 .push(format!("Did you mean `{candidate}`?"));
+            diagnostic.optional_fixes.push(DiagnosticFix::replacement(
+                format!("Replace `{name}` with `{candidate}`"),
+                candidate,
+                span.clone(),
+            ));
         }
         self.diagnostics.push(diagnostic);
     }
@@ -727,6 +735,11 @@ mod tests {
         let result = analyze_source("has score = 1\nhas score = 2\n");
         assert_eq!(result.diagnostics[0].code, "SPT210");
         assert_eq!(result.diagnostics[0].span.start_line, 2);
+        assert_eq!(result.diagnostics[0].related_information.len(), 1);
+        assert_eq!(
+            result.diagnostics[0].related_information[0].span.start_line,
+            1
+        );
     }
 
     #[test]
@@ -756,6 +769,9 @@ mod tests {
         assert_eq!(diagnostic.span.start_column, 8);
         assert_eq!(diagnostic.span.end_column, 13);
         assert_eq!(diagnostic.suggestions, vec!["Did you mean `attack`?"]);
+        assert_eq!(diagnostic.optional_fixes.len(), 1);
+        assert_eq!(diagnostic.optional_fixes[0].replacement, "attack");
+        assert_eq!(diagnostic.optional_fixes[0].span.start_column, 8);
     }
 
     #[test]

@@ -61,12 +61,37 @@ public sealed class StudioSession
             throw new InvalidOperationException("Save requires a document with a file path.");
         }
 
-        string temporaryPath = Document.FilePath + ".tmp";
+        await SaveSourceAsync(Document.FilePath, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SaveDocumentAsAsync(
+        string filePath,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureNotRunning();
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        string fullPath = Path.GetFullPath(filePath);
+        if (!string.Equals(Path.GetExtension(fullPath), ".spr", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Sprout source files must use the .spr extension.", nameof(filePath));
+        }
+
+        await SaveSourceAsync(fullPath, cancellationToken).ConfigureAwait(false);
+        Document = Document with
+        {
+            DisplayName = Path.GetFileName(fullPath),
+            FilePath = fullPath,
+        };
+    }
+
+    private async Task SaveSourceAsync(string filePath, CancellationToken cancellationToken)
+    {
+        string temporaryPath = filePath + ".tmp";
         try
         {
             await File.WriteAllTextAsync(temporaryPath, Document.Source, cancellationToken)
                 .ConfigureAwait(false);
-            File.Move(temporaryPath, Document.FilePath, overwrite: true);
+            File.Move(temporaryPath, filePath, overwrite: true);
         }
         finally
         {

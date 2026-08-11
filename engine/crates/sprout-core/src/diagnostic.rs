@@ -14,7 +14,45 @@ pub struct Diagnostic {
     pub title: String,
     pub message: String,
     pub span: Box<SourceSpan>,
+    pub related_information: Box<Vec<RelatedInformation>>,
     pub suggestions: Vec<String>,
+    pub optional_fixes: Box<Vec<DiagnosticFix>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RelatedInformation {
+    pub message: String,
+    pub span: Box<SourceSpan>,
+}
+
+impl RelatedInformation {
+    pub fn new(message: impl Into<String>, span: SourceSpan) -> Self {
+        Self {
+            message: message.into(),
+            span: Box::new(span),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiagnosticFix {
+    pub title: String,
+    pub replacement: String,
+    pub span: Box<SourceSpan>,
+}
+
+impl DiagnosticFix {
+    pub fn replacement(
+        title: impl Into<String>,
+        replacement: impl Into<String>,
+        span: SourceSpan,
+    ) -> Self {
+        Self {
+            title: title.into(),
+            replacement: replacement.into(),
+            span: Box::new(span),
+        }
+    }
 }
 
 impl Diagnostic {
@@ -30,7 +68,9 @@ impl Diagnostic {
             title: title.into(),
             message: message.into(),
             span: Box::new(span),
+            related_information: Box::default(),
             suggestions: Vec::new(),
+            optional_fixes: Box::default(),
         }
     }
 }
