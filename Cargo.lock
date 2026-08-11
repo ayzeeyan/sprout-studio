@@ -12,3 +12,10 @@ dependencies = [
 [[package]]
 name = "sprout-core"
 version = "0.1.0"
+
+[[package]]
+name = "sprout-ffi"
+version = "0.1.0"
+dependencies = [
+ "sprout-core",
+]

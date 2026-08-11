@@ -1,0 +1,16 @@
+[package]
+name = "sprout-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+sprout-core = { path = "../sprout-core" }
+
+[lints.rust]
+unsafe_code = "allow"
+
