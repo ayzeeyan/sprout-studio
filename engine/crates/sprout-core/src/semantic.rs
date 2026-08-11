@@ -17,6 +17,7 @@ pub enum Type {
     Function(FunctionType),
     Class(String),
     Instance(String),
+    Dynamic,
     Unknown,
 }
 
@@ -31,6 +32,7 @@ impl Type {
             Self::Function(_) => "Function".into(),
             Self::Class(name) => format!("class {name}"),
             Self::Instance(name) => name.clone(),
+            Self::Dynamic => "dynamic Python value".into(),
             Self::Unknown => "Unknown".into(),
         }
     }
@@ -127,6 +129,17 @@ impl Analyzer {
 
     fn statement(&mut self, statement: &Statement) {
         match &statement.kind {
+            StatementKind::ImportPython { module, alias } => {
+                if !is_valid_python_module_name(module) {
+                    self.diagnostics.push(Diagnostic::error(
+                        "SPT300",
+                        "Invalid Python module",
+                        "Python module names must contain identifier components separated by dots.",
+                        statement.span.clone(),
+                    ));
+                }
+                self.declare(alias, SymbolKind::Variable(Type::Dynamic), &statement.span);
+            }
             StatementKind::Variable { name, initializer } => {
                 let ty = self.expression(initializer);
                 self.declare(name, SymbolKind::Variable(ty), &statement.span);
@@ -320,7 +333,9 @@ impl Analyzer {
                 let operand_type = self.expression(operand);
                 match operator {
                     UnaryOperator::Negate => {
-                        if !is_numeric(&operand_type) && operand_type != Type::Unknown {
+                        if operand_type == Type::Dynamic {
+                            Type::Dynamic
+                        } else if !is_numeric(&operand_type) && operand_type != Type::Unknown {
                             self.invalid_operator("-", &operand_type, None, &expression.span);
                             Type::Unknown
                         } else {
@@ -328,7 +343,9 @@ impl Analyzer {
                         }
                     }
                     UnaryOperator::Not => {
-                        if operand_type != Type::Bool && operand_type != Type::Unknown {
+                        if operand_type == Type::Dynamic {
+                            Type::Bool
+                        } else if operand_type != Type::Bool && operand_type != Type::Unknown {
                             self.invalid_operator("not", &operand_type, None, &expression.span);
                             Type::Unknown
                         } else {
@@ -379,6 +396,7 @@ impl Analyzer {
                         }
                         Type::Instance(name)
                     }
+                    Type::Dynamic => Type::Dynamic,
                     Type::Unknown => Type::Unknown,
                     other => {
                         self.diagnostics.push(Diagnostic::error(
@@ -397,6 +415,9 @@ impl Analyzer {
                 member_span,
             } => {
                 let object_type = self.expression(object);
+                if object_type == Type::Dynamic {
+                    return Type::Dynamic;
+                }
                 let Type::Instance(class_name) = object_type else {
                     if object_type != Type::Unknown {
                         self.diagnostics.push(Diagnostic::error(
@@ -450,6 +471,9 @@ impl Analyzer {
         span: &SourceSpan,
     ) -> Type {
         use BinaryOperator as Op;
+        if left == &Type::Dynamic || right == &Type::Dynamic {
+            return Type::Dynamic;
+        }
         if left == &Type::Unknown || right == &Type::Unknown {
             return Type::Unknown;
         }
@@ -654,8 +678,21 @@ impl Analyzer {
 fn compatible(expected: &Type, actual: &Type) -> bool {
     expected == &Type::Unknown
         || actual == &Type::Unknown
+        || expected == &Type::Dynamic
+        || actual == &Type::Dynamic
         || expected == actual
         || (is_numeric(expected) && is_numeric(actual))
+}
+
+fn is_valid_python_module_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.split('.').all(|component| {
+            let mut characters = component.chars();
+            characters
+                .next()
+                .is_some_and(|character| character.is_ascii_alphabetic() || character == '_')
+                && characters.all(|character| character.is_ascii_alphanumeric() || character == '_')
+        })
 }
 
 fn is_numeric(ty: &Type) -> bool {
@@ -798,6 +835,17 @@ mod tests {
             result.diagnostics[0].message,
             "Operator `not` cannot be applied to `Int`."
         );
+    }
+
+    #[test]
+    fn python_import_aliases_are_dynamic_but_module_names_are_validated() {
+        let valid = analyze_source(
+            "import python \"math\" as math\nhas root = math.sqrt(9)\nprint(root + 1)\n",
+        );
+        assert!(valid.diagnostics.is_empty(), "{:?}", valid.diagnostics);
+
+        let invalid = analyze_source("import python \"../escape\" as escape\n");
+        assert_eq!(invalid.diagnostics[0].code, "SPT300");
     }
 
     #[test]

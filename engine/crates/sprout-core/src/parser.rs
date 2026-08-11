@@ -98,11 +98,45 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Statement, Diagnostic> {
+        if self.take(&TokenKind::Import).is_some() {
+            return self.python_import_statement();
+        }
         match self.profile {
             SyntaxProfile::Guided => self.guided_statement(),
             SyntaxProfile::Structured => self.structured_statement(),
             SyntaxProfile::Advanced => self.advanced_statement(),
         }
+    }
+
+    fn python_import_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        self.expect(
+            &TokenKind::Python,
+            "Expected `python` after `import` for explicit Python interoperability.",
+        )?;
+        let module_token = self.advance().clone();
+        let TokenKind::String(module) = module_token.kind else {
+            return Err(Diagnostic::error(
+                "SPT100",
+                "Unexpected syntax",
+                "Expected a quoted Python module name.",
+                module_token.span,
+            ));
+        };
+        self.expect(
+            &TokenKind::As,
+            "Expected `as` after the Python module name.",
+        )?;
+        let (alias, alias_span) = self.expect_identifier("Expected an import alias after `as`.")?;
+        match self.profile {
+            SyntaxProfile::Structured => self.finish_structured_statement()?,
+            SyntaxProfile::Guided => self.finish_simple_statement()?,
+            SyntaxProfile::Advanced => self.finish_advanced_statement()?,
+        }
+        Ok(Node::new(
+            StatementKind::ImportPython { module, alias },
+            start.merge(&alias_span),
+        ))
     }
 
     fn guided_statement(&mut self) -> Result<Statement, Diagnostic> {
@@ -1212,5 +1246,29 @@ mod tests {
         });
         assert!(programs[0].semantically_equivalent(&programs[1]));
         assert!(programs[1].semantically_equivalent(&programs[2]));
+    }
+
+    #[test]
+    fn explicit_python_imports_are_equivalent_across_profiles() {
+        let cases = [
+            (SyntaxProfile::Guided, "import python \"math\" as math\n"),
+            (
+                SyntaxProfile::Structured,
+                "import python \"math\" as math;\n",
+            ),
+            (SyntaxProfile::Advanced, "import python \"math\" as math\n"),
+        ];
+        let programs = cases.map(|(profile, text)| {
+            let result = parse_profile(&SourceFile::new("python.spr", text), profile);
+            assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
+            result.program.unwrap()
+        });
+        assert!(programs[0].semantically_equivalent(&programs[1]));
+        assert!(programs[1].semantically_equivalent(&programs[2]));
+        assert!(matches!(
+            programs[0].statements[0].kind,
+            StatementKind::ImportPython { ref module, ref alias }
+                if module == "math" && alias == "math"
+        ));
     }
 }

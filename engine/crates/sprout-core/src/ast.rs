@@ -30,6 +30,10 @@ pub type Expression = Node<ExpressionKind>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum StatementKind {
+    ImportPython {
+        module: String,
+        alias: String,
+    },
     Variable {
         name: String,
         initializer: Expression,
@@ -125,6 +129,16 @@ fn equivalent_statements(left: &[Statement], right: &[Statement]) -> bool {
 
 fn equivalent_statement(left: &StatementKind, right: &StatementKind) -> bool {
     match (left, right) {
+        (
+            StatementKind::ImportPython {
+                module: left_module,
+                alias: left_alias,
+            },
+            StatementKind::ImportPython {
+                module: right_module,
+                alias: right_alias,
+            },
+        ) => left_module == right_module && left_alias == right_alias,
         (
             StatementKind::Variable {
                 name: left_name,

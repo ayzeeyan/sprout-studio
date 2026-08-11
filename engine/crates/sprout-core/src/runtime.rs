@@ -179,6 +179,14 @@ impl Interpreter {
 
     fn execute(&mut self, statement: &Statement) -> RuntimeResult<Flow> {
         match &statement.kind {
+            StatementKind::ImportPython { .. } => {
+                return Err(error(
+                    "SPT300",
+                    "Python runtime unavailable",
+                    "This engine host did not provide the embedded Python runtime.",
+                    &statement.span,
+                ));
+            }
             StatementKind::Variable { name, initializer } => {
                 let value = self.evaluate(initializer)?;
                 self.environment.define(name.clone(), value);
