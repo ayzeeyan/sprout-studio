@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SproutStudio.Toolchains\SproutStudio.Toolchains.csproj" />
+    <EmbeddedResource Include="..\..\..\academy\catalog.json"
+                      Link="Content\catalog.json"
+                      LogicalName="SproutStudio.Academy.Content.catalog.json" />
+  </ItemGroup>
+</Project>

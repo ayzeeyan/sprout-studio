@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio", "src\SproutS
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Toolchains", "src\SproutStudio.Toolchains\SproutStudio.Toolchains.csproj", "{F81762AD-A6E1-4F51-9A2D-0214017BE838}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Academy", "src\SproutStudio.Academy\SproutStudio.Academy.csproj", "{B6FBD525-3819-4C1A-A4AA-137C3A139483}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -38,5 +40,9 @@ Global
 		{F81762AD-A6E1-4F51-9A2D-0214017BE838}.Debug|x64.Build.0 = Debug|Any CPU
 		{F81762AD-A6E1-4F51-9A2D-0214017BE838}.Release|x64.ActiveCfg = Release|Any CPU
 		{F81762AD-A6E1-4F51-9A2D-0214017BE838}.Release|x64.Build.0 = Release|Any CPU
+		{B6FBD525-3819-4C1A-A4AA-137C3A139483}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B6FBD525-3819-4C1A-A4AA-137C3A139483}.Debug|x64.Build.0 = Debug|Any CPU
+		{B6FBD525-3819-4C1A-A4AA-137C3A139483}.Release|x64.ActiveCfg = Release|Any CPU
+		{B6FBD525-3819-4C1A-A4AA-137C3A139483}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

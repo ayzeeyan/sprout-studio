@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SproutStudio.Academy;
 using SproutStudio.Core;
 using SproutStudio.Interop;
 using SproutStudio.Toolchains;
@@ -43,6 +44,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Toolchain settings persist and clear custom paths", ToolchainSettingsPersistCustomPaths),
     ("Toolchain manager builds safe action requests", ToolchainManagerBuildsSafeActionRequests),
     ("Live toolchain detection returns structured states", LiveToolchainDetectionReturnsStructuredStates),
+    ("Academy catalog is complete and internally linked", AcademyCatalogIsComplete),
+    ("Academy local profile persists with validation", AcademyLocalProfilePersists),
+    ("Academy recommendations are transparent and rule based", AcademyRecommendationsAreTransparent),
+    ("Academy progress prevents repeated XP awards", AcademyProgressPreventsXpFarming),
+    ("Academy enrollment validates required toolchains", AcademyEnrollmentValidatesToolchains),
+    ("Academy concept browser searches transferable examples", AcademyConceptBrowserSearchesExamples),
     ("WinUI application starts and responds", WinUiApplicationStarts),
 };
 
@@ -616,6 +623,163 @@ static async Task LiveToolchainDetectionReturnsStructuredStates()
     }
 }
 
+static Task AcademyCatalogIsComplete()
+{
+    AcademyCatalog catalog = AcademyCatalog.LoadDefault();
+    Assert(catalog.Tracks.Length == 6, "expected all six Phase 8 tracks");
+    Assert(catalog.Tracks.All(track => track.Lessons.Length >= 3), "a track lacks a usable lesson sequence");
+    Assert(catalog.Tracks.Single(track => track.Id == "rust-systems").RequiredToolchainId == "rust", "Rust prerequisite is missing");
+    Assert(catalog.Tracks.Single(track => track.Id == "go-backend").RequiredToolchainId == "go", "Go prerequisite is missing");
+    Assert(catalog.Concepts.All(concept => concept.Examples.Length >= 2), "concepts are not cross-language");
+    Assert(catalog.GetConcept("functions").Examples.Any(item => item.Language == "Sprout"), "Sprout function example is missing");
+    return Task.CompletedTask;
+}
+
+static async Task AcademyLocalProfilePersists()
+{
+    string directory = TemporaryDirectory("academy-profile");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        string statePath = Path.Combine(directory, "academy.json");
+        AcademyService service = AcademyTestService(statePath, ToolchainStatus.NotInstalled);
+        AcademyProfile saved = new(
+            "  Ada Sprout  ",
+            " ada.codes ",
+            ExperienceLevel.Intermediate,
+            [ProgrammingGoal.SystemsProgramming, ProgrammingGoal.SystemsProgramming],
+            true);
+        await service.SaveProfileAsync(saved);
+        AcademyState reloaded = await AcademyTestService(statePath, ToolchainStatus.NotInstalled)
+            .LoadStateAsync();
+        Assert(reloaded.Profile?.DisplayName == "Ada Sprout", "display name was not normalized and persisted");
+        Assert(reloaded.Profile?.PreferredUsername == "ada.codes", "username was not normalized and persisted");
+        Assert(reloaded.Profile?.Goals.SequenceEqual([ProgrammingGoal.SystemsProgramming]) == true, "profile goals were not normalized");
+
+        try
+        {
+            await service.SaveProfileAsync(saved with { PreferredUsername = "invalid user" });
+            throw new InvalidOperationException("invalid username was accepted");
+        }
+        catch (ArgumentException)
+        {
+        }
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static Task AcademyRecommendationsAreTransparent()
+{
+    var engine = new RecommendationEngine(AcademyCatalog.LoadDefault());
+    IReadOnlyList<TrackRecommendation> beginner = engine.Recommend(new AcademyProfile(
+        "Beginner",
+        "beginner",
+        ExperienceLevel.AbsoluteBeginner,
+        [ProgrammingGoal.GameDevelopment],
+        true));
+    Assert(beginner.Select(item => item.Track.Id).SequenceEqual([
+        "sprout-fundamentals",
+        "sprout-game-development",
+    ]), "beginner learning path was not ordered from fundamentals to goal");
+    Assert(beginner.All(item => item.Rule.StartsWith("Rule:", StringComparison.Ordinal)), "recommendation rules are not exposed");
+    Assert(beginner.All(item => !item.Explanation.Contains("AI", StringComparison.OrdinalIgnoreCase)), "recommendations falsely claim AI");
+
+    IReadOnlyList<TrackRecommendation> advanced = engine.Recommend(new AcademyProfile(
+        "Advanced",
+        "advanced",
+        ExperienceLevel.Advanced,
+        [ProgrammingGoal.SystemsProgramming],
+        false));
+    Assert(advanced.Select(item => item.Track.Id).SequenceEqual(["rust-systems"]), "advanced user was forced through Sprout fundamentals");
+    return Task.CompletedTask;
+}
+
+static async Task AcademyProgressPreventsXpFarming()
+{
+    string directory = TemporaryDirectory("academy-progress");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        AcademyService service = AcademyTestService(
+            Path.Combine(directory, "academy.json"),
+            ToolchainStatus.NotInstalled);
+        await service.SaveProfileAsync(new AcademyProfile(
+            "Learner",
+            "learner",
+            ExperienceLevel.AbsoluteBeginner,
+            [ProgrammingGoal.GeneralProgramming],
+            true));
+        EnrollmentResult enrollment = await service.EnrollAsync("sprout-fundamentals");
+        Assert(enrollment.Status == EnrollmentStatus.Enrolled, "track did not enroll");
+        AcademyState enrolled = await service.LoadStateAsync();
+        Assert(enrolled.AchievementAwards.Any(item => item.Id == "seedling-planted"), "enrollment achievement was not awarded");
+
+        LessonCompletionResult first = await service.CompleteLessonAsync(
+            "sprout-fundamentals",
+            "sprout-first-program");
+        LessonCompletionResult repeated = await service.CompleteLessonAsync(
+            "sprout-fundamentals",
+            "sprout-first-program");
+        Assert(first.AwardedXp == 30 && !first.AlreadyCompleted, "first completion did not award its defined XP");
+        Assert(repeated.AwardedXp == 0 && repeated.AlreadyCompleted, "repeated completion farmed XP");
+        await service.CompleteLessonAsync("sprout-fundamentals", "sprout-decisions-loops");
+        await service.CompleteLessonAsync("sprout-fundamentals", "sprout-actions");
+
+        AcademyDashboard dashboard = service.CreateDashboard(await service.LoadStateAsync());
+        TrackProgress progress = dashboard.Tracks.Single(item => item.Track.Id == "sprout-fundamentals");
+        Assert(progress.CompletionPercent == 100, "completed track progress is incorrect");
+        Assert(dashboard.TotalXp == 100 && dashboard.Level == 2, "XP or level projection is incorrect");
+        Assert(dashboard.EarnedAchievements.Any(item => item.Id == "syntax-adapter"), "track achievement was not awarded");
+        Assert(dashboard.EarnedAchievements.Any(item => item.Id == "deep-roots"), "completion achievement was not awarded");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task AcademyEnrollmentValidatesToolchains()
+{
+    string directory = TemporaryDirectory("academy-prerequisite");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        string missingState = Path.Combine(directory, "missing.json");
+        var missingAdapter = new FixedToolchainAdapter(ToolchainStatus.NotInstalled);
+        AcademyService missing = AcademyTestServiceWithAdapter(missingState, missingAdapter);
+        EnrollmentResult blocked = await missing.EnrollAsync("rust-systems");
+        Assert(blocked.Status == EnrollmentStatus.ToolchainRequired, "missing Rust did not block enrollment");
+        Assert(blocked.Toolchain?.Status == ToolchainStatus.NotInstalled, "prerequisite status was lost");
+        Assert((await missing.LoadStateAsync()).EnrolledTrackIds.Length == 0, "blocked enrollment was persisted");
+        Assert(missingAdapter.DetectionCount == 1, "Rust was not validated exactly when enrollment requested it");
+
+        var readyAdapter = new FixedToolchainAdapter(ToolchainStatus.Ready);
+        AcademyService ready = AcademyTestServiceWithAdapter(Path.Combine(directory, "ready.json"), readyAdapter);
+        EnrollmentResult enrolled = await ready.EnrollAsync("rust-systems");
+        Assert(enrolled.Status == EnrollmentStatus.Enrolled, "ready Rust did not allow enrollment");
+        Assert((await ready.LoadStateAsync()).EnrolledTrackIds.SequenceEqual(["rust-systems"]), "ready enrollment was not persisted");
+        Assert(readyAdapter.DetectionCount == 1, "ready Rust prerequisite was not validated");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static Task AcademyConceptBrowserSearchesExamples()
+{
+    AcademyCatalog catalog = AcademyCatalog.LoadDefault();
+    IReadOnlyList<ConceptDefinition> results = catalog.SearchConcepts("Go");
+    Assert(results.Count == catalog.Concepts.Length, "language example search did not find all Go comparisons");
+    results = catalog.SearchConcepts("reusable behavior");
+    Assert(results.Select(item => item.Id).SequenceEqual(["functions"]), "concept summary search returned the wrong result");
+    Assert(catalog.SearchConcepts("no-such-concept").Count == 0, "concept search fabricated a result");
+    return Task.CompletedTask;
+}
+
 static async Task WinUiApplicationStarts()
 {
     string repositoryRoot = FindRepositoryRoot();
@@ -734,6 +898,26 @@ static ToolchainManager ManagerWith(
         new ToolchainSettingsStore(settingsPath),
         runner);
 
+static AcademyService AcademyTestService(
+    string statePath,
+    ToolchainStatus toolchainStatus) =>
+    AcademyTestServiceWithAdapter(statePath, new FixedToolchainAdapter(toolchainStatus));
+
+static AcademyService AcademyTestServiceWithAdapter(
+    string statePath,
+    FixedToolchainAdapter adapter)
+{
+    var runner = new FakeProcessRunner(_ => ProcessSuccess("unused"));
+    var manager = new ToolchainManager(
+        new ToolchainRegistry([adapter]),
+        new ToolchainSettingsStore($"{statePath}.toolchains"),
+        runner);
+    return new AcademyService(
+        AcademyCatalog.LoadDefault(),
+        new AcademyStateStore(statePath),
+        manager);
+}
+
 static FakeProcessRunner RustFakeRunner(string rustVersion) =>
     new(request =>
     {
@@ -792,4 +976,52 @@ sealed class FakeProcessRunner : IProcessRunner
         Requests.Add(request);
         return Task.FromResult(_handler(request));
     }
+}
+
+sealed class FixedToolchainAdapter : IToolchainAdapter
+{
+    private readonly ToolchainStatus _status;
+
+    public FixedToolchainAdapter(ToolchainStatus status)
+    {
+        _status = status;
+    }
+
+    public string Id => "rust";
+
+    public string DisplayName => "Rust";
+
+    public ToolchainCapability Capabilities => ToolchainCapability.Run
+        | ToolchainCapability.Build
+        | ToolchainCapability.Format
+        | ToolchainCapability.Test;
+
+    public int DetectionCount { get; private set; }
+
+    public Task<ToolchainDetectionResult> DetectAsync(
+        string? customPath,
+        ToolchainLocationSource? customSource,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        DetectionCount++;
+        bool usable = _status is ToolchainStatus.Ready or ToolchainStatus.CustomLocation;
+        return Task.FromResult(new ToolchainDetectionResult(
+            Id,
+            DisplayName,
+            _status,
+            customSource,
+            usable ? "rustc" : null,
+            usable ? "1.95.0" : null,
+            usable ? Capabilities : ToolchainCapability.None,
+            [],
+            usable ? "Environment ready." : "Rust is not installed."));
+    }
+
+    public ProcessRequest CreateActionRequest(
+        ToolchainAction action,
+        ToolchainDetectionResult detection,
+        string workingDirectory,
+        IReadOnlyList<string> additionalArguments) =>
+        throw new NotSupportedException("Academy prerequisite tests do not execute tools.");
 }

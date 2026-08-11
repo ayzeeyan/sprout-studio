@@ -1,0 +1,278 @@
+{
+  "tracks": [
+    {
+      "id": "sprout-fundamentals",
+      "title": "Sprout Programming Fundamentals",
+      "summary": "Learn variables, decisions, repetition, and actions in Sprout's Guided syntax.",
+      "requiredToolchainId": null,
+      "lessons": [
+        {
+          "id": "sprout-first-program",
+          "title": "Plant Your First Program",
+          "summary": "Create values and print a result.",
+          "content": "A program stores information in values and performs operations with it. In Guided Sprout, `has name = \"Sprout\"` declares a value and `print(name)` displays it. Change the value and predict the output before running the program.",
+          "xp": 30,
+          "conceptIds": ["variables"]
+        },
+        {
+          "id": "sprout-decisions-loops",
+          "title": "Decisions and Repetition",
+          "summary": "Choose behavior and repeat useful work.",
+          "content": "Use `if` when behavior depends on a condition. Use `repeat count times` when a task has a known number of repetitions. Prefer a loop over copying the same statement because the loop expresses the intent and changes safely when the count changes.",
+          "xp": 35,
+          "conceptIds": ["conditions", "loops"]
+        },
+        {
+          "id": "sprout-actions",
+          "title": "Reusable Actions",
+          "summary": "Name a behavior, pass inputs, and return a result.",
+          "content": "An action packages a behavior behind a clear name. Parameters are local inputs and `return` sends a result to the caller. Small actions reduce duplication and make a program easier to test and explain.",
+          "xp": 35,
+          "conceptIds": ["functions"]
+        }
+      ]
+    },
+    {
+      "id": "sprout-game-development",
+      "title": "Sprout Game Development",
+      "summary": "Model game state and frame-by-frame behavior with transferable design ideas.",
+      "requiredToolchainId": null,
+      "lessons": [
+        {
+          "id": "game-state",
+          "title": "Model Game State",
+          "summary": "Represent score, health, and position as explicit state.",
+          "content": "Game state is the data needed to describe the current world. Give each value one purpose, update it in one predictable place, and separate durable state from values that can be recalculated.",
+          "xp": 30,
+          "conceptIds": ["variables"]
+        },
+        {
+          "id": "game-loop",
+          "title": "The Update Loop",
+          "summary": "Read input, update state, and render in a stable order.",
+          "content": "A game loop repeatedly receives input, advances the simulation, and presents the new state. Keeping those stages distinct prevents rendering code from secretly changing gameplay rules.",
+          "xp": 35,
+          "conceptIds": ["loops", "conditions"]
+        },
+        {
+          "id": "game-entities",
+          "title": "Behaviors and Entities",
+          "summary": "Organize related state and actions around game concepts.",
+          "content": "An entity combines an identity with state and behavior. Start with small actions that operate on explicit inputs; introduce classes only when grouping state and behavior makes the model clearer.",
+          "xp": 35,
+          "conceptIds": ["functions", "data-modeling"]
+        }
+      ]
+    },
+    {
+      "id": "computer-science-foundations",
+      "title": "Computer Science Foundations",
+      "summary": "Study algorithms, data representation, and complexity independently of one syntax.",
+      "requiredToolchainId": null,
+      "lessons": [
+        {
+          "id": "cs-representation",
+          "title": "Representing Information",
+          "summary": "Choose values and structures that preserve meaning.",
+          "content": "A representation is a contract between a problem and a program. Good representations make valid operations natural and invalid states difficult to express.",
+          "xp": 30,
+          "conceptIds": ["variables", "data-modeling"]
+        },
+        {
+          "id": "cs-algorithms",
+          "title": "Algorithms as Procedures",
+          "summary": "Break a solution into precise, finite steps.",
+          "content": "An algorithm has inputs, ordered steps, and an outcome. Test it with normal, boundary, and empty inputs before tying it to a particular interface or language.",
+          "xp": 35,
+          "conceptIds": ["functions", "conditions"]
+        },
+        {
+          "id": "cs-complexity",
+          "title": "Cost and Scale",
+          "summary": "Reason about how work grows with the input.",
+          "content": "Complexity describes growth, not stopwatch time. Compare how many operations an approach needs as input grows, while still choosing the simplest correct solution for real constraints.",
+          "xp": 35,
+          "conceptIds": ["loops", "collections"]
+        }
+      ]
+    },
+    {
+      "id": "rust-systems",
+      "title": "Rust Systems Programming",
+      "summary": "Learn ownership, explicit errors, and resource-aware program structure.",
+      "requiredToolchainId": "rust",
+      "lessons": [
+        {
+          "id": "rust-values",
+          "title": "Bindings and Ownership",
+          "summary": "Understand how Rust ties values to responsible owners.",
+          "content": "Rust bindings are immutable unless marked `mut`. Ownership gives each value a responsible scope, allowing resources to be released deterministically without a garbage collector.",
+          "xp": 35,
+          "conceptIds": ["variables", "data-modeling"]
+        },
+        {
+          "id": "rust-functions",
+          "title": "Typed Functions",
+          "summary": "Use signatures to make contracts visible.",
+          "content": "A Rust function signature states parameter and result types. The final expression can provide the return value, and the compiler checks that every path satisfies the declared contract.",
+          "xp": 35,
+          "conceptIds": ["functions", "conditions"]
+        },
+        {
+          "id": "rust-results",
+          "title": "Errors as Values",
+          "summary": "Model recoverable failure with explicit alternatives.",
+          "content": "`Result` distinguishes success from recoverable failure. Handling both variants makes failure paths visible in control flow and prevents accidental use of a missing value.",
+          "xp": 40,
+          "conceptIds": ["conditions", "data-modeling"]
+        }
+      ]
+    },
+    {
+      "id": "go-backend",
+      "title": "Go Backend Development",
+      "summary": "Build a foundation in Go functions, packages, and request-oriented design.",
+      "requiredToolchainId": "go",
+      "lessons": [
+        {
+          "id": "go-packages",
+          "title": "Packages and Entry Points",
+          "summary": "Organize Go code around small, explicit packages.",
+          "content": "A Go package groups related declarations. Executable programs use package `main` and a `main` function, while reusable packages expose only identifiers that start with an uppercase letter.",
+          "xp": 35,
+          "conceptIds": ["functions", "data-modeling"]
+        },
+        {
+          "id": "go-errors",
+          "title": "Explicit Error Flow",
+          "summary": "Return and inspect errors where they can be handled.",
+          "content": "Go commonly returns a result and an error together. Check the error before using the result, add useful context, and let the layer with enough information decide how to recover.",
+          "xp": 35,
+          "conceptIds": ["conditions", "functions"]
+        },
+        {
+          "id": "go-handlers",
+          "title": "Request Handlers",
+          "summary": "Separate transport, validation, and application behavior.",
+          "content": "A backend handler should decode input, validate it, call a focused application action, and encode the response. Keeping business behavior outside transport code makes it reusable and testable.",
+          "xp": 40,
+          "conceptIds": ["functions", "data-modeling"]
+        }
+      ]
+    },
+    {
+      "id": "python-automation",
+      "title": "Python Automation",
+      "summary": "Automate repeatable work while keeping inputs, effects, and failures visible.",
+      "requiredToolchainId": null,
+      "lessons": [
+        {
+          "id": "python-sequences",
+          "title": "Work with Sequences",
+          "summary": "Transform batches of values without duplicating steps.",
+          "content": "Lists preserve an ordered group of values. Iterate over the items, keep transformations focused, and avoid changing a collection while traversing it unless the behavior is deliberate.",
+          "xp": 30,
+          "conceptIds": ["collections", "loops"]
+        },
+        {
+          "id": "python-files",
+          "title": "Safe File Automation",
+          "summary": "Treat paths, encodings, and partial writes as part of correctness.",
+          "content": "Validate the intended input and output paths before changing files. Use explicit text encodings and write to a temporary sibling before replacing important output when partial files would be harmful.",
+          "xp": 35,
+          "conceptIds": ["conditions", "data-modeling"]
+        },
+        {
+          "id": "python-functions",
+          "title": "Reusable Automation",
+          "summary": "Separate decisions from external effects.",
+          "content": "Put calculation and decision logic in functions that return values. Keep filesystem, network, and process effects at the edge so the core behavior can be tested with ordinary inputs.",
+          "xp": 35,
+          "conceptIds": ["functions"]
+        }
+      ]
+    }
+  ],
+  "concepts": [
+    {
+      "id": "variables",
+      "title": "Variables and Bindings",
+      "summary": "Names connect program meaning to values; languages differ in mutability and type rules.",
+      "relatedConceptIds": ["data-modeling", "collections"],
+      "examples": [
+        { "language": "Sprout", "code": "has score = 10\nscore = score + 5" },
+        { "language": "Rust", "code": "let mut score = 10;\nscore += 5;" },
+        { "language": "Go", "code": "score := 10\nscore += 5" },
+        { "language": "Python", "code": "score = 10\nscore += 5" }
+      ]
+    },
+    {
+      "id": "functions",
+      "title": "Functions",
+      "summary": "Functions name reusable behavior, receive inputs, and optionally produce a result.",
+      "relatedConceptIds": ["variables", "conditions"],
+      "examples": [
+        { "language": "Sprout", "code": "action add(a, b)\n    return a + b\nend" },
+        { "language": "Rust", "code": "fn add(a: i32, b: i32) -> i32 {\n    a + b\n}" },
+        { "language": "Go", "code": "func add(a int, b int) int {\n    return a + b\n}" },
+        { "language": "Python", "code": "def add(a, b):\n    return a + b" }
+      ]
+    },
+    {
+      "id": "conditions",
+      "title": "Conditions",
+      "summary": "Conditional control flow selects behavior from a true-or-false decision.",
+      "relatedConceptIds": ["functions", "loops"],
+      "examples": [
+        { "language": "Sprout", "code": "if score >= 10\n    print(\"ready\")\nend" },
+        { "language": "Rust", "code": "if score >= 10 {\n    println!(\"ready\");\n}" },
+        { "language": "Go", "code": "if score >= 10 {\n    fmt.Println(\"ready\")\n}" },
+        { "language": "Python", "code": "if score >= 10:\n    print(\"ready\")" }
+      ]
+    },
+    {
+      "id": "loops",
+      "title": "Loops",
+      "summary": "Loops express repeated work while keeping the repeated behavior in one place.",
+      "relatedConceptIds": ["conditions", "collections"],
+      "examples": [
+        { "language": "Sprout", "code": "repeat 3 times\n    print(\"grow\")\nend" },
+        { "language": "Rust", "code": "for _ in 0..3 {\n    println!(\"grow\");\n}" },
+        { "language": "Go", "code": "for i := 0; i < 3; i++ {\n    fmt.Println(\"grow\")\n}" },
+        { "language": "Python", "code": "for _ in range(3):\n    print(\"grow\")" }
+      ]
+    },
+    {
+      "id": "collections",
+      "title": "Collections",
+      "summary": "Collections group values so algorithms can work over a changing amount of data.",
+      "relatedConceptIds": ["loops", "data-modeling"],
+      "examples": [
+        { "language": "Sprout", "code": "# Collection literals are planned; Python values can currently cross the explicit interop boundary." },
+        { "language": "Rust", "code": "let scores = vec![10, 20, 30];" },
+        { "language": "Go", "code": "scores := []int{10, 20, 30}" },
+        { "language": "Python", "code": "scores = [10, 20, 30]" }
+      ]
+    },
+    {
+      "id": "data-modeling",
+      "title": "Data Modeling",
+      "summary": "A data model chooses representations and invariants that match the problem domain.",
+      "relatedConceptIds": ["variables", "collections"],
+      "examples": [
+        { "language": "Sprout", "code": "class Player\n    action greet()\n        print(\"ready\")\n    end\nend" },
+        { "language": "Rust", "code": "struct Player {\n    score: i32,\n}" },
+        { "language": "Go", "code": "type Player struct {\n    Score int\n}" },
+        { "language": "Python", "code": "class Player:\n    def __init__(self):\n        self.score = 0" }
+      ]
+    }
+  ],
+  "achievements": [
+    { "id": "seedling-planted", "title": "Seedling Planted", "description": "Enroll in your first Academy track." },
+    { "id": "first-execution", "title": "First Execution", "description": "Complete your first meaningful lesson." },
+    { "id": "syntax-adapter", "title": "Syntax Adapter", "description": "Complete Sprout Programming Fundamentals." },
+    { "id": "python-pioneer", "title": "Python Pioneer", "description": "Complete a Python Automation lesson." },
+    { "id": "polyglot-explorer", "title": "Polyglot Explorer", "description": "Complete lessons in two different tracks." },
+    { "id": "deep-roots", "title": "Deep Roots", "description": "Complete every lesson in a track." }
+  ]
+}
