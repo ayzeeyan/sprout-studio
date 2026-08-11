@@ -11,7 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 sprout-core = { path = "../sprout-core" }
+sprout-project = { path = "../sprout-project" }
 
 [lints]
 workspace = true
-

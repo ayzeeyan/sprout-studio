@@ -15,6 +15,14 @@ fn source_file(name: &str, source: &str) -> std::path::PathBuf {
     path
 }
 
+fn temporary_directory(name: &str) -> std::path::PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    std::env::temp_dir().join(format!("sprout-cli-{}-{name}-{unique}", std::process::id()))
+}
+
 #[test]
 fn run_executes_real_sprout_source() {
     let path = source_file(
@@ -90,4 +98,100 @@ fn all_syntax_profiles_execute_from_cli() {
         assert_eq!(String::from_utf8(output.stdout).unwrap(), "3\n");
         fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
+}
+
+#[test]
+fn new_creates_and_runs_each_project_template() {
+    for template in ["guided", "structured", "advanced"] {
+        let destination = temporary_directory(template).join("HelloProject");
+        let create = Command::new(env!("CARGO_BIN_EXE_sprout"))
+            .args([
+                "new",
+                "HelloProject",
+                "--template",
+                template,
+                "--path",
+                destination.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            create.status.success(),
+            "{}",
+            String::from_utf8_lossy(&create.stderr)
+        );
+        assert!(destination.join("sprout.toml").is_file());
+        assert!(destination.join("src/main.spr").is_file());
+
+        let run = Command::new(env!("CARGO_BIN_EXE_sprout"))
+            .args(["run", destination.to_str().unwrap()])
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{}",
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert_eq!(
+            String::from_utf8(run.stdout).unwrap(),
+            "Welcome to HelloProject\n"
+        );
+        fs::remove_dir_all(destination.parent().unwrap()).unwrap();
+    }
+}
+
+#[test]
+fn run_uses_the_manifest_syntax_profile() {
+    let destination = temporary_directory("profile").join("StructuredProject");
+    let create = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .args([
+            "new",
+            "StructuredProject",
+            "--template",
+            "structured",
+            "--path",
+            destination.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(create.status.success());
+    let run = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .current_dir(&destination)
+        .arg("run")
+        .output()
+        .unwrap();
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert_eq!(
+        String::from_utf8(run.stdout).unwrap(),
+        "Welcome to StructuredProject\n"
+    );
+    fs::remove_dir_all(destination.parent().unwrap()).unwrap();
+}
+
+#[test]
+fn invalid_project_manifest_returns_structured_failure() {
+    let destination = temporary_directory("invalid");
+    fs::create_dir_all(destination.join("src")).unwrap();
+    fs::write(
+        destination.join("sprout.toml"),
+        "manifest_version = 99\n[project]\nname = \"Invalid\"\nversion = \"0.1.0\"\nentry = \"src/main.spr\"\n",
+    )
+    .unwrap();
+    fs::write(destination.join("src/main.spr"), "print(1)\n").unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .args(["check", destination.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("error[SPP003]"), "{stderr}");
+    assert!(
+        stderr.contains("Unsupported manifest version 99"),
+        "{stderr}"
+    );
+    fs::remove_dir_all(destination).unwrap();
 }
