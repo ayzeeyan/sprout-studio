@@ -1,4 +1,4 @@
-# Phase 3 Architecture
+# Phase 4 Architecture
 
 ## Implemented pipeline
 
@@ -12,7 +12,7 @@ Guided / Structured / Advanced source
     -> captured program output or structured diagnostic
 ```
 
-`sprout-core` owns the language pipeline and has no dependency on the CLI, C#, WinUI, or external crates. `sprout-cli` is a thin adapter that reads source, calls high-level engine APIs, renders diagnostics, and selects an exit code. The runtime never evaluates generated Python or host-language source.
+`sprout-core` owns the language pipeline and has no dependency on the CLI, C#, WinUI, or external crates. `sprout-cli` is a thin adapter that reads source, calls high-level engine APIs, renders diagnostics, and selects an exit code. `sprout-ffi` is a C-compatible adapter that returns owned UTF-8 JSON responses. The runtime never evaluates generated Python or host-language source.
 
 The canonical AST is independent of surface syntax. Guided, Structured, and Advanced parser paths produce the same node types without translating text between profiles. Advanced indentation is converted into structural `Indent`/`Dedent` tokens before parsing. Every source token and AST node carries a `SourceSpan` with file, byte offsets, and one-based line/column coordinates.
 
@@ -34,9 +34,14 @@ Classes currently support zero-argument construction and actions. A bound method
 
 The runtime is a tree-walking AST interpreter with nested lexical environments. It supports variables, assignment, expressions, conditionals, repeat/while loops, actions, returns, calls, basic classes and bound methods, and the native `print` action. Integer arithmetic is checked for overflow.
 
+## Studio boundary
+
+The WinUI 3 executable depends on two UI-independent .NET libraries. `SproutStudio.Core` owns document state and session orchestration, while `SproutStudio.Interop` owns native library loading and response deserialization. The UI passes structured requests to the Rust FFI on a worker thread and renders output or diagnostics after returning to the UI thread.
+
+The FFI exposes a small versioned surface: execute a structured request, inspect the returned buffer, and free it with the matching Rust allocator. Panics are contained at the ABI boundary. C# never parses console text to recover diagnostics; source spans and suggestions remain structured end to end.
+
 ## Explicitly deferred
 
-- WinUI Studio and Rust/C# FFI (Phase 4)
 - Project manifests and remaining CLI commands (Phase 5)
 - Fields, constructors with parameters, inheritance, lists, maps, modules/imports, and error handling
 - Python interoperability, package infrastructure, bytecode, and VM
