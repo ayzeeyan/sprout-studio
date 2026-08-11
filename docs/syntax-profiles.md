@@ -64,4 +64,11 @@ Indentation must align with an enclosing block. Tabs count as one column in Phas
 
 ## Shared constructs
 
-All profiles support the Phase 2 values, expressions, conditions, loops, actions, returns, zero-argument classes, bound methods, and member access. Profile conversion/formatting is deferred; the AST equivalence API provides its architectural foundation.
+All profiles support the implemented values, expressions, conditions, loops, actions, returns, zero-argument classes, bound methods, member access, indexing, and explicit Python imports. Structured statements retain their required semicolon:
+
+```text
+import python "math" as math;
+print(math.sqrt(81));
+```
+
+Guided and Advanced use the same explicit import without the semicolon. Profile conversion/formatting is deferred; the AST equivalence API provides its architectural foundation.

@@ -9,10 +9,21 @@
     <ProjectReference Include="..\..\src\SproutStudio.Core\SproutStudio.Core.csproj" />
     <ProjectReference Include="..\..\src\SproutStudio.Interop\SproutStudio.Interop.csproj" />
   </ItemGroup>
-  <Target Name="BuildSproutNativeDebug" BeforeTargets="Build">
+  <Target Name="BuildSproutNativeDebug"
+          BeforeTargets="Build"
+          DependsOnTargets="PrepareAndCopySproutPythonForTests">
     <Exec Command="cargo build -p sprout-ffi" WorkingDirectory="$(MSBuildThisFileDirectory)..\..\.." />
     <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\..\target\debug\sprout_ffi.dll"
           DestinationFolder="$(OutDir)" />
+  </Target>
+  <Target Name="PrepareAndCopySproutPythonForTests" BeforeTargets="Build">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(SproutPreparePythonScript)&quot; -Destination &quot;$(SproutPythonRuntimeDirectory)&quot;" />
+    <ItemGroup>
+      <BundledPythonFile Include="$(SproutPythonRuntimeDirectory)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BundledPythonFile)"
+          DestinationFiles="@(BundledPythonFile-&gt;'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
   <Target Name="BuildSproutStudioForStartupTest"
           BeforeTargets="Build"

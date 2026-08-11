@@ -24,7 +24,16 @@ target = "windows-x86_64"
 
 `manifest_version` is required and currently accepts only `1`. Project names start with an ASCII letter and contain letters, numbers, `-`, or `_`. Versions use numeric `major.minor.patch` form. The entry must be a relative `.spr` path without parent traversal and must resolve inside the project root. Syntax is `guided`, `structured`, or `advanced`.
 
-Dependency names must start and end with a letter or number and may contain letters, numbers, `-`, `_`, or `.`. Requirements must be non-empty. Installation is deliberately deferred: templates already reserve the project-local `.sprout/python` environment that Phase 6 will use, and dependencies will never be installed into a shared global project directory.
+Dependency names must start and end with a letter or number and may contain letters, numbers, `-`, `_`, or `.`. Requirements must be non-empty. Phase 6 installs Python requirements into the current project's `.sprout/python` directory only; dependencies are never installed into a shared global project directory or the user's system Python.
+
+Synchronize the manifest after editing `[python]`:
+
+```powershell
+sprout python sync
+sprout python sync C:\Projects\AsteroidGame
+```
+
+A packaged CLI finds its bundled `python.exe` automatically. A source-tree development build can use `--python runtime/python-3.13.14-win-x64/python.exe`. The installer invokes pip with a structured argument list and captures its output and exit status; it does not interpolate manifest text into a shell command.
 
 ## Create a project
 
@@ -54,4 +63,4 @@ sprout check C:\Projects\HelloSprout
 sprout run C:\Projects\HelloSprout\sprout.toml
 ```
 
-The CLI loads the manifest entry and syntax profile through `sprout-project`, the same Rust API used by Sprout Studio.
+The CLI loads the manifest entry and syntax profile through `sprout-project`, the same Rust API used by Sprout Studio. Project runs add only that project's `.sprout/python` to the embedded interpreter and remove project-loaded modules from Python's process cache after the run.

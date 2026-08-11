@@ -184,8 +184,8 @@ pub unsafe extern "C" fn sprout_project_create(
 ///
 /// # Safety
 ///
-/// `buffer` must be an unchanged value returned by `sprout_execute`, and it must
-/// not have been released previously.
+/// `buffer` must be an unchanged value returned by a Sprout FFI function, and it
+/// must not have been released previously.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn sprout_buffer_free(buffer: SproutBuffer) {
     if buffer.data.is_null() {

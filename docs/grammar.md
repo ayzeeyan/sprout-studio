@@ -6,12 +6,13 @@ This document describes the Guided frontend. New lines terminate simple statemen
 program        = { newline | statement }, EOF ;
 statement      = variable | assignment | expression_stmt
                | if_stmt | repeat_stmt | while_stmt
-               | action | class | return_stmt ;
+               | action | class | return_stmt | python_import ;
 
 variable       = "has", identifier, "=", expression, line_end ;
 assignment     = identifier, "=", expression, line_end ;
 expression_stmt= expression, line_end ;
 return_stmt    = "return", [ expression ], line_end ;
+python_import  = "import", "python", string, "as", identifier, line_end ;
 
 if_stmt        = "if", expression, newline,
                  block,
@@ -37,11 +38,20 @@ comparison     = term, { ( "<" | "<=" | ">" | ">=" ), term } ;
 term           = factor, { ( "+" | "-" ), factor } ;
 factor         = unary, { ( "*" | "/" | "%" ), unary } ;
 unary          = ( "not" | "-" ), unary | call ;
-call           = primary, { "(", [ arguments ], ")" | ".", identifier } ;
+call           = primary, { "(", [ arguments ], ")" | ".", identifier
+               | "[", expression, "]" } ;
 arguments      = expression, { ",", expression } ;
 primary        = integer | float | string | "true" | "false" | "nil"
                | identifier | "(", expression, ")" ;
 line_end       = newline | EOF ;
 ```
 
-Strings use double quotes and support `\\n`, `\\t`, `\\"`, and `\\\\`. Numeric literals are base-10 integers or decimal floats. Current values are `Int`, `Float`, `Bool`, `String`, `Nil`, `Function`, `Class`, and class instances. Phase 2 classes contain actions and use zero-argument construction; fields and custom constructors are deferred.
+Strings use double quotes and support `\\n`, `\\t`, `\\"`, and `\\\\`. Numeric literals are base-10 integers or decimal floats. Current values are `Int`, `Float`, `Bool`, `String`, `Nil`, `Function`, `Class`, class instances, safely converted Python lists/maps, and opaque Python object proxies. Indexing supports strings, converted lists/maps, and Python proxies. Classes contain actions and use zero-argument construction; fields and custom constructors are deferred.
+
+Python imports are always explicit. The string is a validated dotted Python module name and the alias enters the normal Sprout scope:
+
+```text
+import python "json" as json
+has values = json.loads("[10, 20]")
+print(values[1])
+```

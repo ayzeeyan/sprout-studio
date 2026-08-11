@@ -1,6 +1,6 @@
 # Sprout Studio
 
-Phase 5 provides an end-to-end Windows project workflow for Sprout. The x64 WinUI 3 application can create and save individual `.spr` files, create a project from any syntax template, validate and open `sprout.toml`, browse project sources, save edits, check and run through the real Rust engine, and reopen recent projects.
+Phase 6 preserves the end-to-end Windows project workflow and adds embedded Python execution. The x64 WinUI 3 application can create and save individual `.spr` files, create a project from any syntax template, validate and open `sprout.toml`, browse project sources, save edits, check and run through the real Rust engine, execute explicit Python imports, and reopen recent projects.
 
 ## Workflow
 
@@ -12,6 +12,8 @@ Phase 5 provides an end-to-end Windows project workflow for Sprout. The x64 WinU
 
 Selecting a problem moves the editor selection to its source span, including when non-ASCII text precedes the error. Engine work runs asynchronously so execution does not block the WinUI thread.
 
-## Current boundary
+## Python project context
 
-This milestone is an unpackaged, self-contained development build. Python dependencies declared in a manifest are parsed and validated but are not installed until Phase 6. Installers and the remaining planned CLI commands are also deferred; disabled or placeholder actions for them are not exposed.
+When Studio runs a source from an open project, it passes the validated project root through the native API. Rust resolves Python packages from that project's `.sprout/python` directory and cleans the project modules from CPython's process-wide import cache after execution. Use `sprout python sync <project>` to install dependencies before opening or running a project in Studio; a graphical Package Hub remains a Phase 9 feature.
+
+The application output contains CPython and pip beside `SproutStudio.exe`; users do not need a system Python installation for supported interoperability. An installer and the remaining planned CLI commands are still deferred, and no disabled or placeholder action is exposed as complete.

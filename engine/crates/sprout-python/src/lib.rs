@@ -9,7 +9,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_EAGER_CONVERSION_DEPTH: usize = 16;
 const MAX_EAGER_COLLECTION_ITEMS: usize = 1_024;
@@ -304,22 +304,84 @@ pub fn sync_project_packages(
     project_root: &Path,
     requirements: &BTreeMap<String, String>,
 ) -> Result<PackageSyncResult, ForeignError> {
-    let target = project_root.join(".sprout/python");
-    std::fs::create_dir_all(&target).map_err(|error| {
+    let environment_root = project_root.join(".sprout");
+    std::fs::create_dir_all(&environment_root).map_err(|error| {
         ForeignError::new(
             "ProjectEnvironmentError",
-            format!("Could not create {}: {error}", target.display()),
+            format!("Could not create {}: {error}", environment_root.display()),
         )
     })?;
-    if requirements.is_empty() {
-        return Ok(PackageSyncResult {
-            exit_code: Some(0),
-            stdout: String::new(),
-            stderr: String::new(),
-            duration: Duration::ZERO,
-        });
-    }
+    let target = environment_root.join("python");
+    reject_linked_environment(&target)?;
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO)
+        .as_nanos();
+    let staging = environment_root.join(format!(".python-sync-{}-{unique}", std::process::id()));
+    std::fs::create_dir(&staging).map_err(|error| {
+        ForeignError::new(
+            "ProjectEnvironmentError",
+            format!("Could not create {}: {error}", staging.display()),
+        )
+    })?;
 
+    let mut result = PackageSyncResult {
+        exit_code: Some(0),
+        stdout: String::new(),
+        stderr: String::new(),
+        duration: Duration::ZERO,
+    };
+    if !requirements.is_empty() {
+        result = match run_pip(python_executable, &staging, requirements) {
+            Ok(result) => result,
+            Err(error) => {
+                return match std::fs::remove_dir_all(&staging) {
+                    Ok(()) => Err(error),
+                    Err(cleanup_error) => Err(ForeignError::new(
+                        error.exception_type,
+                        format!(
+                            "{} Cleanup of {} also failed: {cleanup_error}",
+                            error.message,
+                            staging.display()
+                        ),
+                    )),
+                };
+            }
+        };
+        if result.exit_code != Some(0) {
+            if let Err(error) = std::fs::remove_dir_all(&staging) {
+                result.stderr.push_str(&format!(
+                    "\nSprout could not remove the failed staging environment {}: {error}\n",
+                    staging.display()
+                ));
+            }
+            return Ok(result);
+        }
+    }
+    if let Err(error) = replace_environment(&staging, &target) {
+        if !staging.exists() {
+            return Err(error);
+        }
+        return match std::fs::remove_dir_all(&staging) {
+            Ok(()) => Err(error),
+            Err(cleanup_error) => Err(ForeignError::new(
+                error.exception_type,
+                format!(
+                    "{} Cleanup of {} also failed: {cleanup_error}",
+                    error.message,
+                    staging.display()
+                ),
+            )),
+        };
+    }
+    Ok(result)
+}
+
+fn run_pip(
+    python_executable: &Path,
+    target: &Path,
+    requirements: &BTreeMap<String, String>,
+) -> Result<PackageSyncResult, ForeignError> {
     let mut command = Command::new(python_executable);
     command.args([
         "-s",
@@ -331,7 +393,7 @@ pub fn sync_project_packages(
         "--upgrade",
         "--target",
     ]);
-    command.arg(&target);
+    command.arg(target);
     for (name, requirement) in requirements {
         command.arg(format_requirement(name, requirement));
     }
@@ -348,6 +410,88 @@ pub fn sync_project_packages(
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         duration: started.elapsed(),
     })
+}
+
+fn reject_linked_environment(target: &Path) -> Result<(), ForeignError> {
+    match std::fs::symlink_metadata(target) {
+        Ok(metadata) if metadata.file_type().is_symlink() => Err(ForeignError::new(
+            "ProjectEnvironmentError",
+            format!(
+                "Refusing to synchronize {} because it is a filesystem link.",
+                target.display()
+            ),
+        )),
+        Ok(metadata) if !metadata.is_dir() => Err(ForeignError::new(
+            "ProjectEnvironmentError",
+            format!("{} is not a directory.", target.display()),
+        )),
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(ForeignError::new(
+            "ProjectEnvironmentError",
+            format!("Could not inspect {}: {error}", target.display()),
+        )),
+    }
+}
+
+fn replace_environment(staging: &Path, target: &Path) -> Result<(), ForeignError> {
+    if !target.exists() {
+        return std::fs::rename(staging, target).map_err(|error| {
+            ForeignError::new(
+                "ProjectEnvironmentError",
+                format!("Could not activate {}: {error}", target.display()),
+            )
+        });
+    }
+
+    let backup = target.with_file_name(format!(".python-backup-{}", std::process::id()));
+    if backup.exists() {
+        return Err(ForeignError::new(
+            "ProjectEnvironmentError",
+            format!(
+                "The recovery directory {} already exists; inspect it before retrying.",
+                backup.display()
+            ),
+        ));
+    }
+    std::fs::rename(target, &backup).map_err(|error| {
+        ForeignError::new(
+            "ProjectEnvironmentError",
+            format!(
+                "Could not prepare {} for replacement: {error}",
+                target.display()
+            ),
+        )
+    })?;
+    if let Err(activation_error) = std::fs::rename(staging, target) {
+        return match std::fs::rename(&backup, target) {
+            Ok(()) => Err(ForeignError::new(
+                "ProjectEnvironmentError",
+                format!(
+                    "Could not activate {}: {activation_error}. The previous environment was restored.",
+                    target.display()
+                ),
+            )),
+            Err(restore_error) => Err(ForeignError::new(
+                "ProjectEnvironmentError",
+                format!(
+                    "Could not activate {}: {activation_error}. Restoring {} also failed: {restore_error}.",
+                    target.display(),
+                    backup.display()
+                ),
+            )),
+        };
+    }
+    std::fs::remove_dir_all(&backup).map_err(|error| {
+        ForeignError::new(
+            "ProjectEnvironmentError",
+            format!(
+                "The new environment is active, but the old environment at {} could not be removed: {error}",
+                backup.display()
+            ),
+        )
+    })?;
+    Ok(())
 }
 
 fn format_requirement(name: &str, requirement: &str) -> String {
@@ -491,5 +635,24 @@ mod tests {
     fn formats_manifest_requirements_for_pip_without_shell_interpolation() {
         assert_eq!(format_requirement("pygame", "2.6.*"), "pygame==2.6.*");
         assert_eq!(format_requirement("numpy", ">=2.0"), "numpy>=2.0");
+    }
+
+    #[test]
+    fn empty_sync_replaces_stale_project_packages() {
+        let project = TestDirectory::new("empty-sync");
+        let packages = project.0.join(".sprout/python");
+        std::fs::create_dir_all(&packages).expect("package directory can be created");
+        std::fs::write(packages.join("stale.py"), "value = 1\n")
+            .expect("stale package can be written");
+
+        let result = sync_project_packages(
+            Path::new("unused-python-executable"),
+            &project.0,
+            &BTreeMap::new(),
+        )
+        .expect("empty environment can be synchronized");
+        assert_eq!(result.exit_code, Some(0));
+        assert!(packages.is_dir());
+        assert!(!packages.join("stale.py").exists());
     }
 }
