@@ -641,8 +641,8 @@ static async Task WinUiApplicationStarts()
     {
         UseShellExecute = false,
         WorkingDirectory = Path.GetDirectoryName(executable),
+        Arguments = "--open-toolchains",
     };
-    startInfo.ArgumentList.Add("--open-toolchains");
     using var process = Process.Start(startInfo)
         ?? throw new InvalidOperationException("Could not start Sprout Studio.");
     try
@@ -666,7 +666,7 @@ static async Task WinUiApplicationStarts()
         Assert(process.Responding, "Sprout Studio created a window but is not responding.");
         Assert(
             process.MainWindowTitle.Contains("Toolchain Settings", StringComparison.Ordinal),
-            "Sprout Studio did not open the functional Toolchain Settings surface.");
+            $"Sprout Studio did not open the functional Toolchain Settings surface; title was `{process.MainWindowTitle}`.");
         Assert(process.CloseMainWindow(), "Sprout Studio did not accept a normal close request.");
         Assert(await WaitForExitAsync(process, TimeSpan.FromSeconds(5)), "Sprout Studio did not exit cleanly.");
     }

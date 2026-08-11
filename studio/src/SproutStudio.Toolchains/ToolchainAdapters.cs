@@ -403,9 +403,11 @@ internal static class ToolchainCandidateResolver
         if (!string.IsNullOrWhiteSpace(customPath))
         {
             string fullPath = Path.GetFullPath(customPath);
-            string directory = File.Exists(fullPath) || Path.HasExtension(fullPath)
-                ? Path.GetDirectoryName(fullPath) ?? fullPath
-                : fullPath;
+            string directory = Directory.Exists(fullPath)
+                ? fullPath
+                : File.Exists(fullPath) || Path.HasExtension(fullPath)
+                    ? Path.GetDirectoryName(fullPath) ?? fullPath
+                    : fullPath;
             Add(directory, customSource ?? ToolchainLocationSource.Configured, requireExecutable: false);
             Add(Path.Combine(directory, "bin"), customSource ?? ToolchainLocationSource.Configured, requireExecutable: false);
             return results;
@@ -432,7 +434,8 @@ internal static class ToolchainCandidateResolver
             {
                 fullDirectory = Path.GetFullPath(directory);
             }
-            catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
+            catch (Exception exception) when (
+                exception is ArgumentException or NotSupportedException or PathTooLongException)
             {
                 return;
             }

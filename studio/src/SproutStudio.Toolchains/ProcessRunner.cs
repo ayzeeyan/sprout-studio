@@ -11,6 +11,7 @@ public sealed class ProcessRunner : IProcessRunner
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.FileName);
+        cancellationToken.ThrowIfCancellationRequested();
         if (request.Timeout is { } timeout && timeout <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(request), "Process timeout must be positive.");

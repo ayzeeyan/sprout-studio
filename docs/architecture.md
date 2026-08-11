@@ -1,4 +1,4 @@
-# Phase 6 Architecture
+# Phase 7 Architecture
 
 ## Implemented pipeline
 
@@ -55,9 +55,19 @@ The runtime is a tree-walking AST interpreter with nested lexical environments. 
 
 ## Studio boundary
 
-The WinUI 3 executable depends on two UI-independent .NET libraries. `SproutStudio.Core` owns document state and session orchestration, while `SproutStudio.Interop` owns native library loading and response deserialization. The UI passes structured requests to the Rust FFI on a worker thread and renders output or diagnostics after returning to the UI thread.
+The WinUI 3 executable depends on three UI-independent .NET libraries. `SproutStudio.Core` owns document state and session orchestration, `SproutStudio.Interop` owns native library loading and response deserialization, and `SproutStudio.Toolchains` owns external-tool detection, validation, settings, and process execution. The UI passes structured requests to these services and renders results after returning to the UI thread.
 
 The FFI exposes a small versioned surface: execute a structured request with optional project context, load or create a project, inspect the returned buffer, and free it with the matching Rust allocator. Panics are contained at the ABI boundary. C# never parses console text to recover diagnostics; source spans, related locations, suggestions, fixes, and project issues remain structured end to end. Rust byte offsets are converted to UTF-16 editor indices before WinUI navigation.
+
+## Toolchain system
+
+External-language toolchains do not affect Sprout startup and are checked only when the Toolchain Settings surface or a toolchain operation requests them. `ToolchainRegistry` holds independent Rust and Go adapters. `ToolchainManager` combines those adapters with persisted custom paths and a shared `ProcessRunner`.
+
+Detection considers an authoritative user-selected location, PATH, and known Windows installation locations. Finding a file is not treated as validation: Rust executes `rustc --version`, `cargo --version`, and `rustfmt --version`; Go executes `go version` and a bounded `gofmt -h` probe. Results distinguish ready, not installed, found but broken, partial installation, unsupported version, and a validated custom location. Rust 1.95 and Go 1.22 are the current minimum supported versions.
+
+Process requests carry an executable, an argument list, an optional working directory, and an optional timeout. `UseShellExecute` is disabled and each argument is passed through `ProcessStartInfo.ArgumentList`; user strings are never concatenated into shell commands. stdout, stderr, exit code, duration, start failure, and timeout state are captured. Cancellation and timeout terminate the complete child process tree without blocking the WinUI thread.
+
+Custom locations are stored in a versioned JSON document under local application data and replaced atomically. The manager exposes validated Run, Build, Format, and Test action requests for Rust and Go; editor/project UI for external-language projects remains deferred.
 
 ## Explicitly deferred
 
@@ -65,5 +75,6 @@ The FFI exposes a small versioned surface: execute a structured request with opt
 - Python keyword arguments, assignment through Python indexes/members, and compatibility guarantees for arbitrary PyPI packages
 - Remaining CLI commands (`test`, `fmt`, `repl`, `add`, and `build`)
 - Graphical Package Hub, general Sprout package infrastructure, bytecode, and VM
+- Academy enrollment/toolchain prerequisites, automated toolchain installation, additional language adapters, and external-language project editors
 
 No deferred command or feature is exposed as if it works.

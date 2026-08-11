@@ -13,8 +13,9 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        bool openToolchains = Environment.GetCommandLineArgs()
-            .Skip(1)
+        bool openToolchains = args.Arguments
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Concat(Environment.GetCommandLineArgs().Skip(1))
             .Contains("--open-toolchains", StringComparer.OrdinalIgnoreCase);
         _window = new MainWindow(openToolchains);
         _window.Activate();

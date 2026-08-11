@@ -63,8 +63,11 @@ internal sealed class ToolchainSettingsDialog
         await _dialog.ShowAsync();
     }
 
+    public event EventHandler? Opened;
+
     private async void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
     {
+        Opened?.Invoke(this, EventArgs.Empty);
         try
         {
             foreach (ToolchainPanel panel in _panels.Values)

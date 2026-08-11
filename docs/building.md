@@ -1,4 +1,4 @@
-# Building Sprout Phase 6
+# Building Sprout Phase 7
 
 ## Development requirements
 
@@ -61,6 +61,6 @@ dotnet run --project studio/tests/SproutStudio.Tests/SproutStudio.Tests.csproj -
 dotnet build studio/src/SproutStudio/SproutStudio.csproj -c Debug -p:Platform=x64 --no-restore
 ```
 
-The .NET integration harness creates real projects through the Rust DLL, checks invalid manifests, executes embedded Python with project-local package isolation, verifies structured diagnostic metadata and Unicode editor navigation, enforces recent-project persistence limits, tests atomic Save and Save As behavior, executes an edited project, and launches the real WinUI executable. A test fails if Studio exits before creating a responsive main window or cannot close normally.
+The .NET integration harness creates real projects through the Rust DLL, checks invalid manifests, executes embedded Python with project-local package isolation, verifies structured diagnostic metadata and Unicode editor navigation, enforces recent-project persistence limits, tests atomic Save and Save As behavior, validates Rust/Go adapters with fake processes, exercises real process argument capture/cancellation/timeout behavior, performs a live environment detection smoke test, and launches the real WinUI executable directly into Toolchain Settings. A test fails if Studio exits before creating a responsive settings surface or cannot close normally.
 
 The Rust toolchain, .NET SDK, and Visual Studio are development requirements only. Studio build output contains the Sprout engine and embedded Python runtime; packaging it into an installer remains deferred.
