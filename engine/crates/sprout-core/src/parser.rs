@@ -1188,4 +1188,29 @@ mod tests {
         assert!(programs[0].semantically_equivalent(&programs[1]));
         assert!(programs[1].semantically_equivalent(&programs[2]));
     }
+
+    #[test]
+    fn all_profiles_keep_classes_branches_and_while_loops_equivalent() {
+        let cases = [
+            (
+                SyntaxProfile::Guided,
+                "class Player\n  action attack(enemy)\n    return enemy\n  end\nend\nhas player = Player()\nhas enemy = 1\nif true\n  print(player.attack(enemy))\nelse\n  print(nil)\nend\nwhile false\n  print(\"loop\")\nend\n",
+            ),
+            (
+                SyntaxProfile::Structured,
+                "class Player {\n  Int attack(Int enemy) {\n    return enemy;\n  }\n}\nPlayer player = Player();\nInt enemy = 1;\nif (true) {\n  print(player.attack(enemy));\n} else {\n  print(nil);\n}\nwhile (false) {\n  print(\"loop\");\n}\n",
+            ),
+            (
+                SyntaxProfile::Advanced,
+                "class Player =>\n  attack(enemy: Int) =>\n    return enemy\nplayer := Player()\nenemy := 1\nif true =>\n  print(player.attack(enemy))\nelse =>\n  print(nil)\nwhile false =>\n  print(\"loop\")\n",
+            ),
+        ];
+        let programs = cases.map(|(profile, text)| {
+            let result = parse_profile(&SourceFile::new("profile.spr", text), profile);
+            assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
+            result.program.unwrap()
+        });
+        assert!(programs[0].semantically_equivalent(&programs[1]));
+        assert!(programs[1].semantically_equivalent(&programs[2]));
+    }
 }
