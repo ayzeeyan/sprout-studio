@@ -1,4 +1,4 @@
-# Phase 4 Architecture
+# Phase 5 Architecture
 
 ## Implemented pipeline
 
@@ -12,13 +12,21 @@ Guided / Structured / Advanced source
     -> captured program output or structured diagnostic
 ```
 
-`sprout-core` owns the language pipeline and has no dependency on the CLI, C#, WinUI, or external crates. `sprout-cli` is a thin adapter that reads source, calls high-level engine APIs, renders diagnostics, and selects an exit code. `sprout-ffi` is a C-compatible adapter that returns owned UTF-8 JSON responses. The runtime never evaluates generated Python or host-language source.
+`sprout-core` owns the language pipeline and has no dependency on projects, the CLI, C#, WinUI, or external crates. `sprout-project` owns versioned manifest parsing, validation, source discovery, and built-in templates. `sprout-cli` is a thin adapter over those shared APIs. `sprout-ffi` exposes the language and project services to Studio as owned UTF-8 JSON responses. The runtime never evaluates generated Python or host-language source.
 
 The canonical AST is independent of surface syntax. Guided, Structured, and Advanced parser paths produce the same node types without translating text between profiles. Advanced indentation is converted into structural `Indent`/`Dedent` tokens before parsing. Every source token and AST node carries a `SourceSpan` with file, byte offsets, and one-based line/column coordinates.
 
 `Program::semantically_equivalent` compares canonical structure while intentionally ignoring profile-specific source spans. Cross-profile tests use it to guarantee that equivalent declarations, functions, compound assignments, loops, calls, and expressions converge on the same meaning.
 
-The current workspace uses two crates rather than one crate per compiler stage. Compiler stages remain separate Rust modules with explicit data boundaries. They can be extracted when independent versioning, compile-time isolation, or reuse provides a concrete benefit; doing so now would add packaging overhead without improving the boundaries.
+Compiler stages remain separate Rust modules with explicit data boundaries inside `sprout-core`. Project behavior is a separate crate because both CLI and Studio consume it and it has its own manifest and filesystem concerns.
+
+## Project system
+
+`sprout.toml` begins with `manifest_version = 1`. Loading rejects unsupported versions, malformed names or semantic versions, unknown syntax profiles, unsafe entry paths, missing entries, invalid dependency requirements, and entries that resolve outside the project root. Validation issues use stable `SPP` codes and cross the FFI as structured data.
+
+Templates are written to a temporary sibling and renamed into place only after every file succeeds, so failed creation does not present a partial project as valid. A generated project contains `src/main.spr`, an isolated `.sprout` state directory, and a `.gitignore` rule that prevents local dependency state from being committed.
+
+CLI `run` and `check` load the manifest and use its entry and syntax profile. Studio calls the same Rust loader through FFI, displays discovered sources in its project explorer, and persists at most ten de-duplicated recent projects in local application data.
 
 ## Error model
 
@@ -38,12 +46,13 @@ The runtime is a tree-walking AST interpreter with nested lexical environments. 
 
 The WinUI 3 executable depends on two UI-independent .NET libraries. `SproutStudio.Core` owns document state and session orchestration, while `SproutStudio.Interop` owns native library loading and response deserialization. The UI passes structured requests to the Rust FFI on a worker thread and renders output or diagnostics after returning to the UI thread.
 
-The FFI exposes a small versioned surface: execute a structured request, inspect the returned buffer, and free it with the matching Rust allocator. Panics are contained at the ABI boundary. C# never parses console text to recover diagnostics; source spans and suggestions remain structured end to end.
+The FFI exposes a small versioned surface: execute a structured request, load or create a project, inspect the returned buffer, and free it with the matching Rust allocator. Panics are contained at the ABI boundary. C# never parses console text to recover diagnostics; source spans, project issues, and suggestions remain structured end to end.
 
 ## Explicitly deferred
 
-- Project manifests and remaining CLI commands (Phase 5)
 - Fields, constructors with parameters, inheritance, lists, maps, modules/imports, and error handling
-- Python interoperability, package infrastructure, bytecode, and VM
+- Python interoperability and dependency installation (Phase 6)
+- Remaining CLI commands (`test`, `fmt`, `repl`, `add`, and `build`)
+- Package infrastructure, bytecode, and VM
 
 No deferred command or feature is exposed as if it works.

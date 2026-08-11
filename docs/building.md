@@ -1,4 +1,4 @@
-# Building Sprout Phase 4
+# Building Sprout Phase 5
 
 ## Development requirements
 
@@ -41,8 +41,10 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo run -p sprout-cli -- run examples/hello.spr
-dotnet run --project studio/tests/SproutStudio.Tests/SproutStudio.Tests.csproj
+dotnet run --project studio/tests/SproutStudio.Tests/SproutStudio.Tests.csproj -p:Platform=x64
 dotnet build studio/src/SproutStudio/SproutStudio.csproj -c Debug -p:Platform=x64 --no-restore
 ```
+
+The .NET integration harness creates real projects through the Rust DLL, checks invalid manifests, verifies recent-project persistence and atomic saves, executes an edited project, and launches the real WinUI executable. A test fails if Studio exits before creating a responsive main window or cannot close normally.
 
 The Rust toolchain is a development requirement only. A future Sprout Studio installer will bundle the engine and runtime so end users do not need Rust, Cargo, Visual Studio, or the .NET SDK.

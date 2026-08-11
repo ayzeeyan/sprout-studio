@@ -1,0 +1,16 @@
+manifest_version = 1
+
+[project]
+name = "HelloProject"
+version = "0.1.0"
+entry = "src/main.spr"
+
+[sprout]
+syntax = "guided"
+
+[dependencies]
+
+[python]
+
+[build]
+target = "windows-x86_64"

@@ -221,15 +221,7 @@ static async Task PhaseFiveProjectWorkflow()
 
 static async Task WinUiApplicationStarts()
 {
-    string repositoryRoot = Path.GetFullPath(Path.Combine(
-        AppContext.BaseDirectory,
-        "..",
-        "..",
-        "..",
-        "..",
-        "..",
-        "..",
-        ".."));
+    string repositoryRoot = FindRepositoryRoot();
 #if DEBUG
     const string Configuration = "Debug";
 #else
@@ -284,6 +276,21 @@ static async Task WinUiApplicationStarts()
             await process.WaitForExitAsync();
         }
     }
+}
+
+static string FindRepositoryRoot()
+{
+    DirectoryInfo? directory = new(AppContext.BaseDirectory);
+    while (directory is not null)
+    {
+        if (File.Exists(Path.Combine(directory.FullName, "Cargo.toml"))
+            && Directory.Exists(Path.Combine(directory.FullName, "studio")))
+        {
+            return directory.FullName;
+        }
+        directory = directory.Parent;
+    }
+    throw new DirectoryNotFoundException("Could not locate the Sprout repository root.");
 }
 
 static async Task<bool> WaitForExitAsync(Process process, TimeSpan timeout)
