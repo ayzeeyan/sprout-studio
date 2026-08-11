@@ -1,8 +1,13 @@
 //! Stable, coarse-grained C ABI for Sprout Studio and other native hosts.
 
 use sprout_core::diagnostic::{Diagnostic, Severity};
+use sprout_core::formatter::format_profile;
+use sprout_core::ide::{DocumentSymbol, inspect};
+use sprout_core::runtime::{CanvasCommand, DebugSnapshot};
 use sprout_core::source::SourceFile;
-use sprout_core::{SyntaxProfile, check_profile, execute_profile_with_python};
+use sprout_core::{
+    SyntaxProfile, check_profile, debug_profile_with_python, execute_profile_with_python,
+};
 use sprout_project::{ProjectError, ProjectTemplate, SproutProject, create_project, load_project};
 use sprout_python::EmbeddedPythonHost;
 use std::fmt::Write;
@@ -16,6 +21,10 @@ pub const SPROUT_API_VERSION: u32 = 1;
 
 pub const SPROUT_OPERATION_CHECK: u32 = 0;
 pub const SPROUT_OPERATION_RUN: u32 = 1;
+pub const SPROUT_OPERATION_DEBUG: u32 = 2;
+
+pub const SPROUT_LANGUAGE_INSPECT: u32 = 0;
+pub const SPROUT_LANGUAGE_FORMAT: u32 = 1;
 
 pub const SPROUT_PROFILE_GUIDED: u32 = 0;
 pub const SPROUT_PROFILE_STRUCTURED: u32 = 1;
@@ -180,6 +189,38 @@ pub unsafe extern "C" fn sprout_project_create(
     SproutBuffer::from_string(response)
 }
 
+/// Runs a cursor-sensitive language-service operation without executing source.
+///
+/// # Safety
+///
+/// Each pointer must be valid for its corresponding byte length for the duration
+/// of this call. Text must be UTF-8 and `cursor` must be a UTF-8 byte offset.
+/// The returned buffer must be freed exactly once with `sprout_buffer_free`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sprout_language_service(
+    operation: u32,
+    profile: u32,
+    cursor: usize,
+    source_name_data: *const u8,
+    source_name_length: usize,
+    source_data: *const u8,
+    source_length: usize,
+) -> SproutBuffer {
+    let response = match catch_unwind(AssertUnwindSafe(|| {
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let source_name =
+            unsafe { read_utf8(source_name_data, source_name_length, "source name") }?;
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let source = unsafe { read_utf8(source_data, source_length, "source") }?;
+        language_service_process(operation, profile, cursor, source_name, source)
+    })) {
+        Ok(Ok(response)) => response,
+        Ok(Err(message)) => language_internal_error(&message),
+        Err(_) => language_internal_error("The Sprout language service stopped unexpectedly."),
+    };
+    SproutBuffer::from_string(response)
+}
+
 /// Releases a buffer returned by Sprout.
 ///
 /// # Safety
@@ -234,30 +275,56 @@ fn process_with_project(
     source: &str,
     project_root: Option<&Path>,
 ) -> Result<String, String> {
-    let profile = match profile {
-        SPROUT_PROFILE_GUIDED => SyntaxProfile::Guided,
-        SPROUT_PROFILE_STRUCTURED => SyntaxProfile::Structured,
-        SPROUT_PROFILE_ADVANCED => SyntaxProfile::Advanced,
-        _ => return Err(format!("Unknown syntax profile value `{profile}`.")),
-    };
+    let profile = profile_value(profile)?;
     let source = SourceFile::new(source_name, source);
     match operation {
         SPROUT_OPERATION_CHECK => {
             let result = check_profile(&source, profile);
-            Ok(response_json(Vec::new(), &result.diagnostics))
+            Ok(response_json(Vec::new(), &result.diagnostics, &[], &[]))
         }
         SPROUT_OPERATION_RUN => {
             let packages = project_root.map(|root| root.join(".sprout/python"));
             let mut python =
                 EmbeddedPythonHost::new(packages).map_err(|error| error.to_string())?;
             let result = execute_profile_with_python(&source, profile, &mut python);
-            Ok(response_json(result.output, &result.diagnostics))
+            Ok(response_json(
+                result.output,
+                &result.diagnostics,
+                &result.canvas_commands,
+                &[],
+            ))
+        }
+        SPROUT_OPERATION_DEBUG => {
+            let packages = project_root.map(|root| root.join(".sprout/python"));
+            let mut python =
+                EmbeddedPythonHost::new(packages).map_err(|error| error.to_string())?;
+            let result = debug_profile_with_python(&source, profile, &mut python);
+            Ok(response_json(
+                result.output,
+                &result.diagnostics,
+                &result.canvas_commands,
+                &result.snapshots,
+            ))
         }
         _ => Err(format!("Unknown engine operation value `{operation}`.")),
     }
 }
 
-fn response_json(output: Vec<String>, diagnostics: &[Diagnostic]) -> String {
+fn profile_value(profile: u32) -> Result<SyntaxProfile, String> {
+    match profile {
+        SPROUT_PROFILE_GUIDED => Ok(SyntaxProfile::Guided),
+        SPROUT_PROFILE_STRUCTURED => Ok(SyntaxProfile::Structured),
+        SPROUT_PROFILE_ADVANCED => Ok(SyntaxProfile::Advanced),
+        _ => Err(format!("Unknown syntax profile value `{profile}`.")),
+    }
+}
+
+fn response_json(
+    output: Vec<String>,
+    diagnostics: &[Diagnostic],
+    canvas_commands: &[CanvasCommand],
+    debug_snapshots: &[DebugSnapshot],
+) -> String {
     let mut json = String::from("{\"apiVersion\":1,\"success\":");
     json.push_str(if diagnostics.is_empty() {
         "true"
@@ -271,36 +338,87 @@ fn response_json(output: Vec<String>, diagnostics: &[Diagnostic]) -> String {
         }
         push_json_string(&mut json, line);
     }
-    json.push_str("],\"diagnostics\":[");
+    json.push_str("],\"diagnostics\":");
+    push_diagnostics_json(&mut json, diagnostics);
+    json.push_str(",\"canvasCommands\":");
+    push_canvas_json(&mut json, canvas_commands);
+    json.push_str(",\"debugSnapshots\":[");
+    for (index, snapshot) in debug_snapshots.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        json.push_str("{\"span\":");
+        push_span_json(&mut json, &snapshot.span);
+        json.push_str(",\"variables\":[");
+        for (variable_index, variable) in snapshot.variables.iter().enumerate() {
+            if variable_index > 0 {
+                json.push(',');
+            }
+            json.push_str("{\"name\":");
+            push_json_string(&mut json, &variable.name);
+            json.push_str(",\"typeName\":");
+            push_json_string(&mut json, &variable.type_name);
+            json.push_str(",\"value\":");
+            push_json_string(&mut json, &variable.value);
+            json.push('}');
+        }
+        json.push_str("],\"callStack\":[");
+        for (frame_index, frame) in snapshot.call_stack.iter().enumerate() {
+            if frame_index > 0 {
+                json.push(',');
+            }
+            json.push_str("{\"name\":");
+            push_json_string(&mut json, &frame.name);
+            json.push_str(",\"span\":");
+            push_span_json(&mut json, &frame.span);
+            json.push('}');
+        }
+        json.push_str("],\"output\":[");
+        for (line_index, line) in snapshot.output.iter().enumerate() {
+            if line_index > 0 {
+                json.push(',');
+            }
+            push_json_string(&mut json, line);
+        }
+        json.push_str("],\"canvasCommands\":");
+        push_canvas_json(&mut json, &snapshot.canvas_commands);
+        json.push('}');
+    }
+    json.push_str("]}");
+    json
+}
+
+fn push_diagnostics_json(json: &mut String, diagnostics: &[Diagnostic]) {
+    json.push('[');
     for (index, diagnostic) in diagnostics.iter().enumerate() {
         if index > 0 {
             json.push(',');
         }
         json.push_str("{\"code\":");
-        push_json_string(&mut json, diagnostic.code);
+        push_json_string(json, diagnostic.code);
         json.push_str(",\"severity\":");
         push_json_string(
-            &mut json,
+            json,
             match diagnostic.severity {
                 Severity::Error => "error",
                 Severity::Warning => "warning",
             },
         );
         json.push_str(",\"title\":");
-        push_json_string(&mut json, &diagnostic.title);
+        push_json_string(json, &diagnostic.title);
         json.push_str(",\"message\":");
-        push_json_string(&mut json, &diagnostic.message);
+        push_json_string(json, &diagnostic.message);
         json.push_str(",\"span\":");
-        push_span_json(&mut json, &diagnostic.span);
+        push_span_json(json, &diagnostic.span);
         json.push_str(",\"relatedInformation\":[");
         for (related_index, related) in diagnostic.related_information.iter().enumerate() {
             if related_index > 0 {
                 json.push(',');
             }
             json.push_str("{\"message\":");
-            push_json_string(&mut json, &related.message);
+            push_json_string(json, &related.message);
             json.push_str(",\"span\":");
-            push_span_json(&mut json, &related.span);
+            push_span_json(json, &related.span);
             json.push('}');
         }
         json.push_str("],\"suggestions\":[");
@@ -308,7 +426,7 @@ fn response_json(output: Vec<String>, diagnostics: &[Diagnostic]) -> String {
             if suggestion_index > 0 {
                 json.push(',');
             }
-            push_json_string(&mut json, suggestion);
+            push_json_string(json, suggestion);
         }
         json.push_str("],\"optionalFixes\":[");
         for (fix_index, fix) in diagnostic.optional_fixes.iter().enumerate() {
@@ -316,16 +434,189 @@ fn response_json(output: Vec<String>, diagnostics: &[Diagnostic]) -> String {
                 json.push(',');
             }
             json.push_str("{\"title\":");
-            push_json_string(&mut json, &fix.title);
+            push_json_string(json, &fix.title);
             json.push_str(",\"replacement\":");
-            push_json_string(&mut json, &fix.replacement);
+            push_json_string(json, &fix.replacement);
             json.push_str(",\"span\":");
-            push_span_json(&mut json, &fix.span);
+            push_span_json(json, &fix.span);
             json.push('}');
         }
         json.push_str("]}");
     }
+    json.push(']');
+}
+
+fn push_canvas_json(json: &mut String, commands: &[CanvasCommand]) {
+    json.push('[');
+    for (index, command) in commands.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        match command {
+            CanvasCommand::Clear { color } => {
+                json.push_str("{\"kind\":\"clear\",\"color\":");
+                push_json_string(json, color);
+                json.push('}');
+            }
+            CanvasCommand::Rectangle {
+                x,
+                y,
+                width,
+                height,
+                color,
+            } => {
+                let _ = write!(
+                    json,
+                    "{{\"kind\":\"rectangle\",\"x\":{x},\"y\":{y},\"width\":{width},\"height\":{height},\"color\":"
+                );
+                push_json_string(json, color);
+                json.push('}');
+            }
+            CanvasCommand::Circle {
+                x,
+                y,
+                radius,
+                color,
+            } => {
+                let _ = write!(
+                    json,
+                    "{{\"kind\":\"circle\",\"x\":{x},\"y\":{y},\"radius\":{radius},\"color\":"
+                );
+                push_json_string(json, color);
+                json.push('}');
+            }
+        }
+    }
+    json.push(']');
+}
+
+fn language_service_process(
+    operation: u32,
+    profile: u32,
+    cursor: usize,
+    source_name: &str,
+    source: &str,
+) -> Result<String, String> {
+    let profile = profile_value(profile)?;
+    let source = SourceFile::new(source_name, source);
+    match operation {
+        SPROUT_LANGUAGE_INSPECT => Ok(inspect_response_json(inspect(&source, profile, cursor))),
+        SPROUT_LANGUAGE_FORMAT => {
+            let result = format_profile(&source, profile);
+            let mut json = String::from("{\"apiVersion\":1,\"success\":");
+            json.push_str(if result.diagnostics.is_empty() {
+                "true"
+            } else {
+                "false"
+            });
+            json.push_str(",\"diagnostics\":");
+            push_diagnostics_json(&mut json, &result.diagnostics);
+            json.push_str(",\"completions\":[],\"hover\":null,\"definition\":null,\"symbols\":[],\"formattedSource\":");
+            match result.formatted_source {
+                Some(formatted) => push_json_string(&mut json, &formatted),
+                None => json.push_str("null"),
+            }
+            json.push('}');
+            Ok(json)
+        }
+        _ => Err(format!(
+            "Unknown language-service operation value `{operation}`."
+        )),
+    }
+}
+
+fn inspect_response_json(result: sprout_core::ide::InspectResult) -> String {
+    let mut json = String::from("{\"apiVersion\":1,\"success\":");
+    json.push_str(if result.diagnostics.is_empty() {
+        "true"
+    } else {
+        "false"
+    });
+    json.push_str(",\"diagnostics\":");
+    push_diagnostics_json(&mut json, &result.diagnostics);
+    json.push_str(",\"completions\":[");
+    for (index, completion) in result.completions.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        json.push_str("{\"label\":");
+        push_json_string(&mut json, &completion.label);
+        json.push_str(",\"kind\":");
+        push_json_string(&mut json, &completion.kind);
+        json.push_str(",\"detail\":");
+        push_json_string(&mut json, &completion.detail);
+        json.push_str(",\"insertText\":");
+        push_json_string(&mut json, &completion.insert_text);
+        json.push_str(",\"replacementSpan\":");
+        push_span_json(&mut json, &completion.replacement_span);
+        json.push('}');
+    }
+    json.push_str("],\"hover\":");
+    match result.hover {
+        Some(hover) => {
+            json.push_str("{\"title\":");
+            push_json_string(&mut json, &hover.title);
+            json.push_str(",\"contents\":");
+            push_json_string(&mut json, &hover.contents);
+            json.push_str(",\"span\":");
+            push_span_json(&mut json, &hover.span);
+            json.push('}');
+        }
+        None => json.push_str("null"),
+    }
+    json.push_str(",\"definition\":");
+    match result.definition {
+        Some(definition) => {
+            json.push_str("{\"name\":");
+            push_json_string(&mut json, &definition.name);
+            json.push_str(",\"kind\":");
+            push_json_string(&mut json, &definition.kind);
+            json.push_str(",\"span\":");
+            push_span_json(&mut json, &definition.span);
+            json.push('}');
+        }
+        None => json.push_str("null"),
+    }
+    json.push_str(",\"symbols\":[");
+    for (index, symbol) in result.symbols.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        push_document_symbol_json(&mut json, symbol);
+    }
+    json.push_str("],\"formattedSource\":null}");
+    json
+}
+
+fn push_document_symbol_json(json: &mut String, symbol: &DocumentSymbol) {
+    json.push_str("{\"name\":");
+    push_json_string(json, &symbol.name);
+    json.push_str(",\"kind\":");
+    push_json_string(json, &symbol.kind);
+    json.push_str(",\"detail\":");
+    push_json_string(json, &symbol.detail);
+    json.push_str(",\"span\":");
+    push_span_json(json, &symbol.span);
+    json.push_str(",\"children\":[");
+    for (index, child) in symbol.children.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        push_document_symbol_json(json, child);
+    }
     json.push_str("]}");
+}
+
+fn language_internal_error(message: &str) -> String {
+    let diagnostic = Diagnostic::error(
+        "SPT900",
+        "Language service failure",
+        message,
+        sprout_core::source::SourceSpan::new("<engine>", 0, 0, 1, 1, 1, 1),
+    );
+    let mut json = String::from("{\"apiVersion\":1,\"success\":false,\"diagnostics\":");
+    push_diagnostics_json(&mut json, &[diagnostic]);
+    json.push_str(",\"completions\":[],\"hover\":null,\"definition\":null,\"symbols\":[],\"formattedSource\":null}");
     json
 }
 
@@ -414,7 +705,7 @@ fn internal_error(message: &str) -> String {
         "{\"apiVersion\":1,\"success\":false,\"output\":[],\"diagnostics\":[{\"code\":\"SPT900\",\"severity\":\"error\",\"title\":\"Engine failure\",\"message\":",
     );
     push_json_string(&mut json, message);
-    json.push_str(",\"span\":{\"file\":\"<engine>\",\"start\":0,\"end\":0,\"startLine\":1,\"startColumn\":1,\"endLine\":1,\"endColumn\":1},\"relatedInformation\":[],\"suggestions\":[],\"optionalFixes\":[]}]}");
+    json.push_str(",\"span\":{\"file\":\"<engine>\",\"start\":0,\"end\":0,\"startLine\":1,\"startColumn\":1,\"endLine\":1,\"endColumn\":1},\"relatedInformation\":[],\"suggestions\":[],\"optionalFixes\":[]}],\"canvasCommands\":[],\"debugSnapshots\":[]}");
     json
 }
 
@@ -475,6 +766,62 @@ mod tests {
         .unwrap();
         assert!(response.contains("\"success\":true"), "{response}");
         assert!(response.contains("\"output\":[\"720\"]"), "{response}");
+    }
+
+    #[test]
+    fn run_response_contains_canvas_protocol() {
+        let response = process(
+            SPROUT_OPERATION_RUN,
+            SPROUT_PROFILE_GUIDED,
+            "canvas.spr",
+            "canvas_clear(\"#101010\")\ncanvas_rect(1, 2, 3, 4, \"green\")\n",
+        )
+        .unwrap();
+        assert!(response.contains("\"kind\":\"clear\""), "{response}");
+        assert!(response.contains("\"kind\":\"rectangle\""), "{response}");
+        assert!(response.contains("\"width\":3"), "{response}");
+    }
+
+    #[test]
+    fn debug_response_contains_variable_snapshots() {
+        let response = process(
+            SPROUT_OPERATION_DEBUG,
+            SPROUT_PROFILE_GUIDED,
+            "debug.spr",
+            "has value = 3\nprint(value)\n",
+        )
+        .unwrap();
+        assert!(response.contains("\"debugSnapshots\":[{"), "{response}");
+        assert!(response.contains("\"name\":\"value\""), "{response}");
+        assert!(response.contains("\"value\":\"3\""), "{response}");
+    }
+
+    #[test]
+    fn language_service_returns_inspection_and_formatting() {
+        let source = "has name = \"Sprout\"\nprint(na)\n";
+        let inspected = language_service_process(
+            SPROUT_LANGUAGE_INSPECT,
+            SPROUT_PROFILE_GUIDED,
+            source.rfind("na").unwrap() + 2,
+            "test.spr",
+            source,
+        )
+        .unwrap();
+        assert!(inspected.contains("\"label\":\"name\""), "{inspected}");
+        assert!(inspected.contains("\"definition\":"), "{inspected}");
+
+        let formatted = language_service_process(
+            SPROUT_LANGUAGE_FORMAT,
+            SPROUT_PROFILE_GUIDED,
+            0,
+            "test.spr",
+            "has name=\"Sprout\"\n",
+        )
+        .unwrap();
+        assert!(
+            formatted.contains("\"formattedSource\":\"has name = \\\"Sprout\\\"\\n\""),
+            "{formatted}"
+        );
     }
 
     #[test]

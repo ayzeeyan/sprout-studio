@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SproutStudio.Core\SproutStudio.Core.csproj" />
+    <ProjectReference Include="..\SproutStudio.Toolchains\SproutStudio.Toolchains.csproj" />
+  </ItemGroup>
+</Project>

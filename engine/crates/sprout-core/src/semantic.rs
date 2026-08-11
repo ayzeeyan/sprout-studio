@@ -96,16 +96,23 @@ struct Analyzer {
 impl Analyzer {
     fn new() -> Self {
         let mut global = Scope::default();
-        global.symbols.insert(
-            "print".into(),
-            Symbol {
-                kind: SymbolKind::Function(FunctionType {
-                    arity: None,
-                    return_type: Box::new(Type::Nil),
-                }),
-                declared_at: SourceSpan::new("<builtin>", 0, 0, 1, 1, 1, 1),
-            },
-        );
+        for (name, arity) in [
+            ("print", None),
+            ("canvas_clear", Some(1)),
+            ("canvas_rect", Some(5)),
+            ("canvas_circle", Some(4)),
+        ] {
+            global.symbols.insert(
+                name.into(),
+                Symbol {
+                    kind: SymbolKind::Function(FunctionType {
+                        arity,
+                        return_type: Box::new(Type::Nil),
+                    }),
+                    declared_at: SourceSpan::new("<builtin>", 0, 0, 1, 1, 1, 1),
+                },
+            );
+        }
         Self {
             scopes: vec![global],
             classes: HashMap::new(),

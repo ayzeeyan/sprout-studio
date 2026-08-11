@@ -5,6 +5,8 @@
 
 pub mod ast;
 pub mod diagnostic;
+pub mod formatter;
+pub mod ide;
 pub mod interop;
 pub mod lexer;
 pub mod parser;
@@ -21,6 +23,14 @@ use source::SourceFile;
 pub struct ExecutionResult {
     pub output: Vec<String>,
     pub diagnostics: Vec<Diagnostic>,
+    pub canvas_commands: Vec<runtime::CanvasCommand>,
+}
+
+pub struct DebugExecutionResult {
+    pub output: Vec<String>,
+    pub diagnostics: Vec<Diagnostic>,
+    pub canvas_commands: Vec<runtime::CanvasCommand>,
+    pub snapshots: Vec<runtime::DebugSnapshot>,
 }
 
 pub struct CheckResult {
@@ -73,6 +83,7 @@ fn execute_profile_with_runtime(
         return ExecutionResult {
             output: Vec::new(),
             diagnostics: parsed.diagnostics,
+            canvas_commands: Vec::new(),
         };
     };
     let analyzed = semantic::analyze(&program);
@@ -80,12 +91,46 @@ fn execute_profile_with_runtime(
         return ExecutionResult {
             output: Vec::new(),
             diagnostics: analyzed.diagnostics,
+            canvas_commands: Vec::new(),
         };
     }
     let executed = run(&program);
     ExecutionResult {
         output: executed.output,
         diagnostics: executed.diagnostic.into_iter().collect(),
+        canvas_commands: executed.canvas_commands,
+    }
+}
+
+pub fn debug_profile_with_python(
+    source: &SourceFile,
+    profile: SyntaxProfile,
+    python: &mut dyn interop::PythonHost,
+) -> DebugExecutionResult {
+    let parsed = parser::parse_profile(source, profile);
+    let Some(program) = parsed.program else {
+        return DebugExecutionResult {
+            output: Vec::new(),
+            diagnostics: parsed.diagnostics,
+            canvas_commands: Vec::new(),
+            snapshots: Vec::new(),
+        };
+    };
+    let analyzed = semantic::analyze(&program);
+    if !analyzed.diagnostics.is_empty() {
+        return DebugExecutionResult {
+            output: Vec::new(),
+            diagnostics: analyzed.diagnostics,
+            canvas_commands: Vec::new(),
+            snapshots: Vec::new(),
+        };
+    }
+    let executed = runtime::run_debug_with_python(&program, python);
+    DebugExecutionResult {
+        output: executed.output,
+        diagnostics: executed.diagnostic.into_iter().collect(),
+        canvas_commands: executed.canvas_commands,
+        snapshots: executed.snapshots,
     }
 }
 

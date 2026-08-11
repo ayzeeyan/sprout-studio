@@ -6,6 +6,7 @@ public enum EngineOperation
 {
     Check = 0,
     Run = 1,
+    Debug = 2,
 }
 
 public enum SyntaxProfile
@@ -50,11 +51,38 @@ public sealed record StudioDiagnostic(
     IReadOnlyList<DiagnosticRelatedInformation> RelatedInformation,
     IReadOnlyList<DiagnosticFix> OptionalFixes);
 
+public sealed record CanvasCommand(
+    string Kind,
+    double? X,
+    double? Y,
+    double? Width,
+    double? Height,
+    double? Radius,
+    string Color);
+
+public sealed record DebugVariable(
+    string Name,
+    string TypeName,
+    string Value);
+
+public sealed record DebugStackFrame(
+    string Name,
+    SourceSpan Span);
+
+public sealed record DebugSnapshot(
+    SourceSpan Span,
+    IReadOnlyList<DebugVariable> Variables,
+    IReadOnlyList<DebugStackFrame> CallStack,
+    IReadOnlyList<string> Output,
+    IReadOnlyList<CanvasCommand> CanvasCommands);
+
 public sealed record EngineResponse(
     int ApiVersion,
     bool Success,
     IReadOnlyList<string> Output,
-    IReadOnlyList<StudioDiagnostic> Diagnostics);
+    IReadOnlyList<StudioDiagnostic> Diagnostics,
+    IReadOnlyList<CanvasCommand>? CanvasCommands = null,
+    IReadOnlyList<DebugSnapshot>? DebugSnapshots = null);
 
 public interface IEngineClient
 {

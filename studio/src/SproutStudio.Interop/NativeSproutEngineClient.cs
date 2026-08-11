@@ -3,10 +3,12 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SproutStudio.Core;
+using SproutStudio.Editor;
 
 namespace SproutStudio.Interop;
 
-public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectClient
+public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectClient,
+    ISproutLanguageService
 {
     public const int SupportedApiVersion = 1;
 
@@ -43,6 +45,14 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
         return Task.Run(() => CreateProject(destination, name, template), cancellationToken);
     }
 
+    public Task<LanguageServiceResponse> QueryAsync(
+        LanguageServiceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return Task.Run(() => QueryLanguageService(request), cancellationToken);
+    }
+
     public static EngineResponse ParseResponse(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
@@ -68,6 +78,22 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
                 $"Unsupported Sprout API version {response.ApiVersion}; expected {SupportedApiVersion}.");
         }
 
+        return response;
+    }
+
+    public static LanguageServiceResponse ParseLanguageServiceResponse(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        LanguageServiceResponse response = JsonSerializer.Deserialize<LanguageServiceResponse>(
+                json,
+                JsonOptions)
+            ?? throw new InvalidDataException(
+                "The Sprout language service returned an empty response.");
+        if (response.ApiVersion != SupportedApiVersion)
+        {
+            throw new InvalidDataException(
+                $"Unsupported Sprout API version {response.ApiVersion}; expected {SupportedApiVersion}.");
+        }
         return response;
     }
 
@@ -125,6 +151,24 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
             templateBytes,
             (nuint)templateBytes.Length);
         return ParseProjectResponse(ReadBuffer(buffer));
+    }
+
+    private static LanguageServiceResponse QueryLanguageService(LanguageServiceRequest request)
+    {
+        byte[] name = Encoding.UTF8.GetBytes(request.SourceName);
+        byte[] source = Encoding.UTF8.GetBytes(request.Source);
+        int cursorIndex = Math.Clamp(request.CursorUtf16Index, 0, request.Source.Length);
+        nuint cursorByteOffset = checked((nuint)Encoding.UTF8.GetByteCount(
+            request.Source.AsSpan(0, cursorIndex)));
+        NativeBuffer buffer = NativeMethods.SproutLanguageService(
+            (uint)request.Operation,
+            (uint)request.Profile,
+            cursorByteOffset,
+            name,
+            (nuint)name.Length,
+            source,
+            (nuint)source.Length);
+        return ParseLanguageServiceResponse(ReadBuffer(buffer));
     }
 
     private static string ReadBuffer(NativeBuffer buffer)
@@ -194,6 +238,17 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
             nuint nameLength,
             byte[] template,
             nuint templateLength);
+
+        [LibraryImport(LibraryName, EntryPoint = "sprout_language_service")]
+        [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+        internal static partial NativeBuffer SproutLanguageService(
+            uint operation,
+            uint profile,
+            nuint cursor,
+            byte[] sourceName,
+            nuint sourceNameLength,
+            byte[] source,
+            nuint sourceLength);
 
         [LibraryImport(LibraryName, EntryPoint = "sprout_buffer_free")]
         [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]

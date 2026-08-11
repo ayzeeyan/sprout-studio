@@ -11,6 +11,9 @@ extern "C" {
 #define SPROUT_API_VERSION 1u
 #define SPROUT_OPERATION_CHECK 0u
 #define SPROUT_OPERATION_RUN 1u
+#define SPROUT_OPERATION_DEBUG 2u
+#define SPROUT_LANGUAGE_INSPECT 0u
+#define SPROUT_LANGUAGE_FORMAT 1u
 #define SPROUT_PROFILE_GUIDED 0u
 #define SPROUT_PROFILE_STRUCTURED 1u
 #define SPROUT_PROFILE_ADVANCED 2u
@@ -36,6 +39,15 @@ SproutBuffer sprout_execute_project(
     uint32_t profile,
     const uint8_t* project_root_data,
     size_t project_root_length,
+    const uint8_t* source_name_data,
+    size_t source_name_length,
+    const uint8_t* source_data,
+    size_t source_length);
+
+SproutBuffer sprout_language_service(
+    uint32_t operation,
+    uint32_t profile,
+    size_t cursor,
     const uint8_t* source_name_data,
     size_t source_name_length,
     const uint8_t* source_data,

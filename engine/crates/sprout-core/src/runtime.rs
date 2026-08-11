@@ -22,7 +22,57 @@ pub enum Value {
     List(Vec<Value>),
     Map(BTreeMap<String, Value>),
     Foreign(Rc<dyn ForeignObject>),
-    NativePrint,
+    Native(NativeAction),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum NativeAction {
+    Print,
+    CanvasClear,
+    CanvasRect,
+    CanvasCircle,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CanvasCommand {
+    Clear {
+        color: String,
+    },
+    Rectangle {
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        color: String,
+    },
+    Circle {
+        x: f64,
+        y: f64,
+        radius: f64,
+        color: String,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DebugVariable {
+    pub name: String,
+    pub type_name: String,
+    pub value: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DebugStackFrame {
+    pub name: String,
+    pub span: SourceSpan,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DebugSnapshot {
+    pub span: SourceSpan,
+    pub variables: Vec<DebugVariable>,
+    pub call_stack: Vec<DebugStackFrame>,
+    pub output: Vec<String>,
+    pub canvas_commands: Vec<CanvasCommand>,
 }
 
 impl fmt::Debug for Value {
@@ -61,7 +111,7 @@ impl fmt::Display for Value {
                     .join(", ")
             ),
             Self::Foreign(object) => write!(formatter, "<python {}>", object.type_name()),
-            Self::NativePrint => formatter.write_str("<native action print>"),
+            Self::Native(action) => write!(formatter, "<native action {}>", action.name()),
         }
     }
 }
@@ -86,16 +136,34 @@ impl PartialEq for Value {
 pub struct RunResult {
     pub output: Vec<String>,
     pub diagnostic: Option<Diagnostic>,
+    pub canvas_commands: Vec<CanvasCommand>,
+}
+
+pub struct DebugRunResult {
+    pub output: Vec<String>,
+    pub diagnostic: Option<Diagnostic>,
+    pub canvas_commands: Vec<CanvasCommand>,
+    pub snapshots: Vec<DebugSnapshot>,
 }
 
 pub fn run(program: &Program) -> RunResult {
-    let mut interpreter = Interpreter::new(None);
+    let mut interpreter = Interpreter::new(None, false);
     run_with_interpreter(program, &mut interpreter)
 }
 
 pub fn run_with_python(program: &Program, python: &mut dyn PythonHost) -> RunResult {
-    let mut interpreter = Interpreter::new(Some(python));
+    let mut interpreter = Interpreter::new(Some(python), false);
     run_with_interpreter(program, &mut interpreter)
+}
+
+pub fn run_debug(program: &Program) -> DebugRunResult {
+    let mut interpreter = Interpreter::new(None, true);
+    run_debug_with_interpreter(program, &mut interpreter)
+}
+
+pub fn run_debug_with_python(program: &Program, python: &mut dyn PythonHost) -> DebugRunResult {
+    let mut interpreter = Interpreter::new(Some(python), true);
+    run_debug_with_interpreter(program, &mut interpreter)
 }
 
 fn run_with_interpreter(program: &Program, interpreter: &mut Interpreter<'_>) -> RunResult {
@@ -105,6 +173,22 @@ fn run_with_interpreter(program: &Program, interpreter: &mut Interpreter<'_>) ->
     RunResult {
         output: std::mem::take(&mut interpreter.output),
         diagnostic,
+        canvas_commands: std::mem::take(&mut interpreter.canvas_commands),
+    }
+}
+
+fn run_debug_with_interpreter(
+    program: &Program,
+    interpreter: &mut Interpreter<'_>,
+) -> DebugRunResult {
+    let diagnostic = interpreter
+        .execute_block(&program.statements, interpreter.globals.clone())
+        .err();
+    DebugRunResult {
+        output: std::mem::take(&mut interpreter.output),
+        diagnostic,
+        canvas_commands: std::mem::take(&mut interpreter.canvas_commands),
+        snapshots: std::mem::take(&mut interpreter.snapshots),
     }
 }
 
@@ -167,6 +251,22 @@ impl Environment {
             false
         }
     }
+
+    fn visible_values(&self) -> BTreeMap<String, Value> {
+        let scope = self.0.borrow();
+        let mut values = scope
+            .parent
+            .as_ref()
+            .map(Environment::visible_values)
+            .unwrap_or_default();
+        values.extend(
+            scope
+                .values
+                .iter()
+                .map(|(name, value)| (name.clone(), value.clone())),
+        );
+        values
+    }
 }
 
 struct Interpreter<'a> {
@@ -174,6 +274,10 @@ struct Interpreter<'a> {
     environment: Environment,
     output: Vec<String>,
     python: Option<&'a mut dyn PythonHost>,
+    canvas_commands: Vec<CanvasCommand>,
+    snapshots: Vec<DebugSnapshot>,
+    record_snapshots: bool,
+    call_stack: Vec<DebugStackFrame>,
 }
 
 enum Flow {
@@ -184,14 +288,25 @@ enum Flow {
 type RuntimeResult<T> = Result<T, Diagnostic>;
 
 impl<'a> Interpreter<'a> {
-    fn new(python: Option<&'a mut dyn PythonHost>) -> Self {
+    fn new(python: Option<&'a mut dyn PythonHost>, record_snapshots: bool) -> Self {
         let globals = Environment::new(None);
-        globals.define("print".into(), Value::NativePrint);
+        for (name, action) in [
+            ("print", NativeAction::Print),
+            ("canvas_clear", NativeAction::CanvasClear),
+            ("canvas_rect", NativeAction::CanvasRect),
+            ("canvas_circle", NativeAction::CanvasCircle),
+        ] {
+            globals.define(name.into(), Value::Native(action));
+        }
         Self {
             globals: globals.clone(),
             environment: globals,
             output: Vec::new(),
             python,
+            canvas_commands: Vec::new(),
+            snapshots: Vec::new(),
+            record_snapshots,
+            call_stack: Vec::new(),
         }
     }
 
@@ -214,6 +329,12 @@ impl<'a> Interpreter<'a> {
     }
 
     fn execute(&mut self, statement: &Statement) -> RuntimeResult<Flow> {
+        let result = self.execute_statement(statement);
+        self.capture_snapshot(statement);
+        result
+    }
+
+    fn execute_statement(&mut self, statement: &Statement) -> RuntimeResult<Flow> {
         match &statement.kind {
             StatementKind::ImportPython { module, alias } => {
                 let python = self.python.as_deref_mut().ok_or_else(|| {
@@ -352,6 +473,36 @@ impl<'a> Interpreter<'a> {
             }
         }
         Ok(Flow::Continue)
+    }
+
+    fn capture_snapshot(&mut self, statement: &Statement) {
+        if !self.record_snapshots {
+            return;
+        }
+        let variables = self
+            .environment
+            .visible_values()
+            .into_iter()
+            .filter_map(|(name, value)| {
+                value.debug_view().map(|(type_name, value)| DebugVariable {
+                    name,
+                    type_name,
+                    value,
+                })
+            })
+            .collect();
+        let mut call_stack = vec![DebugStackFrame {
+            name: "<entry>".to_owned(),
+            span: statement.span.clone(),
+        }];
+        call_stack.extend(self.call_stack.clone());
+        self.snapshots.push(DebugSnapshot {
+            span: statement.span.clone(),
+            variables,
+            call_stack,
+            output: self.output.clone(),
+            canvas_commands: self.canvas_commands.clone(),
+        });
     }
 
     fn evaluate(&mut self, expression: &Expression) -> RuntimeResult<Value> {
@@ -493,15 +644,7 @@ impl<'a> Interpreter<'a> {
         span: &SourceSpan,
     ) -> RuntimeResult<Value> {
         match callee {
-            Value::NativePrint => {
-                let line = arguments
-                    .iter()
-                    .map(|value| value.render(span))
-                    .collect::<RuntimeResult<Vec<_>>>()?
-                    .join(" ");
-                self.output.push(line);
-                Ok(Value::Nil)
-            }
+            Value::Native(action) => self.call_native(action, &arguments, span),
             Value::Function(function) => {
                 if arguments.len() != function.parameters.len() {
                     return Err(error(
@@ -523,7 +666,13 @@ impl<'a> Interpreter<'a> {
                 for (name, value) in function.parameters.iter().zip(arguments) {
                     environment.define(name.clone(), value);
                 }
-                match self.execute_block(&function.body, environment)? {
+                self.call_stack.push(DebugStackFrame {
+                    name: function.name.clone(),
+                    span: span.clone(),
+                });
+                let result = self.execute_block(&function.body, environment);
+                self.call_stack.pop();
+                match result? {
                     Flow::Return(value) => Ok(value),
                     Flow::Continue => Ok(Value::Nil),
                 }
@@ -559,6 +708,62 @@ impl<'a> Interpreter<'a> {
                 span,
             )),
         }
+    }
+
+    fn call_native(
+        &mut self,
+        action: NativeAction,
+        arguments: &[Value],
+        span: &SourceSpan,
+    ) -> RuntimeResult<Value> {
+        match action {
+            NativeAction::Print => {
+                let line = arguments
+                    .iter()
+                    .map(|value| value.render(span))
+                    .collect::<RuntimeResult<Vec<_>>>()?
+                    .join(" ");
+                self.output.push(line);
+            }
+            NativeAction::CanvasClear => {
+                require_arity(action, arguments, 1, span)?;
+                self.canvas_commands.push(CanvasCommand::Clear {
+                    color: canvas_color(&arguments[0], span)?,
+                });
+            }
+            NativeAction::CanvasRect => {
+                require_arity(action, arguments, 5, span)?;
+                let width = canvas_number(&arguments[2], "width", span)?;
+                let height = canvas_number(&arguments[3], "height", span)?;
+                if width < 0.0 || height < 0.0 {
+                    return Err(canvas_error(
+                        "Rectangle width and height cannot be negative.",
+                        span,
+                    ));
+                }
+                self.canvas_commands.push(CanvasCommand::Rectangle {
+                    x: canvas_number(&arguments[0], "x", span)?,
+                    y: canvas_number(&arguments[1], "y", span)?,
+                    width,
+                    height,
+                    color: canvas_color(&arguments[4], span)?,
+                });
+            }
+            NativeAction::CanvasCircle => {
+                require_arity(action, arguments, 4, span)?;
+                let radius = canvas_number(&arguments[2], "radius", span)?;
+                if radius < 0.0 {
+                    return Err(canvas_error("Circle radius cannot be negative.", span));
+                }
+                self.canvas_commands.push(CanvasCommand::Circle {
+                    x: canvas_number(&arguments[0], "x", span)?,
+                    y: canvas_number(&arguments[1], "y", span)?,
+                    radius,
+                    color: canvas_color(&arguments[3], span)?,
+                });
+            }
+        }
+        Ok(Value::Nil)
     }
 
     fn binary(
@@ -697,7 +902,7 @@ impl Value {
                 .collect::<Result<BTreeMap<_, _>, _>>()
                 .map(ForeignValue::Map),
             Self::Foreign(object) => Ok(ForeignValue::Object(object.clone())),
-            Self::Function(_) | Self::Class(_) | Self::Instance(_) | Self::NativePrint => Err(
+            Self::Function(_) | Self::Class(_) | Self::Instance(_) | Self::Native(_) => Err(
                 "Sprout actions, classes, instances, and native actions cannot be passed to Python yet."
                     .to_owned(),
             ),
@@ -720,6 +925,85 @@ impl Value {
             _ => Ok(self.to_string()),
         }
     }
+
+    fn debug_view(&self) -> Option<(String, String)> {
+        match self {
+            Self::Int(value) => Some(("Int".to_owned(), value.to_string())),
+            Self::Float(value) => Some(("Float".to_owned(), value.to_string())),
+            Self::Bool(value) => Some(("Bool".to_owned(), value.to_string())),
+            Self::String(value) => Some(("String".to_owned(), format!("\"{value}\""))),
+            Self::Nil => Some(("Nil".to_owned(), "nil".to_owned())),
+            Self::Instance(instance) => Some((
+                instance.class.name.clone(),
+                format!("<{} instance>", instance.class.name),
+            )),
+            Self::List(values) => Some(("List".to_owned(), format!("{values:?}"))),
+            Self::Map(values) => Some(("Map".to_owned(), format!("{values:?}"))),
+            Self::Foreign(object) => Some((
+                format!("Python {}", object.type_name()),
+                format!("<python {}>", object.type_name()),
+            )),
+            Self::Function(_) | Self::Class(_) | Self::Native(_) => None,
+        }
+    }
+}
+
+impl NativeAction {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Print => "print",
+            Self::CanvasClear => "canvas_clear",
+            Self::CanvasRect => "canvas_rect",
+            Self::CanvasCircle => "canvas_circle",
+        }
+    }
+}
+
+fn require_arity(
+    action: NativeAction,
+    arguments: &[Value],
+    expected: usize,
+    span: &SourceSpan,
+) -> RuntimeResult<()> {
+    if arguments.len() == expected {
+        Ok(())
+    } else {
+        Err(error(
+            "SPT205",
+            "Wrong number of arguments",
+            format!(
+                "`{}` expects {expected} argument(s), but received {}.",
+                action.name(),
+                arguments.len()
+            ),
+            span,
+        ))
+    }
+}
+
+fn canvas_number(value: &Value, name: &str, span: &SourceSpan) -> RuntimeResult<f64> {
+    let number = value
+        .as_number()
+        .filter(|number| number.is_finite())
+        .ok_or_else(|| canvas_error(format!("Canvas {name} must be a finite number."), span))?;
+    Ok(number)
+}
+
+fn canvas_color(value: &Value, span: &SourceSpan) -> RuntimeResult<String> {
+    let Value::String(color) = value else {
+        return Err(canvas_error("Canvas color must be a String.", span));
+    };
+    if color.trim().is_empty() || color.len() > 64 {
+        return Err(canvas_error(
+            "Canvas color must contain between 1 and 64 characters.",
+            span,
+        ));
+    }
+    Ok(color.clone())
+}
+
+fn canvas_error(message: impl Into<String>, span: &SourceSpan) -> Diagnostic {
+    error("SPT304", "Invalid canvas command", message, span)
 }
 
 fn python_error(error: ForeignError, span: &SourceSpan) -> Diagnostic {
@@ -829,5 +1113,66 @@ mod tests {
         );
         assert!(result.diagnostic.is_none(), "{:?}", result.diagnostic);
         assert_eq!(result.output, vec!["Hello Ada"]);
+    }
+
+    #[test]
+    fn emits_host_neutral_canvas_commands() {
+        let result = execute(
+            "canvas_clear(\"#101010\")\ncanvas_rect(10, 20, 30, 40, \"green\")\ncanvas_circle(50, 60, 8, \"#44cc77\")\n",
+        );
+        assert!(result.diagnostic.is_none(), "{:?}", result.diagnostic);
+        assert_eq!(
+            result.canvas_commands,
+            vec![
+                CanvasCommand::Clear {
+                    color: "#101010".to_owned(),
+                },
+                CanvasCommand::Rectangle {
+                    x: 10.0,
+                    y: 20.0,
+                    width: 30.0,
+                    height: 40.0,
+                    color: "green".to_owned(),
+                },
+                CanvasCommand::Circle {
+                    x: 50.0,
+                    y: 60.0,
+                    radius: 8.0,
+                    color: "#44cc77".to_owned(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn debugger_records_real_scopes_output_and_call_stack() {
+        let parsed = parse(&SourceFile::new(
+            "debug.spr",
+            "has start = 2\naction add(value)\n  has result = value + start\n  print(result)\n  return result\nend\nhas final = add(3)\n",
+        ));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let result = run_debug(&parsed.program.unwrap());
+        assert!(result.diagnostic.is_none(), "{:?}", result.diagnostic);
+        assert_eq!(result.output, vec!["5"]);
+        let inside_action = result
+            .snapshots
+            .iter()
+            .find(|snapshot| snapshot.span.start_line == 3)
+            .expect("action body snapshot");
+        assert!(
+            inside_action
+                .variables
+                .iter()
+                .any(|variable| variable.name == "result" && variable.value == "5")
+        );
+        assert_eq!(inside_action.call_stack[1].name, "add");
+        let final_snapshot = result.snapshots.last().unwrap();
+        assert!(
+            final_snapshot
+                .variables
+                .iter()
+                .any(|variable| variable.name == "final" && variable.value == "5")
+        );
+        assert_eq!(final_snapshot.output, vec!["5"]);
     }
 }
