@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SproutStudio.Core\SproutStudio.Core.csproj" />
+    <ProjectReference Include="..\..\src\SproutStudio.Interop\SproutStudio.Interop.csproj" />
+  </ItemGroup>
+  <Target Name="BuildSproutNativeDebug" BeforeTargets="Build">
+    <Exec Command="cargo build -p sprout-ffi" WorkingDirectory="$(MSBuildThisFileDirectory)..\..\.." />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\..\target\debug\sprout_ffi.dll"
+          DestinationFolder="$(OutDir)" />
+  </Target>
+</Project>
+

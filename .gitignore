@@ -2,4 +2,7 @@
 *.pdb
 .idea/
 .vscode/
-
+.vs/
+**/bin/
+**/obj/
+packages/

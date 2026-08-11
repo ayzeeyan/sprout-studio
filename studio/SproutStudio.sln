@@ -1,0 +1,31 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Core", "src\SproutStudio.Core\SproutStudio.Core.csproj", "{7A9E28B7-A01D-47E7-A39E-FF4D53666D02}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Interop", "src\SproutStudio.Interop\SproutStudio.Interop.csproj", "{C5E0CC55-C3CD-44AB-9A95-E64F2B57E367}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Tests", "tests\SproutStudio.Tests\SproutStudio.Tests.csproj", "{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7A9E28B7-A01D-47E7-A39E-FF4D53666D02}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7A9E28B7-A01D-47E7-A39E-FF4D53666D02}.Debug|x64.Build.0 = Debug|Any CPU
+		{7A9E28B7-A01D-47E7-A39E-FF4D53666D02}.Release|x64.ActiveCfg = Release|Any CPU
+		{7A9E28B7-A01D-47E7-A39E-FF4D53666D02}.Release|x64.Build.0 = Release|Any CPU
+		{C5E0CC55-C3CD-44AB-9A95-E64F2B57E367}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C5E0CC55-C3CD-44AB-9A95-E64F2B57E367}.Debug|x64.Build.0 = Debug|Any CPU
+		{C5E0CC55-C3CD-44AB-9A95-E64F2B57E367}.Release|x64.ActiveCfg = Release|Any CPU
+		{C5E0CC55-C3CD-44AB-9A95-E64F2B57E367}.Release|x64.Build.0 = Release|Any CPU
+		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Debug|x64.Build.0 = Debug|Any CPU
+		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Release|x64.ActiveCfg = Release|Any CPU
+		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Release|x64.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
+
