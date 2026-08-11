@@ -143,6 +143,7 @@ version = "0.1.0"
 dependencies = [
  "sprout-core",
  "sprout-project",
+ "sprout-python",
 ]
 
 [[package]]
@@ -155,6 +156,7 @@ version = "0.1.0"
 dependencies = [
  "sprout-core",
  "sprout-project",
+ "sprout-python",
 ]
 
 [[package]]

@@ -19,7 +19,8 @@ public sealed record EngineRequest(
     EngineOperation Operation,
     SyntaxProfile Profile,
     string SourceName,
-    string Source);
+    string Source,
+    string? ProjectRoot = null);
 
 public sealed record SourceSpan(
     string File,

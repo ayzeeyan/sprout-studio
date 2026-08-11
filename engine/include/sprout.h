@@ -31,6 +31,16 @@ SproutBuffer sprout_execute(
     const uint8_t* source_data,
     size_t source_length);
 
+SproutBuffer sprout_execute_project(
+    uint32_t operation,
+    uint32_t profile,
+    const uint8_t* project_root_data,
+    size_t project_root_length,
+    const uint8_t* source_name_data,
+    size_t source_name_length,
+    const uint8_t* source_data,
+    size_t source_length);
+
 SproutBuffer sprout_project_load(
     const uint8_t* project_path_data,
     size_t project_path_length);

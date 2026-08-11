@@ -42,6 +42,25 @@ fn run_executes_real_sprout_source() {
 }
 
 #[test]
+fn run_executes_explicit_embedded_python_imports() {
+    let path = source_file(
+        "python.spr",
+        "import python \"math\" as math\nprint(math.sqrt(144))\n",
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .args(["run", path.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(String::from_utf8(output.stdout).unwrap(), "12\n");
+    fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+
+#[test]
 fn invalid_source_returns_diagnostic_and_failure() {
     let path = source_file("broken.spr", "has answer =\n");
     let output = Command::new(env!("CARGO_BIN_EXE_sprout"))
@@ -157,6 +176,71 @@ fn new_without_path_creates_a_named_child_of_the_current_directory() {
     assert!(parent.join("DefaultPath/sprout.toml").is_file());
     assert!(parent.join("DefaultPath/.sprout/python").is_dir());
     fs::remove_dir_all(parent).unwrap();
+}
+
+#[test]
+fn python_sync_keeps_empty_environment_project_local() {
+    let destination = temporary_directory("python-sync").join("PythonProject");
+    let create = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .args([
+            "new",
+            "PythonProject",
+            "--path",
+            destination.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(create.status.success());
+
+    let sync = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .args(["python", "sync", destination.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(
+        sync.status.success(),
+        "{}",
+        String::from_utf8_lossy(&sync.stderr)
+    );
+    assert!(destination.join(".sprout/python").is_dir());
+    assert!(String::from_utf8_lossy(&sync.stdout).contains("Synchronized 0 Python packages"));
+    fs::remove_dir_all(destination.parent().unwrap()).unwrap();
+}
+
+#[test]
+fn project_run_imports_only_from_its_local_python_directory() {
+    let destination = temporary_directory("python-local").join("PythonProject");
+    let create = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .args([
+            "new",
+            "PythonProject",
+            "--path",
+            destination.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(create.status.success());
+    fs::write(
+        destination.join(".sprout/python/project_value.py"),
+        "def read():\n    return 'project-only'\n",
+    )
+    .unwrap();
+    fs::write(
+        destination.join("src/main.spr"),
+        "import python \"project_value\" as value\nprint(value.read())\n",
+    )
+    .unwrap();
+
+    let run = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .args(["run", destination.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert_eq!(String::from_utf8(run.stdout).unwrap(), "project-only\n");
+    fs::remove_dir_all(destination.parent().unwrap()).unwrap();
 }
 
 #[test]

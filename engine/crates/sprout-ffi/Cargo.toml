@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 sprout-core = { path = "../sprout-core" }
+sprout-python = { path = "../sprout-python" }
 sprout-project = { path = "../sprout-project" }
 
 [lints.rust]

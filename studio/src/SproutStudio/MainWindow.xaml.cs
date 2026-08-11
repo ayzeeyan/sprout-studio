@@ -397,6 +397,7 @@ public sealed partial class MainWindow : Window
     private async Task LoadProjectEntryAsync(ProjectInfo project)
     {
         await _session.LoadDocumentAsync(project.EntryPath);
+        _session.SetProjectContext(project.RootPath);
         _session.UpdateProfile(project.Profile);
         RefreshDocument();
         RefreshRecentProjects();

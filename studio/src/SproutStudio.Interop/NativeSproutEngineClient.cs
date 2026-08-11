@@ -75,13 +75,30 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
     {
         byte[] name = Encoding.UTF8.GetBytes(request.SourceName);
         byte[] source = Encoding.UTF8.GetBytes(request.Source);
-        NativeBuffer buffer = NativeMethods.SproutExecute(
-            (uint)request.Operation,
-            (uint)request.Profile,
-            name,
-            (nuint)name.Length,
-            source,
-            (nuint)source.Length);
+        NativeBuffer buffer;
+        if (request.ProjectRoot is null)
+        {
+            buffer = NativeMethods.SproutExecute(
+                (uint)request.Operation,
+                (uint)request.Profile,
+                name,
+                (nuint)name.Length,
+                source,
+                (nuint)source.Length);
+        }
+        else
+        {
+            byte[] projectRoot = Encoding.UTF8.GetBytes(request.ProjectRoot);
+            buffer = NativeMethods.SproutExecuteProject(
+                (uint)request.Operation,
+                (uint)request.Profile,
+                projectRoot,
+                (nuint)projectRoot.Length,
+                name,
+                (nuint)name.Length,
+                source,
+                (nuint)source.Length);
+        }
         return ParseResponse(ReadBuffer(buffer));
     }
 
@@ -145,6 +162,18 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
         internal static partial NativeBuffer SproutExecute(
             uint operation,
             uint profile,
+            byte[] sourceName,
+            nuint sourceNameLength,
+            byte[] source,
+            nuint sourceLength);
+
+        [LibraryImport(LibraryName, EntryPoint = "sprout_execute_project")]
+        [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+        internal static partial NativeBuffer SproutExecuteProject(
+            uint operation,
+            uint profile,
+            byte[] projectRoot,
+            nuint projectRootLength,
             byte[] sourceName,
             nuint sourceNameLength,
             byte[] source,

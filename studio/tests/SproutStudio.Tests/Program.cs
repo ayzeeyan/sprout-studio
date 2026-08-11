@@ -5,6 +5,8 @@ using SproutStudio.Interop;
 var tests = new (string Name, Func<Task> Run)[]
 {
     ("Native run returns actual output", NativeRunReturnsOutput),
+    ("Native run executes embedded Python", NativeRunExecutesEmbeddedPython),
+    ("Native project run isolates Python packages", NativeProjectRunIsolatesPythonPackages),
     ("Native diagnostics preserve locations", NativeDiagnosticsPreserveLocations),
     ("Native diagnostics preserve related data and fixes", NativeDiagnosticsPreserveRelatedDataAndFixes),
     ("Native byte spans navigate Unicode source", NativeSpansNavigateUnicodeSource),
@@ -47,6 +49,44 @@ static async Task NativeRunReturnsOutput()
         "print(\"Hello Studio\")\n"));
     Assert(response.Success, "expected success");
     Assert(response.Output.SequenceEqual(["Hello Studio"]), "unexpected engine output");
+}
+
+static async Task NativeRunExecutesEmbeddedPython()
+{
+    var engine = new NativeSproutEngineClient();
+    EngineResponse response = await engine.ExecuteAsync(new EngineRequest(
+        EngineOperation.Run,
+        SyntaxProfile.Guided,
+        "python.spr",
+        "import python \"math\" as math\nprint(math.gcd(84, 30))\n"));
+    Assert(response.Success, "embedded Python execution failed");
+    Assert(response.Output.SequenceEqual(["6"]), "embedded Python returned unexpected output");
+}
+
+static async Task NativeProjectRunIsolatesPythonPackages()
+{
+    string projectRoot = TemporaryDirectory("native-python-project");
+    string packages = Path.Combine(projectRoot, ".sprout", "python");
+    Directory.CreateDirectory(packages);
+    try
+    {
+        await File.WriteAllTextAsync(
+            Path.Combine(packages, "studio_project_value.py"),
+            "def read():\n    return 'studio-project'\n");
+        var engine = new NativeSproutEngineClient();
+        EngineResponse response = await engine.ExecuteAsync(new EngineRequest(
+            EngineOperation.Run,
+            SyntaxProfile.Guided,
+            "python.spr",
+            "import python \"studio_project_value\" as value\nprint(value.read())\n",
+            projectRoot));
+        Assert(response.Success, "project-local Python execution failed");
+        Assert(response.Output.SequenceEqual(["studio-project"]), "wrong project package was loaded");
+    }
+    finally
+    {
+        Directory.Delete(projectRoot, recursive: true);
+    }
 }
 
 static async Task NativeDiagnosticsPreserveLocations()

@@ -14,6 +14,8 @@ public sealed class StudioSession
 
     public StudioDocument Document { get; private set; }
 
+    public string? ProjectRoot { get; private set; }
+
     public IReadOnlyList<string> ConsoleLines => _consoleLines;
 
     public IReadOnlyList<StudioDiagnostic> Problems => _problems;
@@ -24,6 +26,7 @@ public sealed class StudioSession
     {
         EnsureNotRunning();
         Document = StudioDocument.Untitled(profile);
+        ProjectRoot = null;
         ClearResults();
     }
 
@@ -50,7 +53,15 @@ public sealed class StudioSession
 
         string source = await File.ReadAllTextAsync(fullPath, cancellationToken).ConfigureAwait(false);
         Document = new StudioDocument(Path.GetFileName(fullPath), fullPath, source, Document.Profile);
+        ProjectRoot = null;
         ClearResults();
+    }
+
+    public void SetProjectContext(string projectRoot)
+    {
+        EnsureNotRunning();
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
+        ProjectRoot = Path.GetFullPath(projectRoot);
     }
 
     public async Task SaveDocumentAsync(CancellationToken cancellationToken = default)
@@ -122,7 +133,8 @@ public sealed class StudioSession
                 operation,
                 snapshot.Profile,
                 snapshot.FilePath ?? snapshot.DisplayName,
-                snapshot.Source);
+                snapshot.Source,
+                ProjectRoot);
             EngineResponse response = await _engine.ExecuteAsync(request, cancellationToken)
                 .ConfigureAwait(false);
             _consoleLines.AddRange(response.Output);

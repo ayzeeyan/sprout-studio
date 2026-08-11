@@ -2,6 +2,7 @@ use sprout_core::SyntaxProfile;
 use sprout_core::diagnostic::Diagnostic;
 use sprout_core::source::SourceFile;
 use sprout_project::{ProjectError, ProjectTemplate, create_project, load_project};
+use sprout_python::{EmbeddedPythonHost, sync_project_packages};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,6 +24,7 @@ fn command(arguments: Vec<String>) -> Result<(), u8> {
 
     match command {
         "new" => new_project(&arguments[1..]),
+        "python" => python_command(&arguments[1..]),
         "run" | "check" => {
             let options = source_options(command, &arguments[1..])?;
             run_target(options, command == "run")
@@ -158,6 +160,7 @@ fn run_target(options: SourceOptions, execute: bool) -> Result<(), u8> {
             execute,
             options.profile.unwrap_or(SyntaxProfile::Guided),
             None,
+            None,
         )
     } else {
         let project = load_project(&options.path).map_err(|error| {
@@ -170,6 +173,7 @@ fn run_target(options: SourceOptions, execute: bool) -> Result<(), u8> {
             execute,
             profile,
             Some(&project.manifest.project.name),
+            Some(project.root.join(".sprout/python")),
         )
     }
 }
@@ -179,6 +183,7 @@ fn run_file(
     execute: bool,
     profile: SyntaxProfile,
     project_name: Option<&str>,
+    project_packages: Option<PathBuf>,
 ) -> Result<(), u8> {
     if path.extension().and_then(|extension| extension.to_str()) != Some("spr") {
         eprintln!("error: expected a file with the .spr extension");
@@ -192,7 +197,11 @@ fn run_file(
     let source = SourceFile::new(path.display().to_string(), text);
 
     if execute {
-        let result = sprout_core::execute_profile(&source, profile);
+        let mut python = EmbeddedPythonHost::new(project_packages).map_err(|error| {
+            eprintln!("error: could not initialize embedded Python: {error}");
+            1
+        })?;
+        let result = sprout_core::execute_profile_with_python(&source, profile, &mut python);
         if !result.diagnostics.is_empty() {
             render_diagnostics(&result.diagnostics, source.text());
             return Err(1);
@@ -212,6 +221,98 @@ fn run_file(
         }
     }
     Ok(())
+}
+
+fn python_command(arguments: &[String]) -> Result<(), u8> {
+    let Some(subcommand) = arguments.first().map(String::as_str) else {
+        eprintln!("error: `python` expects the `sync` subcommand");
+        return Err(2);
+    };
+    if subcommand != "sync" {
+        eprintln!("error: unknown Python subcommand `{subcommand}`; expected `sync`");
+        return Err(2);
+    }
+
+    let mut path = None;
+    let mut python = None;
+    let mut index = 1;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--python" => {
+                let Some(value) = arguments.get(index + 1) else {
+                    eprintln!("error: `--python` expects an executable path");
+                    return Err(2);
+                };
+                python = Some(PathBuf::from(value));
+                index += 2;
+            }
+            option if option.starts_with('-') => {
+                eprintln!("error: unknown option `{option}`");
+                return Err(2);
+            }
+            value if path.replace(PathBuf::from(value)).is_some() => {
+                eprintln!("error: `python sync` expects at most one project path");
+                return Err(2);
+            }
+            _ => index += 1,
+        }
+    }
+
+    let project = load_project(path.unwrap_or_else(|| PathBuf::from("."))).map_err(|error| {
+        render_project_error(&error);
+        1
+    })?;
+    let executable = if project.manifest.python.is_empty() {
+        PathBuf::from("python")
+    } else {
+        python.or_else(configured_python_executable).ok_or_else(|| {
+            eprintln!(
+                "error: bundled Python was not found beside Sprout; use --python <path> only for a development build"
+            );
+            1
+        })?
+    };
+    let result = sync_project_packages(&executable, &project.root, &project.manifest.python)
+        .map_err(|error| {
+            eprintln!("error: Python package sync failed: {error}");
+            1
+        })?;
+    if result.exit_code != Some(0) {
+        if !result.stdout.trim().is_empty() {
+            eprintln!("{}", result.stdout.trim_end());
+        }
+        if !result.stderr.trim().is_empty() {
+            eprintln!("{}", result.stderr.trim_end());
+        }
+        eprintln!("error: pip exited without successfully synchronizing the project");
+        return Err(1);
+    }
+    println!(
+        "Synchronized {} Python package{} into {}.",
+        project.manifest.python.len(),
+        if project.manifest.python.len() == 1 {
+            ""
+        } else {
+            "s"
+        },
+        project.root.join(".sprout/python").display()
+    );
+    Ok(())
+}
+
+fn configured_python_executable() -> Option<PathBuf> {
+    if let Some(path) = env::var_os("SPROUT_PYTHON_EXECUTABLE").map(PathBuf::from) {
+        return Some(path);
+    }
+    let file_name = if cfg!(windows) {
+        "python.exe"
+    } else {
+        "python3"
+    };
+    env::current_exe()
+        .ok()
+        .and_then(|executable| executable.parent().map(|parent| parent.join(file_name)))
+        .filter(|path| path.is_file())
 }
 
 fn render_project_error(error: &ProjectError) {
@@ -264,6 +365,6 @@ fn render_diagnostics(diagnostics: &[Diagnostic], source: &str) {
 
 fn print_help() {
     println!(
-        "Sprout programming language\n\nUSAGE:\n    sprout <COMMAND> [OPTIONS]\n\nCOMMANDS:\n    new <name>          Create a validated Sprout project\n    run [path]          Run a .spr file or project (current directory by default)\n    check [path]        Check a .spr file or project without executing\n    help                Show this help\n\nNEW OPTIONS:\n    --template <NAME>   guided (default), structured, or advanced\n    --path <DIRECTORY>  Exact project destination\n\nRUN/CHECK OPTIONS:\n    --profile <PROFILE> Override guided, structured, or advanced syntax\n    -h, --help          Show this help\n    -V, --version       Show the version"
+        "Sprout programming language\n\nUSAGE:\n    sprout <COMMAND> [OPTIONS]\n\nCOMMANDS:\n    new <name>          Create a validated Sprout project\n    run [path]          Run a .spr file or project (current directory by default)\n    check [path]        Check a .spr file or project without executing\n    python sync [path]  Install manifest packages into .sprout/python\n    help                Show this help\n\nNEW OPTIONS:\n    --template <NAME>   guided (default), structured, or advanced\n    --path <DIRECTORY>  Exact project destination\n\nRUN/CHECK OPTIONS:\n    --profile <PROFILE> Override guided, structured, or advanced syntax\n\nPYTHON SYNC OPTIONS:\n    --python <PATH>     Development-only Python executable override\n    -h, --help          Show this help\n    -V, --version       Show the version"
     );
 }

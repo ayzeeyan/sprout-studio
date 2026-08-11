@@ -2,8 +2,9 @@
 
 use sprout_core::diagnostic::{Diagnostic, Severity};
 use sprout_core::source::SourceFile;
-use sprout_core::{SyntaxProfile, check_profile, execute_profile};
+use sprout_core::{SyntaxProfile, check_profile, execute_profile_with_python};
 use sprout_project::{ProjectError, ProjectTemplate, SproutProject, create_project, load_project};
+use sprout_python::EmbeddedPythonHost;
 use std::fmt::Write;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
@@ -69,6 +70,49 @@ pub unsafe extern "C" fn sprout_execute(
         // SAFETY: Requirements are documented as part of this exported ABI.
         let source = unsafe { read_utf8(source_data, source_length, "source") }?;
         process(operation, profile, source_name, source)
+    })) {
+        Ok(Ok(response)) => response,
+        Ok(Err(message)) => internal_error(&message),
+        Err(_) => internal_error("The Sprout engine stopped unexpectedly."),
+    };
+    SproutBuffer::from_string(response)
+}
+
+/// Executes an engine operation with a validated Sprout project as its context.
+/// Python imports resolve packages from that project's `.sprout/python` only.
+///
+/// # Safety
+///
+/// Each pointer must be valid for its corresponding byte length for the duration
+/// of this call. Text must be UTF-8. The returned buffer must be freed exactly
+/// once with `sprout_buffer_free`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sprout_execute_project(
+    operation: u32,
+    profile: u32,
+    project_root_data: *const u8,
+    project_root_length: usize,
+    source_name_data: *const u8,
+    source_name_length: usize,
+    source_data: *const u8,
+    source_length: usize,
+) -> SproutBuffer {
+    let response = match catch_unwind(AssertUnwindSafe(|| {
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let project_root =
+            unsafe { read_utf8(project_root_data, project_root_length, "project root") }?;
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let source_name =
+            unsafe { read_utf8(source_name_data, source_name_length, "source name") }?;
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let source = unsafe { read_utf8(source_data, source_length, "source") }?;
+        process_with_project(
+            operation,
+            profile,
+            source_name,
+            source,
+            Some(Path::new(project_root)),
+        )
     })) {
         Ok(Ok(response)) => response,
         Ok(Err(message)) => internal_error(&message),
@@ -180,6 +224,16 @@ fn process(
     source_name: &str,
     source: &str,
 ) -> Result<String, String> {
+    process_with_project(operation, profile, source_name, source, None)
+}
+
+fn process_with_project(
+    operation: u32,
+    profile: u32,
+    source_name: &str,
+    source: &str,
+    project_root: Option<&Path>,
+) -> Result<String, String> {
     let profile = match profile {
         SPROUT_PROFILE_GUIDED => SyntaxProfile::Guided,
         SPROUT_PROFILE_STRUCTURED => SyntaxProfile::Structured,
@@ -193,7 +247,10 @@ fn process(
             Ok(response_json(Vec::new(), &result.diagnostics))
         }
         SPROUT_OPERATION_RUN => {
-            let result = execute_profile(&source, profile);
+            let packages = project_root.map(|root| root.join(".sprout/python"));
+            let mut python =
+                EmbeddedPythonHost::new(packages).map_err(|error| error.to_string())?;
+            let result = execute_profile_with_python(&source, profile, &mut python);
             Ok(response_json(result.output, &result.diagnostics))
         }
         _ => Err(format!("Unknown engine operation value `{operation}`.")),
@@ -405,6 +462,51 @@ mod tests {
         assert!(response.contains("\"apiVersion\":1"));
         assert!(response.contains("\"success\":true"));
         assert!(response.contains("\"output\":[\"hello\"]"));
+    }
+
+    #[test]
+    fn run_response_executes_embedded_python() {
+        let response = process(
+            SPROUT_OPERATION_RUN,
+            SPROUT_PROFILE_GUIDED,
+            "python.spr",
+            "import python \"math\" as math\nprint(math.factorial(6))\n",
+        )
+        .unwrap();
+        assert!(response.contains("\"success\":true"), "{response}");
+        assert!(response.contains("\"output\":[\"720\"]"), "{response}");
+    }
+
+    #[test]
+    fn project_execution_uses_its_local_python_packages() {
+        let destination = std::env::temp_dir().join(format!(
+            "sprout-ffi-python-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let packages = destination.join(".sprout/python");
+        std::fs::create_dir_all(&packages).unwrap();
+        std::fs::write(
+            packages.join("ffi_project_value.py"),
+            "def read():\n    return 'ffi-project'\n",
+        )
+        .unwrap();
+        let response = process_with_project(
+            SPROUT_OPERATION_RUN,
+            SPROUT_PROFILE_GUIDED,
+            "python.spr",
+            "import python \"ffi_project_value\" as value\nprint(value.read())\n",
+            Some(&destination),
+        )
+        .unwrap();
+        assert!(
+            response.contains("\"output\":[\"ffi-project\"]"),
+            "{response}"
+        );
+        std::fs::remove_dir_all(destination).unwrap();
     }
 
     #[test]
