@@ -50,6 +50,7 @@ impl<'a> Lexer<'a> {
                 '(' => self.single(TokenKind::LeftParen, start),
                 ')' => self.single(TokenKind::RightParen, start),
                 ',' => self.single(TokenKind::Comma, start),
+                '.' => self.single(TokenKind::Dot, start),
                 '+' => self.single(TokenKind::Plus, start),
                 '-' => self.single(TokenKind::Minus, start),
                 '*' => self.single(TokenKind::Star, start),
@@ -102,6 +103,7 @@ impl<'a> Lexer<'a> {
         let kind = match text {
             "has" => TokenKind::Has,
             "action" => TokenKind::Action,
+            "class" => TokenKind::Class,
             "end" => TokenKind::End,
             "if" => TokenKind::If,
             "else" => TokenKind::Else,

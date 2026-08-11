@@ -50,6 +50,10 @@ pub enum StatementKind {
         parameters: Vec<String>,
         body: Vec<Statement>,
     },
+    Class {
+        name: String,
+        methods: Vec<Statement>,
+    },
     Return(Option<Expression>),
 }
 
@@ -73,6 +77,11 @@ pub enum ExpressionKind {
     Call {
         callee: Box<Expression>,
         arguments: Vec<Expression>,
+    },
+    Member {
+        object: Box<Expression>,
+        name: String,
+        member_span: SourceSpan,
     },
 }
 

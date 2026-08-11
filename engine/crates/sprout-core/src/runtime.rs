@@ -16,6 +16,8 @@ pub enum Value {
     String(String),
     Nil,
     Function(Rc<Function>),
+    Class(Rc<Class>),
+    Instance(Rc<Instance>),
     NativePrint,
 }
 
@@ -34,6 +36,8 @@ impl fmt::Display for Value {
             Self::String(value) => formatter.write_str(value),
             Self::Nil => formatter.write_str("nil"),
             Self::Function(function) => write!(formatter, "<action {}>", function.name),
+            Self::Class(class) => write!(formatter, "<class {}>", class.name),
+            Self::Instance(instance) => write!(formatter, "<{} instance>", instance.class.name),
             Self::NativePrint => formatter.write_str("<native action print>"),
         }
     }
@@ -76,6 +80,18 @@ pub struct Function {
     parameters: Vec<String>,
     body: Vec<Statement>,
     closure: Environment,
+    bound_self: Option<Value>,
+}
+
+#[derive(Clone)]
+pub struct Class {
+    name: String,
+    methods: HashMap<String, Rc<Function>>,
+}
+
+#[derive(Clone)]
+pub struct Instance {
+    class: Rc<Class>,
 }
 
 #[derive(Clone)]
@@ -241,9 +257,39 @@ impl Interpreter {
                     parameters: parameters.clone(),
                     body: body.clone(),
                     closure: self.environment.clone(),
+                    bound_self: None,
                 };
                 self.environment
                     .define(name.clone(), Value::Function(Rc::new(function)));
+            }
+            StatementKind::Class { name, methods } => {
+                let mut runtime_methods = HashMap::new();
+                for method in methods {
+                    if let StatementKind::Function {
+                        name,
+                        parameters,
+                        body,
+                    } = &method.kind
+                    {
+                        runtime_methods.insert(
+                            name.clone(),
+                            Rc::new(Function {
+                                name: name.clone(),
+                                parameters: parameters.clone(),
+                                body: body.clone(),
+                                closure: self.environment.clone(),
+                                bound_self: None,
+                            }),
+                        );
+                    }
+                }
+                self.environment.define(
+                    name.clone(),
+                    Value::Class(Rc::new(Class {
+                        name: name.clone(),
+                        methods: runtime_methods,
+                    })),
+                );
             }
             StatementKind::Return(value) => {
                 let value = value
@@ -320,6 +366,27 @@ impl Interpreter {
                     .collect::<RuntimeResult<Vec<_>>>()?;
                 self.call(callee, arguments, &expression.span)
             }
+            ExpressionKind::Member { object, name, .. } => {
+                let Value::Instance(instance) = self.evaluate(object)? else {
+                    return Err(error(
+                        "SPT204",
+                        "Unknown member",
+                        "Only class instances expose members.",
+                        &expression.span,
+                    ));
+                };
+                let function = instance.class.methods.get(name).ok_or_else(|| {
+                    error(
+                        "SPT204",
+                        "Unknown member",
+                        format!("`{}` has no action named `{name}`.", instance.class.name),
+                        &expression.span,
+                    )
+                })?;
+                let mut bound = function.as_ref().clone();
+                bound.bound_self = Some(Value::Instance(instance));
+                Ok(Value::Function(Rc::new(bound)))
+            }
         }
     }
 
@@ -354,6 +421,9 @@ impl Interpreter {
                     ));
                 }
                 let environment = Environment::new(Some(function.closure.clone()));
+                if let Some(instance) = &function.bound_self {
+                    environment.define("self".into(), instance.clone());
+                }
                 for (name, value) in function.parameters.iter().zip(arguments) {
                     environment.define(name.clone(), value);
                 }
@@ -361,6 +431,17 @@ impl Interpreter {
                     Flow::Return(value) => Ok(value),
                     Flow::Continue => Ok(Value::Nil),
                 }
+            }
+            Value::Class(class) => {
+                if !arguments.is_empty() {
+                    return Err(error(
+                        "SPT205",
+                        "Wrong number of arguments",
+                        "Phase 2 class constructors do not accept arguments.",
+                        span,
+                    ));
+                }
+                Ok(Value::Instance(Rc::new(Instance { class })))
             }
             _ => Err(error(
                 "SPT206",
@@ -543,5 +624,14 @@ mod tests {
     fn invalid_operand_types_do_not_panic() {
         let result = execute("print(\"one\" - 1)\n");
         assert_eq!(result.diagnostic.unwrap().code, "SPT202");
+    }
+
+    #[test]
+    fn constructs_instances_and_invokes_bound_methods() {
+        let result = execute(
+            "class Greeter\n  action greet(name)\n    print(\"Hello \" + name)\n  end\nend\nhas greeter = Greeter()\ngreeter.greet(\"Ada\")\n",
+        );
+        assert!(result.diagnostic.is_none(), "{:?}", result.diagnostic);
+        assert_eq!(result.output, vec!["Hello Ada"]);
     }
 }

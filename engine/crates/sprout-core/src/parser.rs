@@ -74,6 +74,8 @@ impl Parser {
             self.variable_statement()
         } else if self.take(&TokenKind::Action).is_some() {
             self.function_statement()
+        } else if self.take(&TokenKind::Class).is_some() {
+            self.class_statement()
         } else if self.take(&TokenKind::If).is_some() {
             self.if_statement()
         } else if self.take(&TokenKind::Repeat).is_some() {
@@ -141,6 +143,30 @@ impl Parser {
                 parameters,
                 body,
             },
+            start.merge(&end.span),
+        ))
+    }
+
+    fn class_statement(&mut self) -> Result<Statement, Diagnostic> {
+        let start = self.previous().span.clone();
+        let (name, _) = self.expect_identifier("Expected a class name.")?;
+        self.require_line_break("Expected a new line before the class body.")?;
+        let mut methods = Vec::new();
+        while !self.at_end() && !self.check(&TokenKind::End) {
+            self.skip_newlines();
+            if self.check(&TokenKind::End) {
+                break;
+            }
+            if self.take(&TokenKind::Action).is_none() {
+                return Err(self.expected("Only actions may be declared directly inside a class."));
+            }
+            methods.push(self.function_statement()?);
+            self.skip_newlines();
+        }
+        let end = self.expect(&TokenKind::End, "Expected `end` after the class body.")?;
+        self.finish_simple_statement()?;
+        Ok(Node::new(
+            StatementKind::Class { name, methods },
             start.merge(&end.span),
         ))
     }
@@ -261,25 +287,41 @@ impl Parser {
 
     fn call(&mut self) -> Result<Expression, Diagnostic> {
         let mut expression = self.primary()?;
-        while self.take(&TokenKind::LeftParen).is_some() {
-            let mut arguments = Vec::new();
-            if !self.check(&TokenKind::RightParen) {
-                loop {
-                    arguments.push(self.expression()?);
-                    if self.take(&TokenKind::Comma).is_none() {
-                        break;
+        loop {
+            if self.take(&TokenKind::LeftParen).is_some() {
+                let mut arguments = Vec::new();
+                if !self.check(&TokenKind::RightParen) {
+                    loop {
+                        arguments.push(self.expression()?);
+                        if self.take(&TokenKind::Comma).is_none() {
+                            break;
+                        }
                     }
                 }
+                let close = self.expect(&TokenKind::RightParen, "Expected `)` after arguments.")?;
+                let span = expression.span.merge(&close.span);
+                expression = Node::new(
+                    ExpressionKind::Call {
+                        callee: Box::new(expression),
+                        arguments,
+                    },
+                    span,
+                );
+            } else if self.take(&TokenKind::Dot).is_some() {
+                let (name, member_span) =
+                    self.expect_identifier("Expected a member name after `.`.")?;
+                let span = expression.span.merge(&member_span);
+                expression = Node::new(
+                    ExpressionKind::Member {
+                        object: Box::new(expression),
+                        name,
+                        member_span,
+                    },
+                    span,
+                );
+            } else {
+                break;
             }
-            let close = self.expect(&TokenKind::RightParen, "Expected `)` after arguments.")?;
-            let span = expression.span.merge(&close.span);
-            expression = Node::new(
-                ExpressionKind::Call {
-                    callee: Box::new(expression),
-                    arguments,
-                },
-                span,
-            );
         }
         Ok(expression)
     }
