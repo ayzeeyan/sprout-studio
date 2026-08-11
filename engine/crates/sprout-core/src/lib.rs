@@ -13,6 +13,7 @@ pub mod source;
 pub mod token;
 
 use diagnostic::Diagnostic;
+pub use parser::SyntaxProfile;
 use source::SourceFile;
 
 /// High-level engine response suitable for CLI, FFI, and editor adapters.
@@ -27,7 +28,11 @@ pub struct CheckResult {
 
 /// Parses and semantically analyzes one source file without executing it.
 pub fn check(source: &SourceFile) -> CheckResult {
-    let parsed = parser::parse(source);
+    check_profile(source, SyntaxProfile::Guided)
+}
+
+pub fn check_profile(source: &SourceFile, profile: SyntaxProfile) -> CheckResult {
+    let parsed = parser::parse_profile(source, profile);
     let Some(program) = parsed.program else {
         return CheckResult {
             diagnostics: parsed.diagnostics,
@@ -40,7 +45,11 @@ pub fn check(source: &SourceFile) -> CheckResult {
 
 /// Parses and executes one source file through the canonical language pipeline.
 pub fn execute(source: &SourceFile) -> ExecutionResult {
-    let parsed = parser::parse(source);
+    execute_profile(source, SyntaxProfile::Guided)
+}
+
+pub fn execute_profile(source: &SourceFile, profile: SyntaxProfile) -> ExecutionResult {
+    let parsed = parser::parse_profile(source, profile);
     let Some(program) = parsed.program else {
         return ExecutionResult {
             output: Vec::new(),
@@ -71,5 +80,19 @@ mod tests {
         let result = execute(&source);
         assert!(result.output.is_empty());
         assert_eq!(result.diagnostics[0].code, "SPT201");
+    }
+
+    #[test]
+    fn every_profile_executes_through_the_same_engine_pipeline() {
+        let cases = [
+            (SyntaxProfile::Guided, "has value = 3\nprint(value)\n"),
+            (SyntaxProfile::Structured, "int value = 3;\nprint(value);\n"),
+            (SyntaxProfile::Advanced, "value := 3\nprint(value)\n"),
+        ];
+        for (profile, text) in cases {
+            let result = execute_profile(&SourceFile::new("test.spr", text), profile);
+            assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
+            assert_eq!(result.output, vec!["3"]);
+        }
     }
 }

@@ -1,6 +1,6 @@
-# Guided Sprout Grammar (Phase 1)
+# Guided Sprout Grammar
 
-This document describes only syntax implemented by the current parser. New lines terminate simple statements and delimit block headers. Blank lines and comments beginning with `#` are ignored.
+This document describes the Guided frontend. New lines terminate simple statements and delimit block headers. Blank lines and comments beginning with `#` are ignored. See [syntax-profiles.md](syntax-profiles.md) for Structured and Advanced forms.
 
 ```ebnf
 program        = { newline | statement }, EOF ;

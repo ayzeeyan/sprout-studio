@@ -1,11 +1,11 @@
-# Phase 2 Architecture
+# Phase 3 Architecture
 
 ## Implemented pipeline
 
 ```text
-Guided source
-    -> lexer (tokens and exact source spans)
-    -> Guided parser
+Guided / Structured / Advanced source
+    -> profile lexer rules (tokens and exact source spans)
+    -> profile parser
     -> canonical AST
     -> semantic analyzer (scopes, symbols, types, members)
     -> tree-walking runtime
@@ -14,7 +14,9 @@ Guided source
 
 `sprout-core` owns the language pipeline and has no dependency on the CLI, C#, WinUI, or external crates. `sprout-cli` is a thin adapter that reads source, calls high-level engine APIs, renders diagnostics, and selects an exit code. The runtime never evaluates generated Python or host-language source.
 
-The canonical AST is intentionally independent of Guided syntax. Future Structured and Advanced parsers must produce the same node types instead of translating text between profiles. Every token and AST node carries a `SourceSpan` with file, byte offsets, and one-based line/column coordinates.
+The canonical AST is independent of surface syntax. Guided, Structured, and Advanced parser paths produce the same node types without translating text between profiles. Advanced indentation is converted into structural `Indent`/`Dedent` tokens before parsing. Every source token and AST node carries a `SourceSpan` with file, byte offsets, and one-based line/column coordinates.
+
+`Program::semantically_equivalent` compares canonical structure while intentionally ignoring profile-specific source spans. Cross-profile tests use it to guarantee that equivalent declarations, functions, compound assignments, loops, calls, and expressions converge on the same meaning.
 
 The current workspace uses two crates rather than one crate per compiler stage. Compiler stages remain separate Rust modules with explicit data boundaries. They can be extracted when independent versioning, compile-time isolation, or reuse provides a concrete benefit; doing so now would add packaging overhead without improving the boundaries.
 
@@ -34,7 +36,6 @@ The runtime is a tree-walking AST interpreter with nested lexical environments. 
 
 ## Explicitly deferred
 
-- Structured and Advanced syntax frontends and AST equivalence tests (Phase 3)
 - WinUI Studio and Rust/C# FFI (Phase 4)
 - Project manifests and remaining CLI commands (Phase 5)
 - Fields, constructors with parameters, inheritance, lists, maps, modules/imports, and error handling

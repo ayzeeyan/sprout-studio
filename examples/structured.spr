@@ -1,0 +1,11 @@
+int score = 0;
+
+void addScore(int amount) {
+    score = score + amount;
+}
+
+repeat (3) {
+    addScore(1);
+}
+
+print(score);

@@ -68,3 +68,26 @@ fn semantic_member_error_renders_exact_symbol_and_suggestion() {
     assert!(stderr.contains("Did you mean `attack`?"), "{stderr}");
     fs::remove_dir_all(path.parent().unwrap()).unwrap();
 }
+
+#[test]
+fn all_syntax_profiles_execute_from_cli() {
+    let cases = [
+        ("guided", "has value = 3\nprint(value)\n"),
+        ("structured", "int value = 3;\nprint(value);\n"),
+        ("advanced", "value := 3\nprint(value)\n"),
+    ];
+    for (profile, source) in cases {
+        let path = source_file(&format!("{profile}.spr"), source);
+        let output = Command::new(env!("CARGO_BIN_EXE_sprout"))
+            .args(["run", "--profile", profile, path.to_str().unwrap()])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8(output.stdout).unwrap(), "3\n");
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+}

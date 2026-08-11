@@ -1,3 +1,4 @@
+use sprout_core::SyntaxProfile;
 use sprout_core::diagnostic::Diagnostic;
 use sprout_core::source::SourceFile;
 use std::env;
@@ -20,12 +21,8 @@ fn command(arguments: Vec<String>) -> Result<(), u8> {
 
     match command {
         "run" | "check" => {
-            if arguments.len() != 2 {
-                eprintln!("error: `{command}` expects exactly one .spr file\n");
-                print_help();
-                return Err(2);
-            }
-            run_file(Path::new(&arguments[1]), command == "run")
+            let (path, profile) = source_options(command, &arguments[1..])?;
+            run_file(Path::new(path), command == "run", profile)
         }
         "--help" | "-h" | "help" => {
             print_help();
@@ -43,7 +40,45 @@ fn command(arguments: Vec<String>) -> Result<(), u8> {
     }
 }
 
-fn run_file(path: &Path, execute: bool) -> Result<(), u8> {
+fn source_options<'a>(
+    command: &str,
+    arguments: &'a [String],
+) -> Result<(&'a str, SyntaxProfile), u8> {
+    let mut profile = SyntaxProfile::Guided;
+    let mut path = None;
+    let mut index = 0;
+    while index < arguments.len() {
+        if arguments[index] == "--profile" {
+            let Some(value) = arguments.get(index + 1) else {
+                eprintln!("error: `--profile` expects guided, structured, or advanced");
+                return Err(2);
+            };
+            profile = match value.as_str() {
+                "guided" => SyntaxProfile::Guided,
+                "structured" => SyntaxProfile::Structured,
+                "advanced" => SyntaxProfile::Advanced,
+                _ => {
+                    eprintln!(
+                        "error: unknown syntax profile `{value}`; expected guided, structured, or advanced"
+                    );
+                    return Err(2);
+                }
+            };
+            index += 2;
+        } else if path.replace(arguments[index].as_str()).is_some() {
+            eprintln!("error: `{command}` expects exactly one .spr file");
+            return Err(2);
+        } else {
+            index += 1;
+        }
+    }
+    path.map(|path| (path, profile)).ok_or_else(|| {
+        eprintln!("error: `{command}` expects one .spr file");
+        2
+    })
+}
+
+fn run_file(path: &Path, execute: bool, profile: SyntaxProfile) -> Result<(), u8> {
     if path.extension().and_then(|extension| extension.to_str()) != Some("spr") {
         eprintln!("error: expected a file with the .spr extension");
         return Err(2);
@@ -56,7 +91,7 @@ fn run_file(path: &Path, execute: bool) -> Result<(), u8> {
     let source = SourceFile::new(path.display().to_string(), text);
 
     if execute {
-        let result = sprout_core::execute(&source);
+        let result = sprout_core::execute_profile(&source, profile);
         if !result.diagnostics.is_empty() {
             render_diagnostics(&result.diagnostics, source.text());
             return Err(1);
@@ -65,7 +100,7 @@ fn run_file(path: &Path, execute: bool) -> Result<(), u8> {
             println!("{line}");
         }
     } else {
-        let result = sprout_core::check(&source);
+        let result = sprout_core::check_profile(&source, profile);
         if !result.diagnostics.is_empty() {
             render_diagnostics(&result.diagnostics, source.text());
             return Err(1);
@@ -115,6 +150,6 @@ fn render_diagnostics(diagnostics: &[Diagnostic], source: &str) {
 
 fn print_help() {
     println!(
-        "Sprout programming language\n\nUSAGE:\n    sprout <COMMAND> [FILE]\n\nCOMMANDS:\n    run <file.spr>      Parse and execute a program\n    check <file.spr>    Validate syntax without executing\n    help                Show this help\n\nOPTIONS:\n    -h, --help          Show this help\n    -V, --version       Show the version"
+        "Sprout programming language\n\nUSAGE:\n    sprout <COMMAND> [--profile <PROFILE>] <FILE>\n\nCOMMANDS:\n    run <file.spr>      Parse, analyze, and execute a program\n    check <file.spr>    Validate without executing\n    help                Show this help\n\nOPTIONS:\n    --profile <PROFILE> guided (default), structured, or advanced\n    -h, --help          Show this help\n    -V, --version       Show the version"
     );
 }

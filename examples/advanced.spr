@@ -1,0 +1,9 @@
+score := 0
+
+addScore(amount: Int) =>
+    score += amount
+
+repeat 3 =>
+    addScore(1)
+
+print(score)
