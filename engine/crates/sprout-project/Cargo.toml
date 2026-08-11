@@ -9,6 +9,7 @@ repository.workspace = true
 serde = { version = "1.0", features = ["derive"] }
 sprout-core = { path = "../sprout-core" }
 toml = "0.8"
+toml_edit = "0.22"
 
 [lints]
 workspace = true

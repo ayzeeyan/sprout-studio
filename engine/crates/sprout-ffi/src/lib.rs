@@ -8,7 +8,10 @@ use sprout_core::source::SourceFile;
 use sprout_core::{
     SyntaxProfile, check_profile, debug_profile_with_python, execute_profile_with_python,
 };
-use sprout_project::{ProjectError, ProjectTemplate, SproutProject, create_project, load_project};
+use sprout_project::{
+    DependencyKind, ProjectError, ProjectTemplate, SproutProject, build_project_bundle,
+    create_project, load_project, update_dependency,
+};
 use sprout_python::EmbeddedPythonHost;
 use std::fmt::Write;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -25,6 +28,11 @@ pub const SPROUT_OPERATION_DEBUG: u32 = 2;
 
 pub const SPROUT_LANGUAGE_INSPECT: u32 = 0;
 pub const SPROUT_LANGUAGE_FORMAT: u32 = 1;
+
+pub const SPROUT_DEPENDENCY_SPROUT: u32 = 0;
+pub const SPROUT_DEPENDENCY_PYTHON: u32 = 1;
+pub const SPROUT_DEPENDENCY_SET: u32 = 0;
+pub const SPROUT_DEPENDENCY_REMOVE: u32 = 1;
 
 pub const SPROUT_PROFILE_GUIDED: u32 = 0;
 pub const SPROUT_PROFILE_STRUCTURED: u32 = 1;
@@ -185,6 +193,102 @@ pub unsafe extern "C" fn sprout_project_create(
         Ok(Ok(response)) => response,
         Ok(Err(message)) => project_internal_error(&message),
         Err(_) => project_internal_error("The Sprout project service stopped unexpectedly."),
+    };
+    SproutBuffer::from_string(response)
+}
+
+/// Adds, updates, or removes one validated project dependency.
+///
+/// # Safety
+///
+/// Each pointer must be valid for its corresponding byte length for the duration
+/// of this call. Text must be UTF-8. The returned buffer must be freed exactly
+/// once with `sprout_buffer_free`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sprout_project_dependency(
+    kind: u32,
+    operation: u32,
+    project_path_data: *const u8,
+    project_path_length: usize,
+    name_data: *const u8,
+    name_length: usize,
+    requirement_data: *const u8,
+    requirement_length: usize,
+) -> SproutBuffer {
+    let response = match catch_unwind(AssertUnwindSafe(|| {
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let project_path =
+            unsafe { read_utf8(project_path_data, project_path_length, "project path") }?;
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let name = unsafe { read_utf8(name_data, name_length, "dependency name") }?;
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let requirement = unsafe {
+            read_utf8(
+                requirement_data,
+                requirement_length,
+                "dependency requirement",
+            )
+        }?;
+        let kind = match kind {
+            SPROUT_DEPENDENCY_SPROUT => DependencyKind::Sprout,
+            SPROUT_DEPENDENCY_PYTHON => DependencyKind::Python,
+            _ => return Err(format!("Unknown dependency kind value `{kind}`.")),
+        };
+        let requirement = match operation {
+            SPROUT_DEPENDENCY_SET => Some(requirement),
+            SPROUT_DEPENDENCY_REMOVE => None,
+            _ => return Err(format!("Unknown dependency operation value `{operation}`.")),
+        };
+        Ok::<String, String>(project_result_json(update_dependency(
+            project_path,
+            kind,
+            name,
+            requirement,
+        )))
+    })) {
+        Ok(Ok(response)) => response,
+        Ok(Err(message)) => project_internal_error(&message),
+        Err(_) => project_internal_error("The Sprout package service stopped unexpectedly."),
+    };
+    SproutBuffer::from_string(response)
+}
+
+/// Builds a validated, portable interpreted Sprout bundle.
+///
+/// # Safety
+///
+/// The pointer must be valid for its byte length for the duration of this call.
+/// Text must be UTF-8. The returned buffer must be freed exactly once with
+/// `sprout_buffer_free`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sprout_project_build(
+    project_path_data: *const u8,
+    project_path_length: usize,
+) -> SproutBuffer {
+    let response = match catch_unwind(AssertUnwindSafe(|| {
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let project_path =
+            unsafe { read_utf8(project_path_data, project_path_length, "project path") }?;
+        Ok::<String, String>(match build_project_bundle(project_path) {
+            Ok(artifact) => {
+                let mut json =
+                    String::from("{\"apiVersion\":1,\"success\":true,\"artifact\":{\"path\":");
+                push_json_string(&mut json, &portable_path(&artifact.path));
+                json.push_str(",\"target\":");
+                push_json_string(&mut json, &artifact.target);
+                let _ = write!(
+                    json,
+                    ",\"sourceCount\":{}}},\"diagnostics\":[]}}",
+                    artifact.source_count
+                );
+                json
+            }
+            Err(error) => build_error_json(&error),
+        })
+    })) {
+        Ok(Ok(response)) => response,
+        Ok(Err(message)) => build_internal_error(&message),
+        Err(_) => build_internal_error("The Sprout build service stopped unexpectedly."),
     };
     SproutBuffer::from_string(response)
 }
@@ -654,8 +758,27 @@ fn project_success_json(project: &SproutProject) -> String {
         }
         push_json_string(&mut json, &portable_path(path));
     }
-    json.push_str("]},\"diagnostics\":[]}");
+    json.push_str("],\"dependencies\":");
+    push_string_map_json(&mut json, &project.manifest.dependencies);
+    json.push_str(",\"pythonDependencies\":");
+    push_string_map_json(&mut json, &project.manifest.python);
+    json.push_str(",\"buildTarget\":");
+    push_json_string(&mut json, &project.manifest.build.target);
+    json.push_str("},\"diagnostics\":[]}");
     json
+}
+
+fn push_string_map_json(json: &mut String, values: &std::collections::BTreeMap<String, String>) {
+    json.push('{');
+    for (index, (name, requirement)) in values.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        push_json_string(json, name);
+        json.push(':');
+        push_json_string(json, requirement);
+    }
+    json.push('}');
 }
 
 fn project_error_json(error: &ProjectError) -> String {
@@ -687,6 +810,14 @@ fn project_internal_error(message: &str) -> String {
     push_json_string(&mut json, message);
     json.push_str(",\"path\":null}]}");
     json
+}
+
+fn build_error_json(error: &ProjectError) -> String {
+    project_error_json(error).replacen("\"project\":null", "\"artifact\":null", 1)
+}
+
+fn build_internal_error(message: &str) -> String {
+    project_internal_error(message).replacen("\"project\":null", "\"artifact\":null", 1)
 }
 
 fn portable_path(path: &Path) -> String {

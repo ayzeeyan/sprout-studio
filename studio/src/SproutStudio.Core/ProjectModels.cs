@@ -16,7 +16,10 @@ public sealed record ProjectInfo(
     string Version,
     string EntryPath,
     SyntaxProfile Profile,
-    IReadOnlyList<string> SourceFiles);
+    IReadOnlyList<string> SourceFiles,
+    IReadOnlyDictionary<string, string>? Dependencies = null,
+    IReadOnlyDictionary<string, string>? PythonDependencies = null,
+    string BuildTarget = "windows-x86_64");
 
 public sealed record ProjectDiagnostic(
     string Code,
@@ -40,6 +43,37 @@ public interface IProjectClient
         string destination,
         string name,
         ProjectTemplate template,
+        CancellationToken cancellationToken = default);
+}
+
+public enum ProjectDependencyKind
+{
+    Sprout = 0,
+    Python = 1,
+}
+
+public sealed record BuildArtifact(
+    string Path,
+    string Target,
+    int SourceCount);
+
+public sealed record BuildResponse(
+    int ApiVersion,
+    bool Success,
+    BuildArtifact? Artifact,
+    IReadOnlyList<ProjectDiagnostic> Diagnostics);
+
+public interface IProjectAdvancedClient
+{
+    Task<ProjectResponse> UpdateDependencyAsync(
+        string projectPath,
+        ProjectDependencyKind kind,
+        string name,
+        string? requirement,
+        CancellationToken cancellationToken = default);
+
+    Task<BuildResponse> BuildAsync(
+        string projectPath,
         CancellationToken cancellationToken = default);
 }
 

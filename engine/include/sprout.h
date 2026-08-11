@@ -14,6 +14,10 @@ extern "C" {
 #define SPROUT_OPERATION_DEBUG 2u
 #define SPROUT_LANGUAGE_INSPECT 0u
 #define SPROUT_LANGUAGE_FORMAT 1u
+#define SPROUT_DEPENDENCY_SPROUT 0u
+#define SPROUT_DEPENDENCY_PYTHON 1u
+#define SPROUT_DEPENDENCY_SET 0u
+#define SPROUT_DEPENDENCY_REMOVE 1u
 #define SPROUT_PROFILE_GUIDED 0u
 #define SPROUT_PROFILE_STRUCTURED 1u
 #define SPROUT_PROFILE_ADVANCED 2u
@@ -64,6 +68,20 @@ SproutBuffer sprout_project_create(
     size_t name_length,
     const uint8_t* template_data,
     size_t template_length);
+
+SproutBuffer sprout_project_dependency(
+    uint32_t kind,
+    uint32_t operation,
+    const uint8_t* project_path_data,
+    size_t project_path_length,
+    const uint8_t* name_data,
+    size_t name_length,
+    const uint8_t* requirement_data,
+    size_t requirement_length);
+
+SproutBuffer sprout_project_build(
+    const uint8_t* project_path_data,
+    size_t project_path_length);
 
 void sprout_buffer_free(SproutBuffer buffer);
 

@@ -166,6 +166,7 @@ dependencies = [
  "serde",
  "sprout-core",
  "toml",
+ "toml_edit",
 ]
 
 [[package]]

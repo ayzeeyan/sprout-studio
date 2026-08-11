@@ -7,6 +7,8 @@ use std::fmt;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
+use toml_edit::{DocumentMut, Item, Table, value};
 
 pub const MANIFEST_FILE_NAME: &str = "sprout.toml";
 pub const MANIFEST_FORMAT_VERSION: u32 = 1;
@@ -70,6 +72,28 @@ pub struct SproutProject {
     pub entry_path: PathBuf,
     pub profile: SyntaxProfile,
     pub source_files: Vec<PathBuf>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DependencyKind {
+    Sprout,
+    Python,
+}
+
+impl DependencyKind {
+    const fn section(self) -> &'static str {
+        match self {
+            Self::Sprout => "dependencies",
+            Self::Python => "python",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BuildArtifact {
+    pub path: PathBuf,
+    pub target: String,
+    pub source_count: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -316,6 +340,245 @@ pub fn create_project(
     load_project(destination)
 }
 
+pub fn update_dependency(
+    project_path: impl AsRef<Path>,
+    kind: DependencyKind,
+    name: &str,
+    requirement: Option<&str>,
+) -> Result<SproutProject, ProjectError> {
+    let project = load_project(project_path)?;
+    if !is_valid_dependency_name(name) {
+        return Err(ProjectError::one(
+            "SPP014",
+            format!("Invalid dependency name `{name}`."),
+            Some(project.manifest_path.clone()),
+        ));
+    }
+    if requirement.is_some_and(|value| value.trim().is_empty()) {
+        return Err(ProjectError::one(
+            "SPP014",
+            "A dependency version requirement cannot be empty.".to_owned(),
+            Some(project.manifest_path.clone()),
+        ));
+    }
+
+    let text = fs::read_to_string(&project.manifest_path).map_err(|error| {
+        ProjectError::one(
+            "SPP015",
+            format!("Could not read the project manifest for editing: {error}"),
+            Some(project.manifest_path.clone()),
+        )
+    })?;
+    let mut document = text.parse::<DocumentMut>().map_err(|error| {
+        ProjectError::one(
+            "SPP002",
+            format!("Invalid project manifest: {error}"),
+            Some(project.manifest_path.clone()),
+        )
+    })?;
+    let section_name = kind.section();
+    if !document.as_table().contains_key(section_name) {
+        document[section_name] = Item::Table(Table::new());
+    }
+    let section = document[section_name].as_table_mut().ok_or_else(|| {
+        ProjectError::one(
+            "SPP002",
+            format!("Manifest section `{section_name}` must be a table."),
+            Some(project.manifest_path.clone()),
+        )
+    })?;
+    match requirement {
+        Some(requirement) => {
+            section.insert(name, value(requirement.trim()));
+        }
+        None => {
+            section.remove(name);
+        }
+    }
+    replace_manifest(&project.manifest_path, &document.to_string())?;
+    load_project(&project.root)
+}
+
+pub fn build_project_bundle(project_path: impl AsRef<Path>) -> Result<BuildArtifact, ProjectError> {
+    let project = load_project(project_path)?;
+    let source = fs::read_to_string(&project.entry_path).map_err(|error| {
+        ProjectError::one(
+            "SPP020",
+            format!("Could not read the project entry before building: {error}"),
+            Some(project.entry_path.clone()),
+        )
+    })?;
+    let checked = sprout_core::check_profile(
+        &sprout_core::source::SourceFile::new(project.entry_path.to_string_lossy(), source),
+        project.profile,
+    );
+    if !checked.diagnostics.is_empty() {
+        let details = checked
+            .diagnostics
+            .iter()
+            .take(3)
+            .map(|diagnostic| format!("{}: {}", diagnostic.code, diagnostic.message))
+            .collect::<Vec<_>>()
+            .join("; ");
+        return Err(ProjectError::one(
+            "SPP020",
+            format!("Build stopped because the entry source is not valid: {details}"),
+            Some(project.entry_path.clone()),
+        ));
+    }
+
+    let build_root = project.root.join("build");
+    reject_linked_directory(&build_root)?;
+    fs::create_dir_all(&build_root).map_err(|error| {
+        ProjectError::one(
+            "SPP021",
+            format!("Could not create the build directory: {error}"),
+            Some(build_root.clone()),
+        )
+    })?;
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let artifact_path = build_root.join(format!(
+        "{}-{}-{unique}.sproutbundle",
+        project.manifest.project.name, project.manifest.build.target
+    ));
+    fs::create_dir(&artifact_path).map_err(|error| {
+        ProjectError::one(
+            "SPP021",
+            format!("Could not create the build artifact: {error}"),
+            Some(artifact_path.clone()),
+        )
+    })?;
+
+    let result = write_bundle(&project, &artifact_path);
+    if let Err(error) = result {
+        let _ = fs::remove_dir_all(&artifact_path);
+        return Err(error);
+    }
+    Ok(BuildArtifact {
+        path: artifact_path,
+        target: project.manifest.build.target,
+        source_count: project.source_files.len(),
+    })
+}
+
+fn replace_manifest(path: &Path, text: &str) -> Result<(), ProjectError> {
+    let directory = path.parent().expect("a manifest always has a parent");
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let temporary = directory.join(format!(
+        ".sprout-manifest-{}-{unique}.tmp",
+        std::process::id()
+    ));
+    let backup = directory.join(format!(
+        ".sprout-manifest-{}-{unique}.backup",
+        std::process::id()
+    ));
+    fs::write(&temporary, text).map_err(|error| {
+        ProjectError::one(
+            "SPP015",
+            format!("Could not stage the manifest update: {error}"),
+            Some(temporary.clone()),
+        )
+    })?;
+    if let Err(error) = fs::rename(path, &backup) {
+        let _ = fs::remove_file(&temporary);
+        return Err(ProjectError::one(
+            "SPP015",
+            format!("Could not prepare the manifest update: {error}"),
+            Some(path.to_path_buf()),
+        ));
+    }
+    if let Err(error) = fs::rename(&temporary, path) {
+        let restored = fs::rename(&backup, path);
+        return Err(ProjectError::one(
+            "SPP015",
+            match restored {
+                Ok(()) => format!("Could not activate the manifest update: {error}"),
+                Err(restore_error) => format!(
+                    "Could not activate the manifest update: {error}. Recovery also failed: {restore_error}. The original remains at {}.",
+                    backup.display()
+                ),
+            },
+            Some(path.to_path_buf()),
+        ));
+    }
+    let _ = fs::remove_file(backup);
+    Ok(())
+}
+
+fn reject_linked_directory(path: &Path) -> Result<(), ProjectError> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => Err(ProjectError::one(
+            "SPP021",
+            "The build directory cannot be a filesystem link.".to_owned(),
+            Some(path.to_path_buf()),
+        )),
+        Ok(metadata) if !metadata.is_dir() => Err(ProjectError::one(
+            "SPP021",
+            "The build path exists but is not a directory.".to_owned(),
+            Some(path.to_path_buf()),
+        )),
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(ProjectError::one(
+            "SPP021",
+            format!("Could not inspect the build directory: {error}"),
+            Some(path.to_path_buf()),
+        )),
+    }
+}
+
+fn write_bundle(project: &SproutProject, artifact_path: &Path) -> Result<(), ProjectError> {
+    for source in &project.source_files {
+        let relative = source.strip_prefix(&project.root).map_err(|_| {
+            ProjectError::one(
+                "SPP021",
+                "A project source resolved outside the project root.".to_owned(),
+                Some(source.clone()),
+            )
+        })?;
+        let destination = artifact_path.join(relative);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                ProjectError::one(
+                    "SPP021",
+                    format!("Could not create an artifact directory: {error}"),
+                    Some(parent.to_path_buf()),
+                )
+            })?;
+        }
+        fs::copy(source, &destination).map_err(|error| {
+            ProjectError::one(
+                "SPP021",
+                format!("Could not copy a project source: {error}"),
+                Some(source.clone()),
+            )
+        })?;
+    }
+    fs::copy(
+        &project.manifest_path,
+        artifact_path.join(MANIFEST_FILE_NAME),
+    )
+    .and_then(|_| {
+        fs::write(
+            artifact_path.join("README.txt"),
+            "Sprout validated interpreted bundle\n\nRun this bundle with a compatible Sprout runtime. This is not a native executable.\n",
+        )
+    })
+    .map_err(|error| {
+        ProjectError::one(
+            "SPP021",
+            format!("Could not finalize the build artifact: {error}"),
+            Some(artifact_path.to_path_buf()),
+        )
+    })
+}
+
 fn validate_manifest(
     manifest: &ProjectManifest,
     manifest_path: &Path,
@@ -370,10 +633,10 @@ fn validate_manifest(
         &mut issues,
     );
     validate_dependency_map("python", &manifest.python, manifest_path, &mut issues);
-    if manifest.build.target.trim().is_empty() {
+    if !is_valid_dependency_name(&manifest.build.target) {
         issues.push(ProjectIssue {
             code: "SPP013".to_owned(),
-            message: "Build target cannot be empty.".to_owned(),
+            message: "Build target must be a safe non-empty artifact name.".to_owned(),
             path: Some(manifest_path.to_path_buf()),
         });
     }
@@ -634,6 +897,67 @@ mod tests {
                 .count(),
             3
         );
+    }
+
+    #[test]
+    fn package_updates_preserve_manifest_comments_and_reload() {
+        let parent = TestDirectory::new("package-update");
+        let destination = parent.0.join("Packages");
+        let project = create_project(&destination, "Packages", ProjectTemplate::Guided).unwrap();
+        let manifest = fs::read_to_string(&project.manifest_path).unwrap();
+        fs::write(
+            &project.manifest_path,
+            manifest.replace("[python]", "# kept by the package hub\n[python]"),
+        )
+        .unwrap();
+
+        let updated = update_dependency(
+            &destination,
+            DependencyKind::Python,
+            "pygame",
+            Some("2.6.*"),
+        )
+        .unwrap();
+        assert_eq!(
+            updated.manifest.python.get("pygame"),
+            Some(&"2.6.*".to_owned())
+        );
+        assert!(
+            fs::read_to_string(&updated.manifest_path)
+                .unwrap()
+                .contains("# kept by the package hub")
+        );
+
+        let removed =
+            update_dependency(&destination, DependencyKind::Python, "pygame", None).unwrap();
+        assert!(!removed.manifest.python.contains_key("pygame"));
+    }
+
+    #[test]
+    fn build_creates_a_validated_interpreted_bundle() {
+        let parent = TestDirectory::new("build");
+        let destination = parent.0.join("Buildable");
+        create_project(&destination, "Buildable", ProjectTemplate::Guided).unwrap();
+
+        let artifact = build_project_bundle(&destination).unwrap();
+        assert_eq!(artifact.target, "windows-x86_64");
+        assert_eq!(artifact.source_count, 1);
+        assert!(artifact.path.join("sprout.toml").is_file());
+        assert!(artifact.path.join("src/main.spr").is_file());
+        let readme = fs::read_to_string(artifact.path.join("README.txt")).unwrap();
+        assert!(readme.contains("not a native executable"));
+    }
+
+    #[test]
+    fn build_stops_when_the_entry_has_diagnostics() {
+        let parent = TestDirectory::new("broken-build");
+        let destination = parent.0.join("BrokenBuild");
+        let project = create_project(&destination, "BrokenBuild", ProjectTemplate::Guided).unwrap();
+        fs::write(&project.entry_path, "print(missing)\n").unwrap();
+
+        let error = build_project_bundle(&destination).unwrap_err();
+        assert_eq!(error.issues[0].code, "SPP020");
+        assert!(!destination.join("build").exists());
     }
 
     #[test]
