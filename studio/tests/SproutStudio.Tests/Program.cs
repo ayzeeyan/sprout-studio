@@ -797,54 +797,61 @@ static async Task WinUiAcademyStarts()
                 [ProgrammingGoal.ComputerScience],
                 true),
         });
-        string executable = StudioExecutablePath();
-        var startInfo = new ProcessStartInfo(executable)
-        {
-            UseShellExecute = false,
-            WorkingDirectory = Path.GetDirectoryName(executable),
-            Arguments = "--open-academy",
-        };
-        startInfo.Environment["SPROUT_STUDIO_TEST_ACADEMY_STATE"] = statePath;
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start Sprout Studio Academy test.");
-        try
-        {
-            DateTime deadline = DateTime.UtcNow.AddSeconds(10);
-            do
-            {
-                await Task.Delay(250);
-                process.Refresh();
-                if (process.HasExited)
-                {
-                    throw new InvalidOperationException(
-                        $"Sprout Studio exited during Academy startup with code {process.ExitCode}.");
-                }
-            }
-            while ((!process.MainWindowTitle.Contains("— Academy", StringComparison.Ordinal)
-                    || process.MainWindowHandle == IntPtr.Zero)
-                && DateTime.UtcNow < deadline);
-
-            Assert(process.MainWindowHandle != IntPtr.Zero, "Academy did not create a main window.");
-            Assert(process.Responding, "Academy window is not responding.");
-            Assert(
-                process.MainWindowTitle.Contains("— Academy", StringComparison.Ordinal)
-                    && !process.MainWindowTitle.Contains("Failed", StringComparison.OrdinalIgnoreCase),
-                $"Sprout Studio did not open the functional Academy surface; title was `{process.MainWindowTitle}`.");
-            Assert(process.CloseMainWindow(), "Academy did not accept a normal close request.");
-            Assert(await WaitForExitAsync(process, TimeSpan.FromSeconds(5)), "Academy did not exit cleanly.");
-        }
-        finally
-        {
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync();
-            }
-        }
+        await AssertAcademyWindowStartsAsync(statePath, "Sprout Studio — Academy");
+        await AssertAcademyWindowStartsAsync(
+            Path.Combine(directory, "new-user.json"),
+            "Sprout Studio — Academy Profile");
     }
     finally
     {
         Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task AssertAcademyWindowStartsAsync(string statePath, string expectedTitle)
+{
+    string executable = StudioExecutablePath();
+    var startInfo = new ProcessStartInfo(executable)
+    {
+        UseShellExecute = false,
+        WorkingDirectory = Path.GetDirectoryName(executable),
+        Arguments = "--open-academy",
+    };
+    startInfo.Environment["SPROUT_STUDIO_TEST_ACADEMY_STATE"] = statePath;
+    using var process = Process.Start(startInfo)
+        ?? throw new InvalidOperationException("Could not start Sprout Studio Academy test.");
+    try
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(10);
+        do
+        {
+            await Task.Delay(250);
+            process.Refresh();
+            if (process.HasExited)
+            {
+                throw new InvalidOperationException(
+                    $"Sprout Studio exited during Academy startup with code {process.ExitCode}.");
+            }
+        }
+        while ((!string.Equals(process.MainWindowTitle, expectedTitle, StringComparison.Ordinal)
+                || process.MainWindowHandle == IntPtr.Zero)
+            && DateTime.UtcNow < deadline);
+
+        Assert(process.MainWindowHandle != IntPtr.Zero, "Academy did not create a main window.");
+        Assert(process.Responding, "Academy window is not responding.");
+        Assert(
+            string.Equals(process.MainWindowTitle, expectedTitle, StringComparison.Ordinal),
+            $"Sprout Studio did not open `{expectedTitle}`; title was `{process.MainWindowTitle}`.");
+        Assert(process.CloseMainWindow(), "Academy did not accept a normal close request.");
+        Assert(await WaitForExitAsync(process, TimeSpan.FromSeconds(5)), "Academy did not exit cleanly.");
+    }
+    finally
+    {
+        if (!process.HasExited)
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+        }
     }
 }
 

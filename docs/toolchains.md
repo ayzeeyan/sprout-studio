@@ -1,6 +1,6 @@
 # Toolchains
 
-Sprout is bundled with Sprout Studio. Rust and Go are external toolchains and are detected only when a user opens Toolchain Settings or a future external-language workflow requests them.
+Sprout is bundled with Sprout Studio. Rust and Go are external toolchains and are detected only when a user opens Toolchain Settings, enrolls in a matching Academy track, or a future external-language workflow requests them.
 
 ## Status model
 
@@ -40,7 +40,7 @@ Validated Rust and Go adapters expose Run, Build, Format, and Test capabilities 
 | Format | `cargo fmt` | `go fmt ./...` |
 | Test | `cargo test` | `go test ./...` |
 
-The Phase 7 Studio UI manages detection and paths. External-language project/editor integration that invokes these actions is deferred.
+Toolchain Settings manages detection and paths, while Phase 8 Academy reuses the same validated results for Rust/Go enrollment prerequisites. External-language project/editor integration that invokes these actions is deferred.
 
 ## Process safety
 

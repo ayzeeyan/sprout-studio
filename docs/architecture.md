@@ -1,4 +1,4 @@
-# Phase 7 Architecture
+# Phase 8 Architecture
 
 ## Implemented pipeline
 
@@ -55,7 +55,7 @@ The runtime is a tree-walking AST interpreter with nested lexical environments. 
 
 ## Studio boundary
 
-The WinUI 3 executable depends on three UI-independent .NET libraries. `SproutStudio.Core` owns document state and session orchestration, `SproutStudio.Interop` owns native library loading and response deserialization, and `SproutStudio.Toolchains` owns external-tool detection, validation, settings, and process execution. The UI passes structured requests to these services and renders results after returning to the UI thread.
+The WinUI 3 executable depends on four UI-independent .NET libraries. `SproutStudio.Core` owns document state and session orchestration, `SproutStudio.Interop` owns native library loading and response deserialization, `SproutStudio.Toolchains` owns external-tool detection, validation, settings, and process execution, and `SproutStudio.Academy` owns offline learning content, local state, recommendations, enrollment rules, progress, and achievements. The UI passes structured requests to these services and renders results after returning to the UI thread.
 
 The FFI exposes a small versioned surface: execute a structured request with optional project context, load or create a project, inspect the returned buffer, and free it with the matching Rust allocator. Panics are contained at the ABI boundary. C# never parses console text to recover diagnostics; source spans, related locations, suggestions, fixes, and project issues remain structured end to end. Rust byte offsets are converted to UTF-16 editor indices before WinUI navigation.
 
@@ -69,12 +69,22 @@ Process requests carry an executable, an argument list, an optional working dire
 
 Custom locations are stored in a versioned JSON document under local application data and replaced atomically. The manager exposes validated Run, Build, Format, and Test action requests for Rust and Go; editor/project UI for external-language projects remains deferred.
 
+## Academy system
+
+Academy content is authored in `academy/catalog.json`, embedded as an offline resource, and validated for unique identifiers and valid track/lesson/concept relationships when loaded. WinUI does not own track rules or lesson semantics. `AcademyService` coordinates the catalog, atomic local state store, recommendation engine, and Phase 7 `ToolchainManager`.
+
+The local state contains only a display name, preferred username, experience level, goals, gamification preference, enrollments, distinct completed lesson identifiers, and achievement timestamps. XP, levels, course completion, and earned achievements are projections of that durable state. Completing an existing lesson is idempotent and awards zero additional XP.
+
+Recommendations are ordered rules with user-visible explanations. Beginners receive Sprout fundamentals before their goal track; intermediate and advanced users receive their selected goal tracks directly. No AI capability is claimed. Cross-language concepts use linked Sprout, Rust, Go, and Python examples so the content teaches transferable ideas rather than isolated syntax.
+
+Rust and Go enrollment invokes validated detection only for tracks that require those external tools. Failed enrollment preserves the exact ready/missing/broken/partial/unsupported/custom state and offers auto-detection, persisted location selection, offline setup guidance, retry, and cancel. Other Academy workflows do not spawn external processes.
+
 ## Explicitly deferred
 
 - Fields, constructors with parameters, inheritance, Sprout collection literals, native Sprout modules/imports, and Sprout error handling
 - Python keyword arguments, assignment through Python indexes/members, and compatibility guarantees for arbitrary PyPI packages
 - Remaining CLI commands (`test`, `fmt`, `repl`, `add`, and `build`)
 - Graphical Package Hub, general Sprout package infrastructure, bytecode, and VM
-- Academy enrollment/toolchain prerequisites, automated toolchain installation, additional language adapters, and external-language project editors
+- Interactive Academy exercises and grading, cloud profile synchronization, automated toolchain installation, additional language adapters, and external-language project editors
 
 No deferred command or feature is exposed as if it works.
