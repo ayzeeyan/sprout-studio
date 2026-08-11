@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "engine/crates/sprout-core",
+    "engine/crates/sprout-project",
     "engine/crates/sprout-cli",
     "engine/crates/sprout-ffi",
 ]
