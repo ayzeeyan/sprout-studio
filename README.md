@@ -1,8 +1,8 @@
 # Sprout Studio
 
-Sprout Studio is the future Windows home for the Sprout programming language. This repository currently contains the completed Phase 1 language foundation: a dependency-free Rust engine and CLI that tokenize, parse, and execute real Guided Sprout source.
+Sprout Studio is the future Windows home for the Sprout programming language. This repository currently contains the completed Phase 2 language foundation: a dependency-free Rust engine and CLI that tokenize, parse, analyze, and execute real Guided Sprout source.
 
-The Studio GUI, semantic analyzer, additional syntax profiles, project system, Python interoperability, toolchain manager, and Academy are deliberately deferred. See [docs/architecture.md](docs/architecture.md) for the current boundaries and roadmap status.
+The Studio GUI, additional syntax profiles, project system, Python interoperability, toolchain manager, and Academy are deliberately deferred. See [docs/architecture.md](docs/architecture.md) for the current boundaries and roadmap status.
 
 ## Try Sprout
 
@@ -39,4 +39,3 @@ Detailed build instructions are in [docs/building.md](docs/building.md), and the
 ## License
 
 MIT
-

@@ -176,7 +176,9 @@ impl Analyzer {
                 name,
                 parameters,
                 body,
-            } => self.function(name, parameters, body, &statement.span, true, None),
+            } => {
+                self.function(name, parameters, body, &statement.span, true, None);
+            }
             StatementKind::Class { name, methods } => self.class(name, methods, &statement.span),
             StatementKind::Return(value) => {
                 if self.return_types.is_empty() {
@@ -206,7 +208,7 @@ impl Analyzer {
         span: &SourceSpan,
         declare: bool,
         self_type: Option<Type>,
-    ) {
+    ) -> Type {
         let signature = FunctionType {
             arity: Some(parameters.len()),
             return_type: Box::new(Type::Unknown),
@@ -237,8 +239,9 @@ impl Analyzer {
                 .and_then(|scope| scope.symbols.get_mut(name))
             && let SymbolKind::Function(function) = &mut symbol.kind
         {
-            *function.return_type = return_type;
+            *function.return_type = return_type.clone();
         }
+        return_type
     }
 
     fn class(&mut self, class_name: &str, methods: &[Statement], span: &SourceSpan) {
@@ -280,7 +283,7 @@ impl Analyzer {
                 body,
             } = &method.kind
             {
-                self.function(
+                let return_type = self.function(
                     method_name,
                     parameters,
                     body,
@@ -288,7 +291,13 @@ impl Analyzer {
                     false,
                     Some(Type::Instance(class_name.to_owned())),
                 );
-                // Return inference for methods can become flow-sensitive in a later phase.
+                if let Some(method) = self
+                    .classes
+                    .get_mut(class_name)
+                    .and_then(|class| class.methods.get_mut(method_name))
+                {
+                    *method.return_type = return_type;
+                }
             }
         }
     }
@@ -458,31 +467,33 @@ impl Analyzer {
     }
 
     fn merge_return_types(&mut self, name: &str, returns: &[Type], span: &SourceSpan) -> Type {
-        let mut inferred = Type::Nil;
+        let mut inferred: Option<Type> = None;
         for ty in returns {
-            if inferred == Type::Nil {
-                inferred = ty.clone();
-            } else if !compatible(&inferred, ty) {
+            let Some(current) = inferred.as_ref() else {
+                inferred = Some(ty.clone());
+                continue;
+            };
+            if !compatible(current, ty) {
                 self.diagnostics.push(Diagnostic::error(
                     "SPT214",
                     "Inconsistent return types",
                     format!(
                         "Action `{name}` returns both `{}` and `{}` values.",
-                        inferred.name(),
+                        current.name(),
                         ty.name()
                     ),
                     span.clone(),
                 ));
                 return Type::Unknown;
-            } else if is_numeric(&inferred) && is_numeric(ty) {
-                inferred = if inferred == Type::Float || ty == &Type::Float {
+            } else if is_numeric(current) && is_numeric(ty) {
+                inferred = Some(if current == &Type::Float || ty == &Type::Float {
                     Type::Float
                 } else {
                     Type::Int
-                };
+                });
             }
         }
-        inferred
+        inferred.unwrap_or(Type::Nil)
     }
 
     fn nested(&mut self, statements: &[Statement]) {
@@ -760,5 +771,13 @@ mod tests {
             "action choose(flag)\n  if flag\n    return 1\n  else\n    return \"one\"\n  end\nend\n",
         );
         assert_eq!(result.diagnostics[0].code, "SPT214");
+    }
+
+    #[test]
+    fn infers_method_return_type_for_following_expressions() {
+        let result = analyze_source(
+            "class Answer\n  action text()\n    return \"one\"\n  end\nend\nhas answer = Answer()\nprint(answer.text() - 1)\n",
+        );
+        assert_eq!(result.diagnostics[0].code, "SPT215");
     }
 }

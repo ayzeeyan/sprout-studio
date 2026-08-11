@@ -1,5 +1,4 @@
 use sprout_core::diagnostic::Diagnostic;
-use sprout_core::parser::parse;
 use sprout_core::source::SourceFile;
 use std::env;
 use std::fs;
@@ -66,7 +65,7 @@ fn run_file(path: &Path, execute: bool) -> Result<(), u8> {
             println!("{line}");
         }
     } else {
-        let result = parse(&source);
+        let result = sprout_core::check(&source);
         if !result.diagnostics.is_empty() {
             render_diagnostics(&result.diagnostics, source.text());
             return Err(1);

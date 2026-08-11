@@ -1,0 +1,8 @@
+class Greeter
+    action greet(name)
+        print("Hello " + name)
+    end
+end
+
+has greeter = Greeter()
+greeter.greet("Sprout")

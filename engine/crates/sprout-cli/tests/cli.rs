@@ -46,3 +46,25 @@ fn invalid_source_returns_diagnostic_and_failure() {
     assert!(stderr.contains("broken.spr:1:13"), "{stderr}");
     fs::remove_dir_all(path.parent().unwrap()).unwrap();
 }
+
+#[test]
+fn semantic_member_error_renders_exact_symbol_and_suggestion() {
+    let path = source_file(
+        "member.spr",
+        "class Player\n  action attack(enemy)\n    print(enemy)\n  end\nend\nhas player = Player()\nhas enemy = nil\nplayer.attck(enemy)\n",
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .args(["check", path.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("error[SPT204]: Unknown member"), "{stderr}");
+    assert!(stderr.contains("member.spr:8:8"), "{stderr}");
+    assert!(
+        stderr.contains("^^^^^ `Player` has no action named `attck`."),
+        "{stderr}"
+    );
+    assert!(stderr.contains("Did you mean `attack`?"), "{stderr}");
+    fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}

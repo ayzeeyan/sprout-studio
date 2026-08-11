@@ -6,7 +6,7 @@ This document describes only syntax implemented by the current parser. New lines
 program        = { newline | statement }, EOF ;
 statement      = variable | assignment | expression_stmt
                | if_stmt | repeat_stmt | while_stmt
-               | action | return_stmt ;
+               | action | class | return_stmt ;
 
 variable       = "has", identifier, "=", expression, line_end ;
 assignment     = identifier, "=", expression, line_end ;
@@ -23,6 +23,9 @@ while_stmt     = "while", expression, newline,
                  block, "end", line_end ;
 action         = "action", identifier, "(", [ parameters ], ")", newline,
                  block, "end", line_end ;
+class          = "class", identifier, newline,
+                 { newline | action },
+                 "end", line_end ;
 parameters     = identifier, { ",", identifier } ;
 block          = { newline | statement } ;
 
@@ -34,12 +37,11 @@ comparison     = term, { ( "<" | "<=" | ">" | ">=" ), term } ;
 term           = factor, { ( "+" | "-" ), factor } ;
 factor         = unary, { ( "*" | "/" | "%" ), unary } ;
 unary          = ( "not" | "-" ), unary | call ;
-call           = primary, { "(", [ arguments ], ")" } ;
+call           = primary, { "(", [ arguments ], ")" | ".", identifier } ;
 arguments      = expression, { ",", expression } ;
 primary        = integer | float | string | "true" | "false" | "nil"
                | identifier | "(", expression, ")" ;
 line_end       = newline | EOF ;
 ```
 
-Strings use double quotes and support `\\n`, `\\t`, `\\"`, and `\\\\`. Numeric literals are base-10 integers or decimal floats. Current values are `Int`, `Float`, `Bool`, `String`, `Nil`, and `Function`; lists, maps, and objects are deferred.
-
+Strings use double quotes and support `\\n`, `\\t`, `\\"`, and `\\\\`. Numeric literals are base-10 integers or decimal floats. Current values are `Int`, `Float`, `Bool`, `String`, `Nil`, `Function`, `Class`, and class instances. Phase 2 classes contain actions and use zero-argument construction; fields and custom constructors are deferred.
