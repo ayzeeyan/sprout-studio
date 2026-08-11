@@ -872,6 +872,20 @@ impl Parser {
                     },
                     span,
                 );
+            } else if self.take(&TokenKind::LeftBracket).is_some() {
+                let index = self.expression()?;
+                let close = self.expect(
+                    &TokenKind::RightBracket,
+                    "Expected `]` after the index expression.",
+                )?;
+                let span = expression.span.merge(&close.span);
+                expression = Node::new(
+                    ExpressionKind::Index {
+                        object: Box::new(expression),
+                        index: Box::new(index),
+                    },
+                    span,
+                );
             } else {
                 break;
             }
@@ -1073,8 +1087,10 @@ fn add_indentation(tokens: Vec<Token>) -> Result<Vec<Token>, Diagnostic> {
 
         let token = tokens[current].clone();
         match token.kind {
-            TokenKind::LeftParen => delimiter_depth += 1,
-            TokenKind::RightParen => delimiter_depth = delimiter_depth.saturating_sub(1),
+            TokenKind::LeftParen | TokenKind::LeftBracket => delimiter_depth += 1,
+            TokenKind::RightParen | TokenKind::RightBracket => {
+                delimiter_depth = delimiter_depth.saturating_sub(1);
+            }
             TokenKind::Eof => {
                 while indents.len() > 1 {
                     indents.pop();
@@ -1251,12 +1267,18 @@ mod tests {
     #[test]
     fn explicit_python_imports_are_equivalent_across_profiles() {
         let cases = [
-            (SyntaxProfile::Guided, "import python \"math\" as math\n"),
+            (
+                SyntaxProfile::Guided,
+                "import python \"json\" as json\nprint(json.loads(\"[3]\")[0])\n",
+            ),
             (
                 SyntaxProfile::Structured,
-                "import python \"math\" as math;\n",
+                "import python \"json\" as json;\nprint(json.loads(\"[3]\")[0]);\n",
             ),
-            (SyntaxProfile::Advanced, "import python \"math\" as math\n"),
+            (
+                SyntaxProfile::Advanced,
+                "import python \"json\" as json\nprint(json.loads(\"[3]\")[0])\n",
+            ),
         ];
         let programs = cases.map(|(profile, text)| {
             let result = parse_profile(&SourceFile::new("python.spr", text), profile);
@@ -1268,7 +1290,7 @@ mod tests {
         assert!(matches!(
             programs[0].statements[0].kind,
             StatementKind::ImportPython { ref module, ref alias }
-                if module == "math" && alias == "math"
+                if module == "json" && alias == "json"
         ));
     }
 }

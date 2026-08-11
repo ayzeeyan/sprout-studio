@@ -460,6 +460,37 @@ impl Analyzer {
                     Type::Unknown
                 }
             }
+            ExpressionKind::Index { object, index } => {
+                let object_type = self.expression(object);
+                let index_type = self.expression(index);
+                if object_type == Type::Dynamic {
+                    return Type::Dynamic;
+                }
+                if object_type == Type::String {
+                    if index_type != Type::Int
+                        && index_type != Type::Dynamic
+                        && index_type != Type::Unknown
+                    {
+                        self.diagnostics.push(Diagnostic::error(
+                            "SPT303",
+                            "Invalid index",
+                            "Strings require an Int index.",
+                            index.span.clone(),
+                        ));
+                        return Type::Unknown;
+                    }
+                    return Type::String;
+                }
+                if object_type != Type::Unknown {
+                    self.diagnostics.push(Diagnostic::error(
+                        "SPT303",
+                        "Invalid index",
+                        format!("Values of type `{}` cannot be indexed.", object_type.name()),
+                        object.span.clone(),
+                    ));
+                }
+                Type::Unknown
+            }
         }
     }
 

@@ -94,6 +94,10 @@ pub enum ExpressionKind {
         name: String,
         member_span: SourceSpan,
     },
+    Index {
+        object: Box<Expression>,
+        index: Box<Expression>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -302,6 +306,19 @@ fn equivalent_expression(left: &Expression, right: &Expression) -> bool {
                 ..
             },
         ) => left_name == right_name && equivalent_expression(left_object, right_object),
+        (
+            ExpressionKind::Index {
+                object: left_object,
+                index: left_index,
+            },
+            ExpressionKind::Index {
+                object: right_object,
+                index: right_index,
+            },
+        ) => {
+            equivalent_expression(left_object, right_object)
+                && equivalent_expression(left_index, right_index)
+        }
         _ => false,
     }
 }

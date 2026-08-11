@@ -51,6 +51,8 @@ impl<'a> Lexer<'a> {
                 ')' => self.single(TokenKind::RightParen, start),
                 '{' => self.single(TokenKind::LeftBrace, start),
                 '}' => self.single(TokenKind::RightBrace, start),
+                '[' => self.single(TokenKind::LeftBracket, start),
+                ']' => self.single(TokenKind::RightBracket, start),
                 ',' => self.single(TokenKind::Comma, start),
                 '.' => self.single(TokenKind::Dot, start),
                 ':' => self.one_or_two(TokenKind::Colon, TokenKind::ColonEqual, start),

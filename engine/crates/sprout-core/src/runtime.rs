@@ -446,6 +446,43 @@ impl<'a> Interpreter<'a> {
                     member_span,
                 )),
             },
+            ExpressionKind::Index { object, index } => {
+                let object = self.evaluate(object)?;
+                let index = self.evaluate(index)?;
+                self.index(object, index, &expression.span)
+            }
+        }
+    }
+
+    fn index(&self, object: Value, index: Value, span: &SourceSpan) -> RuntimeResult<Value> {
+        match (object, index) {
+            (Value::List(values), Value::Int(index)) => normalize_index(index, values.len())
+                .and_then(|index| values.get(index).cloned())
+                .ok_or_else(|| invalid_index("The list index is out of range.", span)),
+            (Value::Map(values), Value::String(index)) => values
+                .get(&index)
+                .cloned()
+                .ok_or_else(|| invalid_index(format!("The map has no key named `{index}`."), span)),
+            (Value::String(value), Value::Int(index)) => {
+                let length = value.chars().count();
+                normalize_index(index, length)
+                    .and_then(|index| value.chars().nth(index))
+                    .map(|character| Value::String(character.to_string()))
+                    .ok_or_else(|| invalid_index("The string index is out of range.", span))
+            }
+            (Value::Foreign(object), index) => {
+                let index = index.to_foreign().map_err(|message| {
+                    error("SPT302", "Python conversion failed", message, span)
+                })?;
+                object
+                    .get_index(&index)
+                    .map(Value::from_foreign)
+                    .map_err(|error| python_error(error, span))
+            }
+            (Value::List(_), _) => Err(invalid_index("Lists require an Int index.", span)),
+            (Value::Map(_), _) => Err(invalid_index("Maps require a String index.", span)),
+            (Value::String(_), _) => Err(invalid_index("Strings require an Int index.", span)),
+            _ => Err(invalid_index("This value cannot be indexed.", span)),
         }
     }
 
@@ -692,6 +729,22 @@ fn python_error(error: ForeignError, span: &SourceSpan) -> Diagnostic {
         format!("Embedded Python reported {error}."),
         span.clone(),
     )
+}
+
+fn normalize_index(index: i64, length: usize) -> Option<usize> {
+    let length = i64::try_from(length).ok()?;
+    let index = if index < 0 {
+        length.checked_add(index)?
+    } else {
+        index
+    };
+    usize::try_from(index)
+        .ok()
+        .filter(|index| *index < length as usize)
+}
+
+fn invalid_index(message: impl Into<String>, span: &SourceSpan) -> Diagnostic {
+    error("SPT303", "Invalid index", message, span)
 }
 
 fn error(

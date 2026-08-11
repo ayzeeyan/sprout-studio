@@ -51,6 +51,8 @@ pub trait ForeignObject: fmt::Debug {
 
     fn get_member(&self, name: &str) -> Result<ForeignValue, ForeignError>;
 
+    fn get_index(&self, index: &ForeignValue) -> Result<ForeignValue, ForeignError>;
+
     fn call(&self, arguments: &[ForeignValue]) -> Result<ForeignValue, ForeignError>;
 
     fn display(&self) -> Result<String, ForeignError>;

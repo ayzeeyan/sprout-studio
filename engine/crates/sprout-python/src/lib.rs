@@ -12,6 +12,7 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 const MAX_EAGER_CONVERSION_DEPTH: usize = 16;
+const MAX_EAGER_COLLECTION_ITEMS: usize = 1_024;
 
 pub struct EmbeddedPythonHost {
     project_packages: Option<PathBuf>,
@@ -147,6 +148,18 @@ impl ForeignObject for PythonObjectProxy {
         })
     }
 
+    fn get_index(&self, index: &ForeignValue) -> Result<ForeignValue, ForeignError> {
+        Python::attach(|py| {
+            let index = to_python(py, index).map_err(|error| foreign_error(py, error))?;
+            let value = self
+                .object
+                .bind(py)
+                .get_item(index)
+                .map_err(|error| foreign_error(py, error))?;
+            from_python(value, 0).map_err(|error| foreign_error(py, error))
+        })
+    }
+
     fn call(&self, arguments: &[ForeignValue]) -> Result<ForeignValue, ForeignError> {
         Python::attach(|py| {
             let values = arguments
@@ -189,6 +202,7 @@ fn from_python(value: Bound<'_, PyAny>, depth: usize) -> PyResult<ForeignValue> 
     }
     if depth < MAX_EAGER_CONVERSION_DEPTH
         && let Ok(list) = value.clone().cast_into::<PyList>()
+        && list.len() <= MAX_EAGER_COLLECTION_ITEMS
     {
         return list
             .iter()
@@ -198,6 +212,7 @@ fn from_python(value: Bound<'_, PyAny>, depth: usize) -> PyResult<ForeignValue> 
     }
     if depth < MAX_EAGER_CONVERSION_DEPTH
         && let Ok(dictionary) = value.clone().cast_into::<PyDict>()
+        && dictionary.len() <= MAX_EAGER_COLLECTION_ITEMS
     {
         let mut converted = BTreeMap::new();
         let mut all_string_keys = true;
@@ -405,11 +420,21 @@ mod tests {
     #[test]
     fn converts_safe_python_collections() {
         let result = execute(
-            "import python \"json\" as json\nprint(json.loads(\"{\\\"items\\\": [1, 2, true]}\"))\n",
+            "import python \"json\" as json\nhas data = json.loads(\"{\\\"items\\\": [1, 2, true]}\")\nprint(data[\"items\"][1])\n",
             None,
         );
         assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
-        assert_eq!(result.output, ["{items: [1, 2, true]}"]);
+        assert_eq!(result.output, ["2"]);
+    }
+
+    #[test]
+    fn keeps_large_python_collections_behind_an_indexable_proxy() {
+        let result = execute(
+            "import python \"builtins\" as builtins\nhas values = builtins.list(builtins.range(2000))\nprint(values[1999])\n",
+            None,
+        );
+        assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
+        assert_eq!(result.output, ["1999"]);
     }
 
     #[test]
