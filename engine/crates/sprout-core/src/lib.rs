@@ -5,6 +5,7 @@
 
 pub mod ast;
 pub mod diagnostic;
+pub mod interop;
 pub mod lexer;
 pub mod parser;
 pub mod runtime;
@@ -49,6 +50,24 @@ pub fn execute(source: &SourceFile) -> ExecutionResult {
 }
 
 pub fn execute_profile(source: &SourceFile, profile: SyntaxProfile) -> ExecutionResult {
+    execute_profile_with_runtime(source, profile, runtime::run)
+}
+
+pub fn execute_profile_with_python(
+    source: &SourceFile,
+    profile: SyntaxProfile,
+    python: &mut dyn interop::PythonHost,
+) -> ExecutionResult {
+    execute_profile_with_runtime(source, profile, |program| {
+        runtime::run_with_python(program, python)
+    })
+}
+
+fn execute_profile_with_runtime(
+    source: &SourceFile,
+    profile: SyntaxProfile,
+    run: impl FnOnce(&ast::Program) -> runtime::RunResult,
+) -> ExecutionResult {
     let parsed = parser::parse_profile(source, profile);
     let Some(program) = parsed.program else {
         return ExecutionResult {
@@ -63,7 +82,7 @@ pub fn execute_profile(source: &SourceFile, profile: SyntaxProfile) -> Execution
             diagnostics: analyzed.diagnostics,
         };
     }
-    let executed = runtime::run(&program);
+    let executed = run(&program);
     ExecutionResult {
         output: executed.output,
         diagnostics: executed.diagnostic.into_iter().collect(),

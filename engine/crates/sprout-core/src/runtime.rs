@@ -2,9 +2,10 @@ use crate::ast::{
     BinaryOperator, Expression, ExpressionKind, Program, Statement, StatementKind, UnaryOperator,
 };
 use crate::diagnostic::Diagnostic;
+use crate::interop::{ForeignError, ForeignObject, ForeignValue, PythonHost};
 use crate::source::SourceSpan;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::rc::Rc;
 
@@ -18,6 +19,9 @@ pub enum Value {
     Function(Rc<Function>),
     Class(Rc<Class>),
     Instance(Rc<Instance>),
+    List(Vec<Value>),
+    Map(BTreeMap<String, Value>),
+    Foreign(Rc<dyn ForeignObject>),
     NativePrint,
 }
 
@@ -38,6 +42,25 @@ impl fmt::Display for Value {
             Self::Function(function) => write!(formatter, "<action {}>", function.name),
             Self::Class(class) => write!(formatter, "<class {}>", class.name),
             Self::Instance(instance) => write!(formatter, "<{} instance>", instance.class.name),
+            Self::List(values) => write!(
+                formatter,
+                "[{}]",
+                values
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::Map(values) => write!(
+                formatter,
+                "{{{}}}",
+                values
+                    .iter()
+                    .map(|(key, value)| format!("{key}: {value}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::Foreign(object) => write!(formatter, "<python {}>", object.type_name()),
             Self::NativePrint => formatter.write_str("<native action print>"),
         }
     }
@@ -53,6 +76,8 @@ impl PartialEq for Value {
             (Self::Bool(left), Self::Bool(right)) => left == right,
             (Self::String(left), Self::String(right)) => left == right,
             (Self::Nil, Self::Nil) => true,
+            (Self::List(left), Self::List(right)) => left == right,
+            (Self::Map(left), Self::Map(right)) => left == right,
             _ => false,
         }
     }
@@ -64,12 +89,21 @@ pub struct RunResult {
 }
 
 pub fn run(program: &Program) -> RunResult {
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new(None);
+    run_with_interpreter(program, &mut interpreter)
+}
+
+pub fn run_with_python(program: &Program, python: &mut dyn PythonHost) -> RunResult {
+    let mut interpreter = Interpreter::new(Some(python));
+    run_with_interpreter(program, &mut interpreter)
+}
+
+fn run_with_interpreter(program: &Program, interpreter: &mut Interpreter<'_>) -> RunResult {
     let diagnostic = interpreter
         .execute_block(&program.statements, interpreter.globals.clone())
         .err();
     RunResult {
-        output: interpreter.output,
+        output: std::mem::take(&mut interpreter.output),
         diagnostic,
     }
 }
@@ -135,10 +169,11 @@ impl Environment {
     }
 }
 
-struct Interpreter {
+struct Interpreter<'a> {
     globals: Environment,
     environment: Environment,
     output: Vec<String>,
+    python: Option<&'a mut dyn PythonHost>,
 }
 
 enum Flow {
@@ -148,14 +183,15 @@ enum Flow {
 
 type RuntimeResult<T> = Result<T, Diagnostic>;
 
-impl Interpreter {
-    fn new() -> Self {
+impl<'a> Interpreter<'a> {
+    fn new(python: Option<&'a mut dyn PythonHost>) -> Self {
         let globals = Environment::new(None);
         globals.define("print".into(), Value::NativePrint);
         Self {
             globals: globals.clone(),
             environment: globals,
             output: Vec::new(),
+            python,
         }
     }
 
@@ -179,13 +215,20 @@ impl Interpreter {
 
     fn execute(&mut self, statement: &Statement) -> RuntimeResult<Flow> {
         match &statement.kind {
-            StatementKind::ImportPython { .. } => {
-                return Err(error(
-                    "SPT300",
-                    "Python runtime unavailable",
-                    "This engine host did not provide the embedded Python runtime.",
-                    &statement.span,
-                ));
+            StatementKind::ImportPython { module, alias } => {
+                let python = self.python.as_deref_mut().ok_or_else(|| {
+                    error(
+                        "SPT300",
+                        "Python runtime unavailable",
+                        "This engine host did not provide the embedded Python runtime.",
+                        &statement.span,
+                    )
+                })?;
+                let value = python
+                    .import_module(module)
+                    .map(Value::from_foreign)
+                    .map_err(|error| python_error(error, &statement.span))?;
+                self.environment.define(alias.clone(), value);
             }
             StatementKind::Variable { name, initializer } => {
                 let value = self.evaluate(initializer)?;
@@ -374,27 +417,35 @@ impl Interpreter {
                     .collect::<RuntimeResult<Vec<_>>>()?;
                 self.call(callee, arguments, &expression.span)
             }
-            ExpressionKind::Member { object, name, .. } => {
-                let Value::Instance(instance) = self.evaluate(object)? else {
-                    return Err(error(
-                        "SPT204",
-                        "Unknown member",
-                        "Only class instances expose members.",
-                        &expression.span,
-                    ));
-                };
-                let function = instance.class.methods.get(name).ok_or_else(|| {
-                    error(
-                        "SPT204",
-                        "Unknown member",
-                        format!("`{}` has no action named `{name}`.", instance.class.name),
-                        &expression.span,
-                    )
-                })?;
-                let mut bound = function.as_ref().clone();
-                bound.bound_self = Some(Value::Instance(instance));
-                Ok(Value::Function(Rc::new(bound)))
-            }
+            ExpressionKind::Member {
+                object,
+                name,
+                member_span,
+            } => match self.evaluate(object)? {
+                Value::Instance(instance) => {
+                    let function = instance.class.methods.get(name).ok_or_else(|| {
+                        error(
+                            "SPT204",
+                            "Unknown member",
+                            format!("`{}` has no action named `{name}`.", instance.class.name),
+                            member_span,
+                        )
+                    })?;
+                    let mut bound = function.as_ref().clone();
+                    bound.bound_self = Some(Value::Instance(instance));
+                    Ok(Value::Function(Rc::new(bound)))
+                }
+                Value::Foreign(object) => object
+                    .get_member(name)
+                    .map(Value::from_foreign)
+                    .map_err(|error| python_error(error, member_span)),
+                _ => Err(error(
+                    "SPT204",
+                    "Unknown member",
+                    "Only class instances and Python objects expose members.",
+                    member_span,
+                )),
+            },
         }
     }
 
@@ -408,8 +459,8 @@ impl Interpreter {
             Value::NativePrint => {
                 let line = arguments
                     .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>()
+                    .map(|value| value.render(span))
+                    .collect::<RuntimeResult<Vec<_>>>()?
                     .join(" ");
                 self.output.push(line);
                 Ok(Value::Nil)
@@ -450,6 +501,19 @@ impl Interpreter {
                     ));
                 }
                 Ok(Value::Instance(Rc::new(Instance { class })))
+            }
+            Value::Foreign(object) => {
+                let arguments = arguments
+                    .iter()
+                    .map(Value::to_foreign)
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|message| {
+                        error("SPT302", "Python conversion failed", message, span)
+                    })?;
+                object
+                    .call(&arguments)
+                    .map(Value::from_foreign)
+                    .map_err(|error| python_error(error, span))
             }
             _ => Err(error(
                 "SPT206",
@@ -557,6 +621,77 @@ impl Value {
             _ => None,
         }
     }
+
+    fn from_foreign(value: ForeignValue) -> Self {
+        match value {
+            ForeignValue::Int(value) => Self::Int(value),
+            ForeignValue::Float(value) => Self::Float(value),
+            ForeignValue::Bool(value) => Self::Bool(value),
+            ForeignValue::String(value) => Self::String(value),
+            ForeignValue::Nil => Self::Nil,
+            ForeignValue::List(values) => {
+                Self::List(values.into_iter().map(Self::from_foreign).collect())
+            }
+            ForeignValue::Map(values) => Self::Map(
+                values
+                    .into_iter()
+                    .map(|(key, value)| (key, Self::from_foreign(value)))
+                    .collect(),
+            ),
+            ForeignValue::Object(object) => Self::Foreign(object),
+        }
+    }
+
+    fn to_foreign(&self) -> Result<ForeignValue, String> {
+        match self {
+            Self::Int(value) => Ok(ForeignValue::Int(*value)),
+            Self::Float(value) => Ok(ForeignValue::Float(*value)),
+            Self::Bool(value) => Ok(ForeignValue::Bool(*value)),
+            Self::String(value) => Ok(ForeignValue::String(value.clone())),
+            Self::Nil => Ok(ForeignValue::Nil),
+            Self::List(values) => values
+                .iter()
+                .map(Self::to_foreign)
+                .collect::<Result<Vec<_>, _>>()
+                .map(ForeignValue::List),
+            Self::Map(values) => values
+                .iter()
+                .map(|(key, value)| value.to_foreign().map(|value| (key.clone(), value)))
+                .collect::<Result<BTreeMap<_, _>, _>>()
+                .map(ForeignValue::Map),
+            Self::Foreign(object) => Ok(ForeignValue::Object(object.clone())),
+            Self::Function(_) | Self::Class(_) | Self::Instance(_) | Self::NativePrint => Err(
+                "Sprout actions, classes, instances, and native actions cannot be passed to Python yet."
+                    .to_owned(),
+            ),
+        }
+    }
+
+    fn render(&self, span: &SourceSpan) -> RuntimeResult<String> {
+        match self {
+            Self::Foreign(object) => object.display().map_err(|error| python_error(error, span)),
+            Self::List(values) => values
+                .iter()
+                .map(|value| value.render(span))
+                .collect::<RuntimeResult<Vec<_>>>()
+                .map(|values| format!("[{}]", values.join(", "))),
+            Self::Map(values) => values
+                .iter()
+                .map(|(key, value)| value.render(span).map(|value| format!("{key}: {value}")))
+                .collect::<RuntimeResult<Vec<_>>>()
+                .map(|values| format!("{{{}}}", values.join(", "))),
+            _ => Ok(self.to_string()),
+        }
+    }
+}
+
+fn python_error(error: ForeignError, span: &SourceSpan) -> Diagnostic {
+    Diagnostic::error(
+        "SPT301",
+        "Python exception",
+        format!("Embedded Python reported {error}."),
+        span.clone(),
+    )
 }
 
 fn error(
