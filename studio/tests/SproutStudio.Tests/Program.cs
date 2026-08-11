@@ -13,6 +13,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Native project API creates and reloads templates", NativeProjectCreatesAndLoads),
     ("Native project API returns validation diagnostics", NativeProjectValidation),
     ("Recent projects persist without duplicates", RecentProjectsPersistWithoutDuplicates),
+    ("Recent projects retain only the ten newest entries", RecentProjectsRetainTenNewest),
     ("Studio session saves edited source atomically", StudioSessionSavesSource),
     ("Studio session saves a new source file", StudioSessionSavesNewSource),
     ("Phase 5 project workflow executes edited source", PhaseFiveProjectWorkflow),
@@ -188,6 +189,36 @@ static async Task RecentProjectsPersistWithoutDuplicates()
         IReadOnlyList<RecentProject> recent = await new RecentProjectStore(settingsPath).LoadAsync();
         Assert(recent.Count == 1, "duplicate project was retained");
         Assert(recent[0].Name == "RecentProject", "recent project was not persisted");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task RecentProjectsRetainTenNewest()
+{
+    string directory = TemporaryDirectory("recent-project-limit");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        var store = new RecentProjectStore(Path.Combine(directory, "recent-projects.json"));
+        IReadOnlyList<RecentProject> recent = [];
+        for (int index = 0; index < 12; index++)
+        {
+            string root = Path.Combine(directory, $"Project{index}");
+            recent = await store.AddAsync(new ProjectInfo(
+                root,
+                Path.Combine(root, "sprout.toml"),
+                $"Project{index}",
+                "0.1.0",
+                Path.Combine(root, "src", "main.spr"),
+                SyntaxProfile.Guided,
+                []));
+        }
+        Assert(recent.Count == 10, "recent project limit was not enforced");
+        Assert(recent[0].Name == "Project11", "newest project was not first");
+        Assert(recent[^1].Name == "Project2", "oldest retained project was incorrect");
     }
     finally
     {

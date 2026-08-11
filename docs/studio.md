@@ -1,6 +1,6 @@
 # Sprout Studio
 
-Phase 5 provides an end-to-end Windows project workflow for Sprout. The x64 WinUI 3 application can create a project from any syntax template, validate and open `sprout.toml`, browse project sources, save edits, check and run through the real Rust engine, and reopen recent projects.
+Phase 5 provides an end-to-end Windows project workflow for Sprout. The x64 WinUI 3 application can create and save individual `.spr` files, create a project from any syntax template, validate and open `sprout.toml`, browse project sources, save edits, check and run through the real Rust engine, and reopen recent projects.
 
 ## Workflow
 
@@ -10,7 +10,7 @@ Phase 5 provides an end-to-end Windows project workflow for Sprout. The x64 WinU
 4. Select **Check** to validate without executing, or **Run** to execute.
 5. Read program output in **Console** and structured diagnostics in **Problems**. Recent projects remain available in the left pane.
 
-Selecting a problem moves the editor selection to its source span. Engine work runs asynchronously so execution does not block the WinUI thread.
+Selecting a problem moves the editor selection to its source span, including when non-ASCII text precedes the error. Engine work runs asynchronously so execution does not block the WinUI thread.
 
 ## Current boundary
 

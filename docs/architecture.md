@@ -16,7 +16,7 @@ Guided / Structured / Advanced source
 
 The canonical AST is independent of surface syntax. Guided, Structured, and Advanced parser paths produce the same node types without translating text between profiles. Advanced indentation is converted into structural `Indent`/`Dedent` tokens before parsing. Every source token and AST node carries a `SourceSpan` with file, byte offsets, and one-based line/column coordinates.
 
-`Program::semantically_equivalent` compares canonical structure while intentionally ignoring profile-specific source spans. Cross-profile tests use it to guarantee that equivalent declarations, functions, compound assignments, loops, calls, and expressions converge on the same meaning.
+`Program::semantically_equivalent` compares canonical structure while intentionally ignoring profile-specific source spans. Cross-profile tests guarantee that equivalent declarations, functions, compound assignments, loops, branches, classes, member calls, returns, and expressions converge on the same meaning.
 
 Compiler stages remain separate Rust modules with explicit data boundaries inside `sprout-core`. Project behavior is a separate crate because both CLI and Studio consume it and it has its own manifest and filesystem concerns.
 
@@ -24,13 +24,13 @@ Compiler stages remain separate Rust modules with explicit data boundaries insid
 
 `sprout.toml` begins with `manifest_version = 1`. Loading rejects unsupported versions, malformed names or semantic versions, unknown syntax profiles, unsafe entry paths, missing entries, invalid dependency requirements, and entries that resolve outside the project root. Validation issues use stable `SPP` codes and cross the FFI as structured data.
 
-Templates are written to a temporary sibling and renamed into place only after every file succeeds, so failed creation does not present a partial project as valid. A generated project contains `src/main.spr`, an isolated `.sprout` state directory, and a `.gitignore` rule that prevents local dependency state from being committed.
+Templates are written to a temporary sibling and renamed into place only after every file succeeds, so failed creation does not present a partial project as valid. A generated project contains `src/main.spr`, an isolated `.sprout/python` environment directory, and a `.gitignore` rule that prevents local dependency state from being committed. Source discovery does not follow directory symlinks, and the canonical entry path must remain inside the project root.
 
 CLI `run` and `check` load the manifest and use its entry and syntax profile. Studio calls the same Rust loader through FFI, displays discovered sources in its project explorer, and persists at most ten de-duplicated recent projects in local application data.
 
 ## Error model
 
-Lexer, parser, semantic, and runtime failures produce `Diagnostic` values containing a stable code, severity, title, message, source span, and suggestions collection. Invalid user source returns diagnostics and a nonzero CLI status rather than causing a Rust panic. Suggestions are selected only from symbols or members visible in the diagnosed context.
+Lexer, parser, semantic, and runtime failures produce `Diagnostic` values containing a stable code, severity, title, message, source span, related locations, suggestions, and optional replacement fixes. Invalid user source returns diagnostics and a nonzero CLI status rather than causing a Rust panic. Suggestions and fixes are selected only from symbols or members visible in the diagnosed context.
 
 ## Semantic system
 
@@ -46,7 +46,7 @@ The runtime is a tree-walking AST interpreter with nested lexical environments. 
 
 The WinUI 3 executable depends on two UI-independent .NET libraries. `SproutStudio.Core` owns document state and session orchestration, while `SproutStudio.Interop` owns native library loading and response deserialization. The UI passes structured requests to the Rust FFI on a worker thread and renders output or diagnostics after returning to the UI thread.
 
-The FFI exposes a small versioned surface: execute a structured request, load or create a project, inspect the returned buffer, and free it with the matching Rust allocator. Panics are contained at the ABI boundary. C# never parses console text to recover diagnostics; source spans, project issues, and suggestions remain structured end to end.
+The FFI exposes a small versioned surface: execute a structured request, load or create a project, inspect the returned buffer, and free it with the matching Rust allocator. Panics are contained at the ABI boundary. C# never parses console text to recover diagnostics; source spans, related locations, suggestions, fixes, and project issues remain structured end to end. Rust byte offsets are converted to UTF-16 editor indices before WinUI navigation.
 
 ## Explicitly deferred
 

@@ -141,6 +141,25 @@ fn new_creates_and_runs_each_project_template() {
 }
 
 #[test]
+fn new_without_path_creates_a_named_child_of_the_current_directory() {
+    let parent = temporary_directory("default-project-path");
+    fs::create_dir_all(&parent).unwrap();
+    let create = Command::new(env!("CARGO_BIN_EXE_sprout"))
+        .current_dir(&parent)
+        .args(["new", "DefaultPath"])
+        .output()
+        .unwrap();
+    assert!(
+        create.status.success(),
+        "{}",
+        String::from_utf8_lossy(&create.stderr)
+    );
+    assert!(parent.join("DefaultPath/sprout.toml").is_file());
+    assert!(parent.join("DefaultPath/.sprout/python").is_dir());
+    fs::remove_dir_all(parent).unwrap();
+}
+
+#[test]
 fn run_uses_the_manifest_syntax_profile() {
     let destination = temporary_directory("profile").join("StructuredProject");
     let create = Command::new(env!("CARGO_BIN_EXE_sprout"))

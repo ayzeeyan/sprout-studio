@@ -398,8 +398,7 @@ fn validate_project_name(name: &str, path: Option<&Path>) -> Result<(), ProjectE
     } else {
         Err(ProjectError::one(
             "SPP004",
-            "Project name must start with a letter and contain only letters, numbers, '-' or '_'."
-                .to_owned(),
+            "Project name must be at most 64 characters, start with a letter, and contain only letters, numbers, '-' or '_'.".to_owned(),
             path.map(Path::to_path_buf),
         ))
     }
@@ -412,20 +411,30 @@ fn validate_dependency_map(
     issues: &mut Vec<ProjectIssue>,
 ) {
     for (name, version) in values {
-        let valid_name = !name.is_empty()
-            && name.chars().all(|character| {
-                character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.')
-            });
+        let valid_name = is_valid_dependency_name(name);
         if !valid_name || version.trim().is_empty() {
             issues.push(ProjectIssue {
                 code: "SPP014".to_owned(),
                 message: format!(
-                    "Invalid `{section}` entry `{name}`; names and version requirements must be non-empty."
+                    "Invalid `{section}` entry `{name}`; names must start and end with a letter or number, use only letters, numbers, '-', '_' or '.', and have a non-empty version requirement."
                 ),
                 path: Some(manifest_path.to_path_buf()),
             });
         }
     }
+}
+
+fn is_valid_dependency_name(name: &str) -> bool {
+    name.chars()
+        .next()
+        .is_some_and(|character| character.is_ascii_alphanumeric())
+        && name
+            .chars()
+            .last()
+            .is_some_and(|character| character.is_ascii_alphanumeric())
+        && name.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.')
+        })
 }
 
 fn is_semantic_version(version: &str) -> bool {
@@ -446,7 +455,12 @@ fn is_safe_relative_source(path: &Path) -> bool {
 }
 
 fn collect_source_files(directory: &Path, output: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    if !directory.exists() {
+    let metadata = match fs::symlink_metadata(directory) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
         return Ok(());
     }
     let mut entries: Vec<_> = fs::read_dir(directory)?.collect::<Result<_, _>>()?;
@@ -474,7 +488,7 @@ fn write_template(
     template: ProjectTemplate,
 ) -> Result<(), ProjectError> {
     fs::create_dir_all(directory.join("src"))
-        .and_then(|()| fs::create_dir_all(directory.join(".sprout")))
+        .and_then(|()| fs::create_dir_all(directory.join(".sprout/python")))
         .and_then(|()| {
             fs::write(
                 directory.join(MANIFEST_FILE_NAME),
@@ -537,7 +551,7 @@ mod tests {
                 destination.join("src/main.spr").canonicalize().unwrap()
             );
             assert_eq!(project.source_files, vec![project.entry_path.clone()]);
-            assert!(destination.join(".sprout").is_dir());
+            assert!(destination.join(".sprout/python").is_dir());
             assert!(destination.join(".gitignore").is_file());
         }
     }
@@ -594,5 +608,74 @@ mod tests {
         fs::create_dir_all(&parent.0).unwrap();
         let error = create_project(&parent.0, "Existing", ProjectTemplate::Guided).unwrap_err();
         assert_eq!(error.issues[0].code, "SPP012");
+    }
+
+    #[test]
+    fn rejects_unsafe_dependency_names_and_empty_requirements() {
+        let parent = TestDirectory::new("dependencies");
+        let destination = parent.0.join("Dependencies");
+        create_project(&destination, "Dependencies", ProjectTemplate::Guided).unwrap();
+        let path = destination.join(MANIFEST_FILE_NAME);
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(
+            &path,
+            text.replace(
+                "[dependencies]\n\n[python]",
+                "[dependencies]\n\"..\" = \"1.0\"\n\"-escape\" = \"1.0\"\n\"valid.package\" = \"1.0\"\n\n[python]\nnumpy = \"\"",
+            ),
+        )
+        .unwrap();
+        let error = load_project(&destination).unwrap_err();
+        assert_eq!(
+            error
+                .issues
+                .iter()
+                .filter(|issue| issue.code == "SPP014")
+                .count(),
+            3
+        );
+    }
+
+    #[test]
+    fn source_discovery_does_not_follow_a_symlinked_src_directory() {
+        let parent = TestDirectory::new("source-symlink");
+        let destination = parent.0.join("Contained");
+        create_project(&destination, "Contained", ProjectTemplate::Guided).unwrap();
+
+        let manifest_path = destination.join(MANIFEST_FILE_NAME);
+        let manifest = fs::read_to_string(&manifest_path).unwrap();
+        fs::write(&manifest_path, manifest.replace("src/main.spr", "main.spr")).unwrap();
+        fs::write(destination.join("main.spr"), "print(\"contained\")\n").unwrap();
+        fs::remove_dir_all(destination.join("src")).unwrap();
+
+        let outside = parent.0.join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("private.spr"), "print(\"outside\")\n").unwrap();
+        if let Err(error) = create_directory_symlink(&outside, &destination.join("src")) {
+            #[cfg(windows)]
+            if error.kind() == std::io::ErrorKind::PermissionDenied {
+                return;
+            }
+            panic!("could not create test directory symlink: {error}");
+        }
+
+        let project = load_project(&destination).unwrap();
+        assert_eq!(project.source_files, vec![project.entry_path.clone()]);
+        assert!(
+            !project
+                .source_files
+                .iter()
+                .any(|path| path.starts_with(&outside))
+        );
+    }
+
+    #[cfg(unix)]
+    fn create_directory_symlink(target: &Path, link: &Path) -> std::io::Result<()> {
+        std::os::unix::fs::symlink(target, link)
+    }
+
+    #[cfg(windows)]
+    fn create_directory_symlink(target: &Path, link: &Path) -> std::io::Result<()> {
+        std::os::windows::fs::symlink_dir(target, link)
     }
 }
