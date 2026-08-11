@@ -13,7 +13,7 @@ pub struct Diagnostic {
     pub severity: Severity,
     pub title: String,
     pub message: String,
-    pub span: SourceSpan,
+    pub span: Box<SourceSpan>,
     pub suggestions: Vec<String>,
 }
 
@@ -29,7 +29,7 @@ impl Diagnostic {
             severity: Severity::Error,
             title: title.into(),
             message: message.into(),
-            span,
+            span: Box::new(span),
             suggestions: Vec::new(),
         }
     }
