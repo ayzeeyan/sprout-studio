@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 sprout-core = { path = "../sprout-core" }
+sprout-project = { path = "../sprout-project" }
 
 [lints.rust]
 unsafe_code = "allow"
-

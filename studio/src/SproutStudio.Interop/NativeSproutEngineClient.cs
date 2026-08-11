@@ -1,17 +1,19 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SproutStudio.Core;
 
 namespace SproutStudio.Interop;
 
-public sealed partial class NativeSproutEngineClient : IEngineClient
+public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectClient
 {
     public const int SupportedApiVersion = 1;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
     public Task<EngineResponse> ExecuteAsync(
@@ -22,11 +24,44 @@ public sealed partial class NativeSproutEngineClient : IEngineClient
         return Task.Run(() => Execute(request), cancellationToken);
     }
 
+    public Task<ProjectResponse> LoadAsync(
+        string projectPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
+        return Task.Run(() => LoadProject(projectPath), cancellationToken);
+    }
+
+    public Task<ProjectResponse> CreateAsync(
+        string destination,
+        string name,
+        ProjectTemplate template,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return Task.Run(() => CreateProject(destination, name, template), cancellationToken);
+    }
+
     public static EngineResponse ParseResponse(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         EngineResponse response = JsonSerializer.Deserialize<EngineResponse>(json, JsonOptions)
             ?? throw new InvalidDataException("The Sprout engine returned an empty response.");
+        if (response.ApiVersion != SupportedApiVersion)
+        {
+            throw new InvalidDataException(
+                $"Unsupported Sprout API version {response.ApiVersion}; expected {SupportedApiVersion}.");
+        }
+
+        return response;
+    }
+
+    public static ProjectResponse ParseProjectResponse(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        ProjectResponse response = JsonSerializer.Deserialize<ProjectResponse>(json, JsonOptions)
+            ?? throw new InvalidDataException("The Sprout project service returned an empty response.");
         if (response.ApiVersion != SupportedApiVersion)
         {
             throw new InvalidDataException(
@@ -47,6 +82,36 @@ public sealed partial class NativeSproutEngineClient : IEngineClient
             (nuint)name.Length,
             source,
             (nuint)source.Length);
+        return ParseResponse(ReadBuffer(buffer));
+    }
+
+    private static ProjectResponse LoadProject(string projectPath)
+    {
+        byte[] path = Encoding.UTF8.GetBytes(projectPath);
+        NativeBuffer buffer = NativeMethods.SproutProjectLoad(path, (nuint)path.Length);
+        return ParseProjectResponse(ReadBuffer(buffer));
+    }
+
+    private static ProjectResponse CreateProject(
+        string destination,
+        string name,
+        ProjectTemplate template)
+    {
+        byte[] destinationBytes = Encoding.UTF8.GetBytes(destination);
+        byte[] nameBytes = Encoding.UTF8.GetBytes(name);
+        byte[] templateBytes = Encoding.UTF8.GetBytes(template.ToString().ToLowerInvariant());
+        NativeBuffer buffer = NativeMethods.SproutProjectCreate(
+            destinationBytes,
+            (nuint)destinationBytes.Length,
+            nameBytes,
+            (nuint)nameBytes.Length,
+            templateBytes,
+            (nuint)templateBytes.Length);
+        return ParseProjectResponse(ReadBuffer(buffer));
+    }
+
+    private static string ReadBuffer(NativeBuffer buffer)
+    {
         try
         {
             int length = checked((int)buffer.Length);
@@ -55,7 +120,7 @@ public sealed partial class NativeSproutEngineClient : IEngineClient
             {
                 Marshal.Copy(buffer.Data, response, 0, length);
             }
-            return ParseResponse(Encoding.UTF8.GetString(response));
+            return Encoding.UTF8.GetString(response);
         }
         finally
         {
@@ -84,6 +149,22 @@ public sealed partial class NativeSproutEngineClient : IEngineClient
             nuint sourceNameLength,
             byte[] source,
             nuint sourceLength);
+
+        [LibraryImport(LibraryName, EntryPoint = "sprout_project_load")]
+        [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+        internal static partial NativeBuffer SproutProjectLoad(
+            byte[] projectPath,
+            nuint projectPathLength);
+
+        [LibraryImport(LibraryName, EntryPoint = "sprout_project_create")]
+        [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+        internal static partial NativeBuffer SproutProjectCreate(
+            byte[] destination,
+            nuint destinationLength,
+            byte[] name,
+            nuint nameLength,
+            byte[] template,
+            nuint templateLength);
 
         [LibraryImport(LibraryName, EntryPoint = "sprout_buffer_free")]
         [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]

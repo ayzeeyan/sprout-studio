@@ -31,6 +31,18 @@ SproutBuffer sprout_execute(
     const uint8_t* source_data,
     size_t source_length);
 
+SproutBuffer sprout_project_load(
+    const uint8_t* project_path_data,
+    size_t project_path_length);
+
+SproutBuffer sprout_project_create(
+    const uint8_t* destination_data,
+    size_t destination_length,
+    const uint8_t* name_data,
+    size_t name_length,
+    const uint8_t* template_data,
+    size_t template_length);
+
 void sprout_buffer_free(SproutBuffer buffer);
 
 #ifdef __cplusplus

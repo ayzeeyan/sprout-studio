@@ -3,10 +3,13 @@
 use sprout_core::diagnostic::{Diagnostic, Severity};
 use sprout_core::source::SourceFile;
 use sprout_core::{SyntaxProfile, check_profile, execute_profile};
+use sprout_project::{ProjectError, ProjectTemplate, SproutProject, create_project, load_project};
 use std::fmt::Write;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::path::Path;
 use std::slice;
 use std::str;
+use std::str::FromStr;
 
 pub const SPROUT_API_VERSION: u32 = 1;
 
@@ -70,6 +73,65 @@ pub unsafe extern "C" fn sprout_execute(
         Ok(Ok(response)) => response,
         Ok(Err(message)) => internal_error(&message),
         Err(_) => internal_error("The Sprout engine stopped unexpectedly."),
+    };
+    SproutBuffer::from_string(response)
+}
+
+/// Loads and validates a Sprout project and returns structured project JSON.
+///
+/// # Safety
+///
+/// The pointer must be valid for its byte length for the duration of this call.
+/// Text must be UTF-8. The returned buffer must be freed exactly once with
+/// `sprout_buffer_free`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sprout_project_load(
+    project_path_data: *const u8,
+    project_path_length: usize,
+) -> SproutBuffer {
+    let response = match catch_unwind(AssertUnwindSafe(|| {
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let path = unsafe { read_utf8(project_path_data, project_path_length, "project path") }?;
+        Ok::<String, String>(project_result_json(load_project(path)))
+    })) {
+        Ok(Ok(response)) => response,
+        Ok(Err(message)) => project_internal_error(&message),
+        Err(_) => project_internal_error("The Sprout project service stopped unexpectedly."),
+    };
+    SproutBuffer::from_string(response)
+}
+
+/// Creates a project from a built-in template and returns the loaded project.
+///
+/// # Safety
+///
+/// Each pointer must be valid for its byte length for the duration of this call.
+/// Text must be UTF-8. The returned buffer must be freed exactly once with
+/// `sprout_buffer_free`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sprout_project_create(
+    destination_data: *const u8,
+    destination_length: usize,
+    name_data: *const u8,
+    name_length: usize,
+    template_data: *const u8,
+    template_length: usize,
+) -> SproutBuffer {
+    let response = match catch_unwind(AssertUnwindSafe(|| {
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let destination =
+            unsafe { read_utf8(destination_data, destination_length, "project destination") }?;
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let name = unsafe { read_utf8(name_data, name_length, "project name") }?;
+        // SAFETY: Requirements are documented as part of this exported ABI.
+        let template = unsafe { read_utf8(template_data, template_length, "project template") }?;
+        let result = ProjectTemplate::from_str(template)
+            .and_then(|template| create_project(destination, name, template));
+        Ok::<String, String>(project_result_json(result))
+    })) {
+        Ok(Ok(response)) => response,
+        Ok(Err(message)) => project_internal_error(&message),
+        Err(_) => project_internal_error("The Sprout project service stopped unexpectedly."),
     };
     SproutBuffer::from_string(response)
 }
@@ -196,6 +258,86 @@ fn response_json(output: Vec<String>, diagnostics: &[Diagnostic]) -> String {
     json
 }
 
+fn project_result_json(result: Result<SproutProject, ProjectError>) -> String {
+    match result {
+        Ok(project) => project_success_json(&project),
+        Err(error) => project_error_json(&error),
+    }
+}
+
+fn project_success_json(project: &SproutProject) -> String {
+    let mut json = String::from("{\"apiVersion\":1,\"success\":true,\"project\":{\"rootPath\":");
+    push_json_string(&mut json, &portable_path(&project.root));
+    json.push_str(",\"manifestPath\":");
+    push_json_string(&mut json, &portable_path(&project.manifest_path));
+    json.push_str(",\"name\":");
+    push_json_string(&mut json, &project.manifest.project.name);
+    json.push_str(",\"version\":");
+    push_json_string(&mut json, &project.manifest.project.version);
+    json.push_str(",\"entryPath\":");
+    push_json_string(&mut json, &portable_path(&project.entry_path));
+    json.push_str(",\"profile\":");
+    push_json_string(
+        &mut json,
+        match project.profile {
+            SyntaxProfile::Guided => "guided",
+            SyntaxProfile::Structured => "structured",
+            SyntaxProfile::Advanced => "advanced",
+        },
+    );
+    json.push_str(",\"sourceFiles\":[");
+    for (index, path) in project.source_files.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        push_json_string(&mut json, &portable_path(path));
+    }
+    json.push_str("]},\"diagnostics\":[]}");
+    json
+}
+
+fn project_error_json(error: &ProjectError) -> String {
+    let mut json =
+        String::from("{\"apiVersion\":1,\"success\":false,\"project\":null,\"diagnostics\":[");
+    for (index, issue) in error.issues.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        json.push_str("{\"code\":");
+        push_json_string(&mut json, &issue.code);
+        json.push_str(",\"title\":\"Invalid Sprout project\",\"message\":");
+        push_json_string(&mut json, &issue.message);
+        json.push_str(",\"path\":");
+        match &issue.path {
+            Some(path) => push_json_string(&mut json, &portable_path(path)),
+            None => json.push_str("null"),
+        }
+        json.push('}');
+    }
+    json.push_str("]}");
+    json
+}
+
+fn project_internal_error(message: &str) -> String {
+    let mut json = String::from(
+        "{\"apiVersion\":1,\"success\":false,\"project\":null,\"diagnostics\":[{\"code\":\"SPP900\",\"title\":\"Project service failure\",\"message\":",
+    );
+    push_json_string(&mut json, message);
+    json.push_str(",\"path\":null}]}");
+    json
+}
+
+fn portable_path(path: &Path) -> String {
+    let value = path.to_string_lossy();
+    if let Some(path) = value.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{path}")
+    } else if let Some(path) = value.strip_prefix(r"\\?\") {
+        path.to_owned()
+    } else {
+        value.into_owned()
+    }
+}
+
 fn internal_error(message: &str) -> String {
     let mut json = String::from(
         "{\"apiVersion\":1,\"success\":false,\"output\":[],\"diagnostics\":[{\"code\":\"SPT900\",\"severity\":\"error\",\"title\":\"Engine failure\",\"message\":",
@@ -279,5 +421,49 @@ mod tests {
         );
         // SAFETY: This is the unchanged buffer and its only release.
         unsafe { sprout_buffer_free(buffer) };
+    }
+
+    #[test]
+    fn project_api_creates_and_loads_a_template() {
+        let destination = std::env::temp_dir().join(format!(
+            "sprout-ffi-project-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let destination_text = destination.to_string_lossy();
+        let name = b"FfiProject";
+        let template = b"advanced";
+        // SAFETY: All byte ranges remain valid through the call.
+        let created = unsafe {
+            sprout_project_create(
+                destination_text.as_ptr(),
+                destination_text.len(),
+                name.as_ptr(),
+                name.len(),
+                template.as_ptr(),
+                template.len(),
+            )
+        };
+        // SAFETY: The returned buffer remains owned until it is freed below.
+        let created_text = unsafe { slice::from_raw_parts(created.data, created.length) };
+        let created_text = str::from_utf8(created_text).unwrap();
+        assert!(created_text.contains("\"success\":true"), "{created_text}");
+        assert!(created_text.contains("\"profile\":\"advanced\""));
+        // SAFETY: This is the only release of the unchanged buffer.
+        unsafe { sprout_buffer_free(created) };
+
+        // SAFETY: The destination text remains alive through the call.
+        let loaded =
+            unsafe { sprout_project_load(destination_text.as_ptr(), destination_text.len()) };
+        // SAFETY: The returned buffer remains owned until it is freed below.
+        let loaded_text = unsafe { slice::from_raw_parts(loaded.data, loaded.length) };
+        let loaded_text = str::from_utf8(loaded_text).unwrap();
+        assert!(loaded_text.contains("\"name\":\"FfiProject\""));
+        // SAFETY: This is the only release of the unchanged buffer.
+        unsafe { sprout_buffer_free(loaded) };
+        std::fs::remove_dir_all(destination).unwrap();
     }
 }
