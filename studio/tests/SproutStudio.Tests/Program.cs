@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SproutStudio.Core;
 using SproutStudio.Interop;
 
@@ -10,6 +11,9 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Native project API creates and reloads templates", NativeProjectCreatesAndLoads),
     ("Native project API returns validation diagnostics", NativeProjectValidation),
     ("Recent projects persist without duplicates", RecentProjectsPersistWithoutDuplicates),
+    ("Studio session saves edited source atomically", StudioSessionSavesSource),
+    ("Phase 5 project workflow executes edited source", PhaseFiveProjectWorkflow),
+    ("WinUI application starts and responds", WinUiApplicationStarts),
 };
 
 int failures = 0;
@@ -154,6 +158,145 @@ static async Task RecentProjectsPersistWithoutDuplicates()
     finally
     {
         Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task StudioSessionSavesSource()
+{
+    string directory = TemporaryDirectory("save-document");
+    Directory.CreateDirectory(directory);
+    string filePath = Path.Combine(directory, "main.spr");
+    try
+    {
+        await File.WriteAllTextAsync(filePath, "print(1)\n");
+        var session = new StudioSession(new NativeSproutEngineClient());
+        await session.LoadDocumentAsync(filePath);
+        session.UpdateSource("print(2)\n");
+        await session.SaveDocumentAsync();
+        Assert(await File.ReadAllTextAsync(filePath) == "print(2)\n", "edited source was not saved");
+        Assert(!File.Exists(filePath + ".tmp"), "temporary save file was retained");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task PhaseFiveProjectWorkflow()
+{
+    string parent = TemporaryDirectory("phase-five-workflow");
+    string destination = Path.Combine(parent, "VerticalSlice");
+    Directory.CreateDirectory(parent);
+    try
+    {
+        var native = new NativeSproutEngineClient();
+        var recentStore = new RecentProjectStore(Path.Combine(parent, "recent-projects.json"));
+        var workspace = new ProjectWorkspace(native, recentStore);
+        ProjectInfo project = await workspace.CreateAsync(
+            destination,
+            "VerticalSlice",
+            ProjectTemplate.Guided);
+
+        var session = new StudioSession(native);
+        await session.LoadDocumentAsync(project.EntryPath);
+        session.UpdateProfile(project.Profile);
+        session.UpdateSource("print(\"Phase 5 works\")\n");
+        await session.SaveDocumentAsync();
+        EngineResponse response = await session.RunAsync();
+
+        Assert(response.Success, "edited project entry did not execute");
+        Assert(response.Output.SequenceEqual(["Phase 5 works"]), "project output was incorrect");
+        ProjectInfo reloaded = await workspace.OpenAsync(project.ManifestPath);
+        Assert(reloaded.Name == "VerticalSlice", "saved project could not be reopened");
+        Assert(workspace.RecentProjects.Count == 1, "recent project was not retained");
+        Assert(
+            await File.ReadAllTextAsync(project.EntryPath) == "print(\"Phase 5 works\")\n",
+            "saved project source was incorrect");
+    }
+    finally
+    {
+        Directory.Delete(parent, recursive: true);
+    }
+}
+
+static async Task WinUiApplicationStarts()
+{
+    string repositoryRoot = Path.GetFullPath(Path.Combine(
+        AppContext.BaseDirectory,
+        "..",
+        "..",
+        "..",
+        "..",
+        "..",
+        "..",
+        ".."));
+#if DEBUG
+    const string Configuration = "Debug";
+#else
+    const string Configuration = "Release";
+#endif
+    string executable = Path.Combine(
+        repositoryRoot,
+        "studio",
+        "src",
+        "SproutStudio",
+        "bin",
+        "x64",
+        Configuration,
+        "net8.0-windows10.0.19041.0",
+        "win-x64",
+        "SproutStudio.exe");
+    Assert(File.Exists(executable), $"Sprout Studio executable was not built at {executable}");
+
+    using var process = Process.Start(new ProcessStartInfo(executable)
+    {
+        UseShellExecute = true,
+        WorkingDirectory = Path.GetDirectoryName(executable),
+    }) ?? throw new InvalidOperationException("Could not start Sprout Studio.");
+    try
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(10);
+        do
+        {
+            await Task.Delay(250);
+            process.Refresh();
+            if (process.HasExited)
+            {
+                throw new InvalidOperationException(
+                    $"Sprout Studio exited during startup with code {process.ExitCode}.");
+            }
+        }
+        while (process.MainWindowHandle == IntPtr.Zero && DateTime.UtcNow < deadline);
+
+        Assert(process.MainWindowHandle != IntPtr.Zero, "Sprout Studio did not create a main window.");
+        Assert(process.Responding, "Sprout Studio created a window but is not responding.");
+        Assert(
+            process.MainWindowTitle.Contains("Sprout Studio", StringComparison.Ordinal),
+            "Sprout Studio created an unexpected main window.");
+        Assert(process.CloseMainWindow(), "Sprout Studio did not accept a normal close request.");
+        Assert(await WaitForExitAsync(process, TimeSpan.FromSeconds(5)), "Sprout Studio did not exit cleanly.");
+    }
+    finally
+    {
+        if (!process.HasExited)
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+        }
+    }
+}
+
+static async Task<bool> WaitForExitAsync(Process process, TimeSpan timeout)
+{
+    using var cancellation = new CancellationTokenSource(timeout);
+    try
+    {
+        await process.WaitForExitAsync(cancellation.Token);
+        return true;
+    }
+    catch (OperationCanceledException)
+    {
+        return false;
     }
 }
 

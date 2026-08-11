@@ -10,24 +10,46 @@ namespace SproutStudio;
 
 public sealed partial class MainWindow : Window
 {
-    private readonly StudioSession _session = new(new NativeSproutEngineClient());
-    private readonly ObservableCollection<string> _workspace = [];
+    private readonly StudioSession _session;
+    private readonly ProjectWorkspace _projects;
+    private readonly ObservableCollection<ProjectFileItem> _workspace = [];
+    private readonly ObservableCollection<RecentProject> _recentProjects = [];
     private readonly ObservableCollection<string> _console = [];
     private readonly ObservableCollection<ProblemItem> _problems = [];
     private bool _updatingEditor;
 
     public MainWindow()
     {
+        var nativeClient = new NativeSproutEngineClient();
+        _session = new StudioSession(nativeClient);
+        _projects = new ProjectWorkspace(nativeClient);
         InitializeComponent();
         WorkspaceList.ItemsSource = _workspace;
+        RecentProjectsList.ItemsSource = _recentProjects;
         ConsoleList.ItemsSource = _console;
         ProblemsList.ItemsSource = _problems;
         ProfileCombo.SelectedIndex = 0;
         RefreshDocument();
+        Activated += MainWindow_Activated;
+    }
+
+    private async void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
+    {
+        Activated -= MainWindow_Activated;
+        try
+        {
+            await _projects.LoadRecentAsync();
+            RefreshRecentProjects();
+        }
+        catch (Exception exception)
+        {
+            ShowHostFailure("Could not load recent projects", exception);
+        }
     }
 
     private void NewButton_Click(object sender, RoutedEventArgs args)
     {
+        _projects.Close();
         _session.NewDocument(SelectedProfile());
         RefreshDocument();
         StatusText.Text = "New document";
@@ -47,12 +69,86 @@ public sealed partial class MainWindow : Window
         try
         {
             await _session.LoadDocumentAsync(file.Path);
+            _projects.Close();
             RefreshDocument();
             StatusText.Text = $"Opened {file.Name}";
         }
         catch (Exception exception)
         {
             ShowHostFailure("Could not open file", exception);
+        }
+    }
+
+    private async void SaveButton_Click(object sender, RoutedEventArgs args)
+    {
+        try
+        {
+            _session.UpdateSource(Editor.Text);
+            await _session.SaveDocumentAsync();
+            StatusText.Text = $"Saved {_session.Document.DisplayName}";
+        }
+        catch (Exception exception)
+        {
+            ShowHostFailure("Could not save file", exception);
+        }
+    }
+
+    private async void NewProjectButton_Click(object sender, RoutedEventArgs args)
+    {
+        var nameBox = new TextBox
+        {
+            Header = "Project name",
+            PlaceholderText = "HelloSprout",
+            Text = "HelloSprout",
+        };
+        var templateBox = new ComboBox
+        {
+            Header = "Template",
+            ItemsSource = new[] { "Guided", "Structured", "Advanced" },
+            SelectedIndex = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var fields = new StackPanel { Spacing = 12 };
+        fields.Children.Add(nameBox);
+        fields.Children.Add(templateBox);
+        var dialog = new ContentDialog
+        {
+            Title = "Create Sprout project",
+            Content = fields,
+            PrimaryButtonText = "Choose location",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = ((FrameworkElement)Content).XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var picker = new FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        Windows.Storage.StorageFolder? folder = await picker.PickSingleFolderAsync();
+        if (folder is null)
+        {
+            return;
+        }
+
+        string name = nameBox.Text.Trim();
+        ProjectTemplate template = (ProjectTemplate)Math.Max(0, templateBox.SelectedIndex);
+        string destination = Path.Combine(folder.Path, name);
+        await CreateProjectAsync(destination, name, template);
+    }
+
+    private async void OpenProjectButton_Click(object sender, RoutedEventArgs args)
+    {
+        var picker = new FileOpenPicker();
+        picker.FileTypeFilter.Add(".toml");
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        Windows.Storage.StorageFile? file = await picker.PickSingleFileAsync();
+        if (file is not null)
+        {
+            await OpenProjectAsync(file.Path);
         }
     }
 
@@ -72,6 +168,10 @@ public sealed partial class MainWindow : Window
         SetBusy(true, run ? "Running…" : "Checking…");
         try
         {
+            if (_session.Document.FilePath is not null)
+            {
+                await _session.SaveDocumentAsync();
+            }
             EngineResponse response = run
                 ? await _session.RunAsync()
                 : await _session.CheckAsync();
@@ -119,6 +219,38 @@ public sealed partial class MainWindow : Window
         Editor.Select(start, Math.Max(1, end - start));
     }
 
+    private async void WorkspaceList_ItemClick(object sender, ItemClickEventArgs args)
+    {
+        if (args.ClickedItem is not ProjectFileItem item
+            || string.Equals(item.FullPath, _session.Document.FilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        try
+        {
+            await _session.LoadDocumentAsync(item.FullPath);
+            if (_projects.CurrentProject is ProjectInfo project)
+            {
+                _session.UpdateProfile(project.Profile);
+            }
+            RefreshDocument();
+            StatusText.Text = $"Opened {item.DisplayName}";
+        }
+        catch (Exception exception)
+        {
+            ShowHostFailure("Could not open project file", exception);
+        }
+    }
+
+    private async void RecentProjectsList_ItemClick(object sender, ItemClickEventArgs args)
+    {
+        if (args.ClickedItem is RecentProject project)
+        {
+            await OpenProjectAsync(project.RootPath);
+        }
+    }
+
     private void RefreshDocument()
     {
         _updatingEditor = true;
@@ -127,9 +259,38 @@ public sealed partial class MainWindow : Window
         EditorTabTitle.Text = _session.Document.DisplayName;
         Title = $"{_session.Document.DisplayName} — Sprout Studio";
         ProfileCombo.SelectedIndex = (int)_session.Document.Profile;
-        _workspace.Clear();
-        _workspace.Add(_session.Document.DisplayName);
+        SaveButton.IsEnabled = _session.Document.FilePath is not null;
+        ProfileCombo.IsEnabled = _projects.CurrentProject is null;
+        RefreshWorkspace();
         RefreshResults();
+    }
+
+    private void RefreshWorkspace()
+    {
+        _workspace.Clear();
+        if (_projects.CurrentProject is not ProjectInfo project)
+        {
+            ProjectNameText.Text = "Single file";
+            _workspace.Add(new ProjectFileItem(
+                _session.Document.DisplayName,
+                _session.Document.FilePath ?? string.Empty));
+            return;
+        }
+
+        ProjectNameText.Text = $"{project.Name}  {project.Version}";
+        foreach (string path in project.SourceFiles)
+        {
+            _workspace.Add(new ProjectFileItem(Path.GetRelativePath(project.RootPath, path), path));
+        }
+    }
+
+    private void RefreshRecentProjects()
+    {
+        _recentProjects.Clear();
+        foreach (RecentProject project in _projects.RecentProjects)
+        {
+            _recentProjects.Add(project);
+        }
     }
 
     private void RefreshResults()
@@ -154,8 +315,86 @@ public sealed partial class MainWindow : Window
         CheckButton.IsEnabled = !busy;
         NewButton.IsEnabled = !busy;
         OpenButton.IsEnabled = !busy;
-        ProfileCombo.IsEnabled = !busy;
+        SaveButton.IsEnabled = !busy && _session.Document.FilePath is not null;
+        NewProjectButton.IsEnabled = !busy;
+        OpenProjectButton.IsEnabled = !busy;
+        ProfileCombo.IsEnabled = !busy && _projects.CurrentProject is null;
         StatusText.Text = status;
+    }
+
+    private async Task CreateProjectAsync(
+        string destination,
+        string name,
+        ProjectTemplate template)
+    {
+        SetBusy(true, "Creating project…");
+        try
+        {
+            ProjectInfo project = await _projects.CreateAsync(destination, name, template);
+            await LoadProjectEntryAsync(project);
+            StatusText.Text = $"Created project {project.Name}";
+        }
+        catch (ProjectValidationException exception)
+        {
+            ShowProjectFailure(exception);
+        }
+        catch (Exception exception)
+        {
+            ShowHostFailure("Could not create project", exception);
+        }
+        finally
+        {
+            SetBusy(false, StatusText.Text);
+        }
+    }
+
+    private async Task OpenProjectAsync(string path)
+    {
+        SetBusy(true, "Opening project…");
+        try
+        {
+            ProjectInfo project = await _projects.OpenAsync(path);
+            await LoadProjectEntryAsync(project);
+            StatusText.Text = $"Opened project {project.Name}";
+        }
+        catch (ProjectValidationException exception)
+        {
+            ShowProjectFailure(exception);
+        }
+        catch (Exception exception)
+        {
+            ShowHostFailure("Could not open project", exception);
+        }
+        finally
+        {
+            SetBusy(false, StatusText.Text);
+        }
+    }
+
+    private async Task LoadProjectEntryAsync(ProjectInfo project)
+    {
+        await _session.LoadDocumentAsync(project.EntryPath);
+        _session.UpdateProfile(project.Profile);
+        RefreshDocument();
+        RefreshRecentProjects();
+    }
+
+    private void ShowProjectFailure(ProjectValidationException exception)
+    {
+        _console.Clear();
+        _problems.Clear();
+        foreach (ProjectDiagnostic item in exception.Diagnostics)
+        {
+            var diagnostic = new StudioDiagnostic(
+                item.Code,
+                "error",
+                item.Title,
+                item.Message,
+                new SourceSpan(item.Path ?? "sprout.toml", 0, 0, 1, 1, 1, 1),
+                []);
+            _problems.Add(new ProblemItem(diagnostic));
+        }
+        StatusText.Text = "Project validation failed";
     }
 
     private void ShowHostFailure(string title, Exception exception)
@@ -201,3 +440,5 @@ public sealed class ProblemItem
 
     public string Location => $"{Diagnostic.Span.StartLine}:{Diagnostic.Span.StartColumn}";
 }
+
+public sealed record ProjectFileItem(string DisplayName, string FullPath);

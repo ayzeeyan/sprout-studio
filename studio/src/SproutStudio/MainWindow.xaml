@@ -27,6 +27,10 @@
             </CommandBar.Content>
             <AppBarButton x:Name="NewButton" Icon="Add" Label="New" Click="NewButton_Click" />
             <AppBarButton x:Name="OpenButton" Icon="OpenFile" Label="Open" Click="OpenButton_Click" />
+            <AppBarButton x:Name="SaveButton" Icon="Save" Label="Save" Click="SaveButton_Click" />
+            <AppBarSeparator />
+            <AppBarButton x:Name="NewProjectButton" Icon="NewFolder" Label="New project" Click="NewProjectButton_Click" />
+            <AppBarButton x:Name="OpenProjectButton" Icon="OpenFile" Label="Open project" Click="OpenProjectButton_Click" />
             <AppBarSeparator />
             <AppBarElementContainer>
                 <ComboBox x:Name="ProfileCombo"
@@ -57,18 +61,49 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="140" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="WORKSPACE"
-                               Margin="16,14,12,8"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <ListView x:Name="WorkspaceList" Grid.Row="1" SelectionMode="Single">
+                    <StackPanel Margin="16,14,12,8" Spacing="3">
+                        <TextBlock Text="WORKSPACE"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="ProjectNameText" Text="Single file" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <ListView x:Name="WorkspaceList"
+                              Grid.Row="1"
+                              SelectionMode="Single"
+                              IsItemClickEnabled="True"
+                              ItemClick="WorkspaceList_ItemClick">
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="4">
                                     <FontIcon Glyph="&#xE8A5;" FontSize="14" />
-                                    <TextBlock Text="{Binding}" />
+                                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock Grid.Row="2"
+                               Text="RECENT PROJECTS"
+                               Margin="16,12,12,6"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <ListView x:Name="RecentProjectsList"
+                              Grid.Row="3"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="RecentProjectsList_ItemClick">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Padding="4">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding RootPath}"
+                                               FontSize="11"
+                                               Opacity="0.65"
+                                               TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListView.ItemTemplate>

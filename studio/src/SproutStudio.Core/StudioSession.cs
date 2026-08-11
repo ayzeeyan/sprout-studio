@@ -53,6 +53,30 @@ public sealed class StudioSession
         ClearResults();
     }
 
+    public async Task SaveDocumentAsync(CancellationToken cancellationToken = default)
+    {
+        EnsureNotRunning();
+        if (Document.FilePath is null)
+        {
+            throw new InvalidOperationException("Save requires a document with a file path.");
+        }
+
+        string temporaryPath = Document.FilePath + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporaryPath, Document.Source, cancellationToken)
+                .ConfigureAwait(false);
+            File.Move(temporaryPath, Document.FilePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
     public Task<EngineResponse> CheckAsync(CancellationToken cancellationToken = default) =>
         ExecuteAsync(EngineOperation.Check, cancellationToken);
 
@@ -100,4 +124,3 @@ public sealed class StudioSession
         }
     }
 }
-

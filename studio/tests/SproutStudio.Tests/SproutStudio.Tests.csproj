@@ -14,4 +14,11 @@
     <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\..\target\debug\sprout_ffi.dll"
           DestinationFolder="$(OutDir)" />
   </Target>
+  <Target Name="BuildSproutStudioForStartupTest"
+          BeforeTargets="Build"
+          Condition="'$(BuildingSolutionFile)' != 'true'">
+    <MSBuild Projects="..\..\src\SproutStudio\SproutStudio.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);Platform=x64" />
+  </Target>
 </Project>

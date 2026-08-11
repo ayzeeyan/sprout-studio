@@ -154,6 +154,11 @@ public sealed class ProjectWorkspace
 
     public IReadOnlyList<RecentProject> RecentProjects => _recentProjects;
 
+    public void Close()
+    {
+        CurrentProject = null;
+    }
+
     public async Task LoadRecentAsync(CancellationToken cancellationToken = default)
     {
         IReadOnlyList<RecentProject> projects = await _recentStore.LoadAsync(cancellationToken)
