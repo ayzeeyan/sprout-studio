@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SproutStudio.Core\SproutStudio.Core.csproj" />
     <ProjectReference Include="..\..\src\SproutStudio.Interop\SproutStudio.Interop.csproj" />
+    <ProjectReference Include="..\..\src\SproutStudio.Toolchains\SproutStudio.Toolchains.csproj" />
   </ItemGroup>
   <Target Name="BuildSproutNativeDebug"
           BeforeTargets="Build"

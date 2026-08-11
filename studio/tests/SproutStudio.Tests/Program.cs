@@ -1,6 +1,19 @@
 using System.Diagnostics;
 using SproutStudio.Core;
 using SproutStudio.Interop;
+using SproutStudio.Toolchains;
+
+if (args is ["--toolchain-test-wait"])
+{
+    await Task.Delay(TimeSpan.FromSeconds(30));
+    return 0;
+}
+if (args is ["--toolchain-test-echo", string value])
+{
+    Console.Out.Write(value);
+    Console.Error.Write("captured-error");
+    return 7;
+}
 
 var tests = new (string Name, Func<Task> Run)[]
 {
@@ -19,6 +32,16 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Studio session saves edited source atomically", StudioSessionSavesSource),
     ("Studio session saves a new source file", StudioSessionSavesNewSource),
     ("Phase 5 project workflow executes edited source", PhaseFiveProjectWorkflow),
+    ("Process runner preserves structured arguments and output", ProcessRunnerPreservesArguments),
+    ("Process runner cancels and terminates child process", ProcessRunnerCancelsChild),
+    ("Process runner reports validation timeout", ProcessRunnerReportsTimeout),
+    ("Rust detector validates complete custom toolchain", RustDetectorValidatesCompleteToolchain),
+    ("Rust detector distinguishes partial installation", RustDetectorDistinguishesPartialInstallation),
+    ("Rust detector rejects unsupported version", RustDetectorRejectsUnsupportedVersion),
+    ("Rust detector reports broken executable", RustDetectorReportsBrokenExecutable),
+    ("Go detector validates go and gofmt", GoDetectorValidatesCompleteToolchain),
+    ("Toolchain settings persist and clear custom paths", ToolchainSettingsPersistCustomPaths),
+    ("Toolchain manager builds safe action requests", ToolchainManagerBuildsSafeActionRequests),
     ("WinUI application starts and responds", WinUiApplicationStarts),
 };
 
@@ -344,6 +367,223 @@ static async Task PhaseFiveProjectWorkflow()
     }
 }
 
+static async Task ProcessRunnerPreservesArguments()
+{
+    const string Value = "value with spaces & shell symbols";
+    var runner = new ProcessRunner();
+    ProcessResult result = await runner.RunAsync(SelfProcessRequest(
+        ["--toolchain-test-echo", Value],
+        TimeSpan.FromSeconds(5)));
+    Assert(result.Started, "child process did not start");
+    Assert(result.ExitCode == 7, "child exit code was not captured");
+    Assert(result.StandardOutput == Value, "structured argument changed before reaching the child");
+    Assert(result.StandardError == "captured-error", "stderr was not captured");
+    Assert(!result.TimedOut && result.Duration > TimeSpan.Zero, "process metadata was incomplete");
+}
+
+static async Task ProcessRunnerCancelsChild()
+{
+    var runner = new ProcessRunner();
+    using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
+    var stopwatch = Stopwatch.StartNew();
+    try
+    {
+        await runner.RunAsync(SelfProcessRequest(["--toolchain-test-wait"]), cancellation.Token);
+        throw new InvalidOperationException("cancelled process completed normally");
+    }
+    catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+    {
+        Assert(stopwatch.Elapsed < TimeSpan.FromSeconds(5), "child process was not terminated promptly");
+    }
+}
+
+static async Task ProcessRunnerReportsTimeout()
+{
+    var runner = new ProcessRunner();
+    ProcessResult result = await runner.RunAsync(SelfProcessRequest(
+        ["--toolchain-test-wait"],
+        TimeSpan.FromMilliseconds(150)));
+    Assert(result.Started, "timed process never started");
+    Assert(result.TimedOut, "timeout was not reported");
+    Assert(result.ExitCode is null, "timed-out process reported a successful exit code");
+    Assert(result.Duration < TimeSpan.FromSeconds(5), "timed-out child was not terminated promptly");
+}
+
+static async Task RustDetectorValidatesCompleteToolchain()
+{
+    string directory = TemporaryDirectory("rust-ready");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        CreateExecutables(directory, "rustc", "cargo", "rustfmt");
+        var runner = RustFakeRunner("1.95.1");
+        ToolchainManager manager = ManagerWith(
+            new RustToolchainAdapter(runner),
+            runner,
+            Path.Combine(directory, "settings.json"));
+        ToolchainDetectionResult result = await manager.DetectAsync("rust", directory);
+        Assert(result.Status == ToolchainStatus.CustomLocation, "custom Rust was not distinguished");
+        Assert(result.LocationSource == ToolchainLocationSource.Explicit, "explicit source was lost");
+        Assert(result.Version == "1.95.1", "Rust version was not parsed");
+        Assert(result.IsUsable, "complete Rust toolchain was not usable");
+        Assert(result.Components.Count == 3 && result.Components.All(item => item.Valid), "Rust components were not validated");
+        Assert(runner.Requests.All(item => item.Arguments.SequenceEqual(["--version"])), "Rust validation used unexpected arguments");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task RustDetectorDistinguishesPartialInstallation()
+{
+    string directory = TemporaryDirectory("rust-partial");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        CreateExecutables(directory, "rustc");
+        var runner = RustFakeRunner("1.95.1");
+        ToolchainDetectionResult result = await ManagerWith(
+                new RustToolchainAdapter(runner),
+                runner,
+                Path.Combine(directory, "settings.json"))
+            .DetectAsync("rust", directory);
+        Assert(result.Status == ToolchainStatus.PartialInstallation, "partial Rust was misclassified");
+        Assert(result.Message.Contains("cargo", StringComparison.Ordinal), "missing cargo was not explained");
+        Assert(result.Message.Contains("rustfmt", StringComparison.Ordinal), "missing rustfmt was not explained");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task RustDetectorRejectsUnsupportedVersion()
+{
+    string directory = TemporaryDirectory("rust-old");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        CreateExecutables(directory, "rustc", "cargo", "rustfmt");
+        var runner = RustFakeRunner("1.80.0");
+        ToolchainDetectionResult result = await ManagerWith(
+                new RustToolchainAdapter(runner),
+                runner,
+                Path.Combine(directory, "settings.json"))
+            .DetectAsync("rust", directory);
+        Assert(result.Status == ToolchainStatus.UnsupportedVersion, "old Rust was accepted");
+        Assert(!result.IsUsable, "unsupported Rust was marked usable");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task RustDetectorReportsBrokenExecutable()
+{
+    string directory = TemporaryDirectory("rust-broken");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        CreateExecutables(directory, "rustc", "cargo", "rustfmt");
+        var runner = new FakeProcessRunner(request =>
+            Path.GetFileNameWithoutExtension(request.FileName).Equals("rustc", StringComparison.OrdinalIgnoreCase)
+                ? ProcessFailure("rustc failed to initialize")
+                : ProcessSuccess($"{Path.GetFileNameWithoutExtension(request.FileName)} 1.95.1"));
+        ToolchainDetectionResult result = await ManagerWith(
+                new RustToolchainAdapter(runner),
+                runner,
+                Path.Combine(directory, "settings.json"))
+            .DetectAsync("rust", directory);
+        Assert(result.Status == ToolchainStatus.FoundButBroken, "broken Rust was misclassified");
+        Assert(result.Message.Contains("failed to initialize", StringComparison.Ordinal), "validation failure was hidden");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task GoDetectorValidatesCompleteToolchain()
+{
+    string directory = TemporaryDirectory("go-ready");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        CreateExecutables(directory, "go", "gofmt");
+        var runner = new FakeProcessRunner(request =>
+            Path.GetFileNameWithoutExtension(request.FileName).Equals("go", StringComparison.OrdinalIgnoreCase)
+                ? ProcessSuccess("go version go1.24.5 windows/amd64")
+                : new ProcessResult(true, 2, string.Empty, "usage: gofmt [flags] [path ...]", TimeSpan.FromMilliseconds(1), false, null));
+        ToolchainDetectionResult result = await ManagerWith(
+                new GoToolchainAdapter(runner),
+                runner,
+                Path.Combine(directory, "settings.json"))
+            .DetectAsync("go", directory);
+        Assert(result.Status == ToolchainStatus.CustomLocation, "custom Go was not distinguished");
+        Assert(result.Version == "1.24.5", "Go version was not parsed");
+        Assert(result.Components.All(item => item.Valid), "Go components were not validated");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task ToolchainSettingsPersistCustomPaths()
+{
+    string directory = TemporaryDirectory("toolchain-settings");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        string settingsPath = Path.Combine(directory, "toolchains.json");
+        var first = new ToolchainSettingsStore(settingsPath);
+        await first.SetCustomPathAsync("rust", directory);
+        IReadOnlyDictionary<string, string> loaded = await new ToolchainSettingsStore(settingsPath).LoadAsync();
+        Assert(loaded["rust"] == Path.GetFullPath(directory), "custom path was not persisted");
+        await first.SetCustomPathAsync("rust", null);
+        loaded = await new ToolchainSettingsStore(settingsPath).LoadAsync();
+        Assert(!loaded.ContainsKey("rust"), "cleared custom path was retained");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task ToolchainManagerBuildsSafeActionRequests()
+{
+    const string UserArgument = "feature with spaces & symbols";
+    string directory = TemporaryDirectory("toolchain-action");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        CreateExecutables(directory, "rustc", "cargo", "rustfmt");
+        var runner = RustFakeRunner("1.95.1");
+        ToolchainManager manager = ManagerWith(
+            new RustToolchainAdapter(runner),
+            runner,
+            Path.Combine(directory, "settings.json"));
+        ToolchainDetectionResult configured = await manager.ConfigureCustomPathAsync("rust", directory);
+        Assert(configured.Status == ToolchainStatus.CustomLocation, "saved Rust path was not validated");
+        ProcessResult action = await manager.ExecuteAsync(
+            "rust",
+            ToolchainAction.Run,
+            directory,
+            ["--features", UserArgument]);
+        Assert(action.Success, "mock cargo action failed");
+        ProcessRequest request = runner.Requests.Last();
+        Assert(Path.GetFileNameWithoutExtension(request.FileName) == "cargo", "action did not use cargo");
+        Assert(request.Arguments.SequenceEqual(["run", "--features", UserArgument]), "action arguments were concatenated or reordered");
+        Assert(request.WorkingDirectory == Path.GetFullPath(directory), "action working directory was lost");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
 static async Task WinUiApplicationStarts()
 {
     string repositoryRoot = FindRepositoryRoot();
@@ -439,10 +679,80 @@ static string TemporaryDirectory(string name)
         $"sprout-studio-{Environment.ProcessId}-{name}-{Guid.NewGuid():N}");
 }
 
+static ProcessRequest SelfProcessRequest(
+    IReadOnlyList<string> arguments,
+    TimeSpan? timeout = null)
+{
+    string executable = Environment.ProcessPath
+        ?? throw new InvalidOperationException("The test process path is unavailable.");
+    return new ProcessRequest(executable, arguments, Timeout: timeout);
+}
+
+static ToolchainManager ManagerWith(
+    IToolchainAdapter adapter,
+    IProcessRunner runner,
+    string settingsPath) =>
+    new(
+        new ToolchainRegistry([adapter]),
+        new ToolchainSettingsStore(settingsPath),
+        runner);
+
+static FakeProcessRunner RustFakeRunner(string rustVersion) =>
+    new(request =>
+    {
+        string executable = Path.GetFileNameWithoutExtension(request.FileName);
+        return executable.ToLowerInvariant() switch
+        {
+            "rustc" => ProcessSuccess($"rustc {rustVersion} (test 2026-01-01)"),
+            "cargo" when request.Arguments.SequenceEqual(["--version"]) =>
+                ProcessSuccess($"cargo {rustVersion} (test 2026-01-01)"),
+            "rustfmt" => ProcessSuccess($"rustfmt {rustVersion}-stable (test 2026-01-01)"),
+            "cargo" => ProcessSuccess("action completed"),
+            _ => ProcessFailure($"unexpected executable {executable}"),
+        };
+    });
+
+static void CreateExecutables(string directory, params string[] names)
+{
+    foreach (string name in names)
+    {
+        File.WriteAllText(
+            Path.Combine(directory, OperatingSystem.IsWindows() ? $"{name}.exe" : name),
+            string.Empty);
+    }
+}
+
+static ProcessResult ProcessSuccess(string standardOutput) =>
+    new(true, 0, standardOutput, string.Empty, TimeSpan.FromMilliseconds(1), false, null);
+
+static ProcessResult ProcessFailure(string standardError) =>
+    new(true, 1, string.Empty, standardError, TimeSpan.FromMilliseconds(1), false, null);
+
 static void Assert(bool condition, string message)
 {
     if (!condition)
     {
         throw new InvalidOperationException(message);
+    }
+}
+
+sealed class FakeProcessRunner : IProcessRunner
+{
+    private readonly Func<ProcessRequest, ProcessResult> _handler;
+
+    public FakeProcessRunner(Func<ProcessRequest, ProcessResult> handler)
+    {
+        _handler = handler;
+    }
+
+    public List<ProcessRequest> Requests { get; } = [];
+
+    public Task<ProcessResult> RunAsync(
+        ProcessRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Requests.Add(request);
+        return Task.FromResult(_handler(request));
     }
 }
