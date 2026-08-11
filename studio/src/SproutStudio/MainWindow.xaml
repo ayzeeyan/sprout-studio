@@ -45,6 +45,7 @@
             <AppBarButton x:Name="CheckButton" Icon="Accept" Label="Check" Click="CheckButton_Click" />
             <AppBarButton x:Name="RunButton" Icon="Play" Label="Run" Click="RunButton_Click" />
             <AppBarSeparator />
+            <AppBarButton x:Name="AcademyButton" Icon="Library" Label="Academy" Click="AcademyButton_Click" />
             <AppBarButton x:Name="ToolchainsButton" Icon="Setting" Label="Toolchains" Click="ToolchainsButton_Click" />
         </CommandBar>
 

@@ -50,6 +50,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Academy progress prevents repeated XP awards", AcademyProgressPreventsXpFarming),
     ("Academy enrollment validates required toolchains", AcademyEnrollmentValidatesToolchains),
     ("Academy concept browser searches transferable examples", AcademyConceptBrowserSearchesExamples),
+    ("WinUI Academy surface starts and responds", WinUiAcademyStarts),
     ("WinUI application starts and responds", WinUiApplicationStarts),
 };
 
@@ -780,26 +781,76 @@ static Task AcademyConceptBrowserSearchesExamples()
     return Task.CompletedTask;
 }
 
+static async Task WinUiAcademyStarts()
+{
+    string directory = TemporaryDirectory("academy-startup");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        string statePath = Path.Combine(directory, "academy.json");
+        await new AcademyStateStore(statePath).SaveAsync(AcademyState.Empty with
+        {
+            Profile = new AcademyProfile(
+                "Startup Learner",
+                "startup-learner",
+                ExperienceLevel.Intermediate,
+                [ProgrammingGoal.ComputerScience],
+                true),
+        });
+        string executable = StudioExecutablePath();
+        var startInfo = new ProcessStartInfo(executable)
+        {
+            UseShellExecute = false,
+            WorkingDirectory = Path.GetDirectoryName(executable),
+            Arguments = "--open-academy",
+        };
+        startInfo.Environment["SPROUT_STUDIO_TEST_ACADEMY_STATE"] = statePath;
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Could not start Sprout Studio Academy test.");
+        try
+        {
+            DateTime deadline = DateTime.UtcNow.AddSeconds(10);
+            do
+            {
+                await Task.Delay(250);
+                process.Refresh();
+                if (process.HasExited)
+                {
+                    throw new InvalidOperationException(
+                        $"Sprout Studio exited during Academy startup with code {process.ExitCode}.");
+                }
+            }
+            while ((!process.MainWindowTitle.Contains("— Academy", StringComparison.Ordinal)
+                    || process.MainWindowHandle == IntPtr.Zero)
+                && DateTime.UtcNow < deadline);
+
+            Assert(process.MainWindowHandle != IntPtr.Zero, "Academy did not create a main window.");
+            Assert(process.Responding, "Academy window is not responding.");
+            Assert(
+                process.MainWindowTitle.Contains("— Academy", StringComparison.Ordinal)
+                    && !process.MainWindowTitle.Contains("Failed", StringComparison.OrdinalIgnoreCase),
+                $"Sprout Studio did not open the functional Academy surface; title was `{process.MainWindowTitle}`.");
+            Assert(process.CloseMainWindow(), "Academy did not accept a normal close request.");
+            Assert(await WaitForExitAsync(process, TimeSpan.FromSeconds(5)), "Academy did not exit cleanly.");
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync();
+            }
+        }
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
 static async Task WinUiApplicationStarts()
 {
-    string repositoryRoot = FindRepositoryRoot();
-#if DEBUG
-    const string Configuration = "Debug";
-#else
-    const string Configuration = "Release";
-#endif
-    string executable = Path.Combine(
-        repositoryRoot,
-        "studio",
-        "src",
-        "SproutStudio",
-        "bin",
-        "x64",
-        Configuration,
-        "net8.0-windows10.0.19041.0",
-        "win-x64",
-        "SproutStudio.exe");
-    Assert(File.Exists(executable), $"Sprout Studio executable was not built at {executable}");
+    string executable = StudioExecutablePath();
 
     var startInfo = new ProcessStartInfo(executable)
     {
@@ -842,6 +893,29 @@ static async Task WinUiApplicationStarts()
             await process.WaitForExitAsync();
         }
     }
+}
+
+static string StudioExecutablePath()
+{
+    string repositoryRoot = FindRepositoryRoot();
+#if DEBUG
+    const string Configuration = "Debug";
+#else
+    const string Configuration = "Release";
+#endif
+    string executable = Path.Combine(
+        repositoryRoot,
+        "studio",
+        "src",
+        "SproutStudio",
+        "bin",
+        "x64",
+        Configuration,
+        "net8.0-windows10.0.19041.0",
+        "win-x64",
+        "SproutStudio.exe");
+    Assert(File.Exists(executable), $"Sprout Studio executable was not built at {executable}");
+    return executable;
 }
 
 static string FindRepositoryRoot()

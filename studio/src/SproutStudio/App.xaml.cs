@@ -13,11 +13,20 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        bool openToolchains = args.Arguments
+        string[] arguments = args.Arguments
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Concat(Environment.GetCommandLineArgs().Skip(1))
-            .Contains("--open-toolchains", StringComparer.OrdinalIgnoreCase);
-        _window = new MainWindow(openToolchains);
+            .ToArray();
+        bool openToolchains = arguments.Contains(
+            "--open-toolchains",
+            StringComparer.OrdinalIgnoreCase);
+        bool openAcademy = arguments.Contains(
+            "--open-academy",
+            StringComparer.OrdinalIgnoreCase);
+        string? academyStatePath = openAcademy
+            ? Environment.GetEnvironmentVariable("SPROUT_STUDIO_TEST_ACADEMY_STATE")
+            : null;
+        _window = new MainWindow(openToolchains, openAcademy, academyStatePath);
         _window.Activate();
     }
 }

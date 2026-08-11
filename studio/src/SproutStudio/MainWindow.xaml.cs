@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using SproutStudio.Academy;
 using SproutStudio.Core;
 using SproutStudio.Interop;
 using SproutStudio.Toolchains;
@@ -14,18 +15,28 @@ public sealed partial class MainWindow : Window
     private readonly StudioSession _session;
     private readonly ProjectWorkspace _projects;
     private readonly ToolchainManager _toolchains;
+    private readonly AcademyService _academy;
     private readonly ObservableCollection<ProjectFileItem> _workspace = [];
     private readonly ObservableCollection<RecentProject> _recentProjects = [];
     private readonly ObservableCollection<string> _console = [];
     private readonly ObservableCollection<ProblemItem> _problems = [];
     private bool _updatingEditor;
 
-    public MainWindow(bool openToolchainsOnActivation = false)
+    private readonly bool _openToolchainsOnActivation;
+    private readonly bool _openAcademyOnActivation;
+
+    public MainWindow(
+        bool openToolchainsOnActivation = false,
+        bool openAcademyOnActivation = false,
+        string? academyStatePath = null)
     {
         var nativeClient = new NativeSproutEngineClient();
         _session = new StudioSession(nativeClient);
         _projects = new ProjectWorkspace(nativeClient);
         _toolchains = ToolchainManager.CreateDefault();
+        _academy = AcademyService.CreateDefault(_toolchains, academyStatePath);
+        _openToolchainsOnActivation = openToolchainsOnActivation;
+        _openAcademyOnActivation = openAcademyOnActivation;
         InitializeComponent();
         WorkspaceList.ItemsSource = _workspace;
         RecentProjectsList.ItemsSource = _recentProjects;
@@ -34,7 +45,7 @@ public sealed partial class MainWindow : Window
         ProfileCombo.SelectedIndex = 0;
         RefreshDocument();
         Activated += MainWindow_Activated;
-        if (openToolchainsOnActivation)
+        if (openToolchainsOnActivation || openAcademyOnActivation)
         {
             ((FrameworkElement)Content).Loaded += MainContent_Loaded;
         }
@@ -59,12 +70,20 @@ public sealed partial class MainWindow : Window
         ((FrameworkElement)Content).Loaded -= MainContent_Loaded;
         try
         {
-            await ShowToolchainSettingsAsync();
+            if (_openAcademyOnActivation)
+            {
+                await ShowAcademyAsync();
+            }
+            else if (_openToolchainsOnActivation)
+            {
+                await ShowToolchainSettingsAsync();
+            }
         }
         catch (Exception exception)
         {
-            Title = $"Sprout Studio — Toolchain Settings Failed: {exception.Message}";
-            ShowHostFailure("Could not open toolchain settings", exception);
+            string surface = _openAcademyOnActivation ? "Academy" : "Toolchain Settings";
+            Title = $"Sprout Studio — {surface} Failed: {exception.Message}";
+            ShowHostFailure($"Could not open {surface}", exception);
         }
     }
 
@@ -211,6 +230,53 @@ public sealed partial class MainWindow : Window
         catch (Exception exception)
         {
             ShowHostFailure("Could not open toolchain settings", exception);
+        }
+    }
+
+    private async void AcademyButton_Click(object sender, RoutedEventArgs args)
+    {
+        try
+        {
+            await ShowAcademyAsync();
+        }
+        catch (Exception exception)
+        {
+            ShowHostFailure("Could not open Academy", exception);
+        }
+    }
+
+    private async Task ShowAcademyAsync()
+    {
+        string previousTitle = Title;
+        try
+        {
+            XamlRoot xamlRoot = ((FrameworkElement)Content).XamlRoot;
+            AcademyState state = await _academy.LoadStateAsync();
+            if (state.Profile is null)
+            {
+                var profileDialog = new AcademyProfileDialog(_academy);
+                profileDialog.Opened += (_, _) => Title = "Sprout Studio — Academy Profile";
+                AcademyProfile? profile = await profileDialog.ShowAsync(xamlRoot);
+                if (profile is null)
+                {
+                    StatusText.Text = "Academy setup postponed";
+                    return;
+                }
+                state = await _academy.LoadStateAsync();
+            }
+
+            var dialog = new AcademyDialog(
+                _academy,
+                _toolchains,
+                state,
+                WindowNative.GetWindowHandle(this));
+            dialog.Opened += (_, _) => Title = "Sprout Studio — Academy";
+            await dialog.ShowAsync(xamlRoot);
+            StatusText.Text = "Academy progress saved locally";
+        }
+        finally
+        {
+            Title = previousTitle;
         }
     }
 
@@ -392,6 +458,7 @@ public sealed partial class MainWindow : Window
         SaveButton.IsEnabled = !busy;
         NewProjectButton.IsEnabled = !busy;
         OpenProjectButton.IsEnabled = !busy;
+        AcademyButton.IsEnabled = !busy;
         ToolchainsButton.IsEnabled = !busy;
         ProfileCombo.IsEnabled = !busy && _projects.CurrentProject is null;
         StatusText.Text = status;
