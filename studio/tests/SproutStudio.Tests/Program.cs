@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SproutStudio.Academy;
 using SproutStudio.Core;
+using SproutStudio.Editor;
 using SproutStudio.Interop;
 using SproutStudio.Toolchains;
 
@@ -24,6 +25,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Native diagnostics preserve locations", NativeDiagnosticsPreserveLocations),
     ("Native diagnostics preserve related data and fixes", NativeDiagnosticsPreserveRelatedDataAndFixes),
     ("Native byte spans navigate Unicode source", NativeSpansNavigateUnicodeSource),
+    ("Native language service completes hovers defines and formats", NativeLanguageServiceWorks),
+    ("Native debugger records variables and canvas commands", NativeDebuggerAndCanvasWork),
+    ("Native package hub updates manifests and builds bundles", NativePackageHubAndBuildWork),
+    ("Editor workspace supports tabs and additional languages", EditorWorkspaceSupportsAdditionalLanguages),
+    ("Editor coordinates normalize WinUI line endings", EditorCoordinatesNormalizeLineEndings),
+    ("Studio layout state persists and sanitizes", StudioLayoutStatePersistsAndSanitizes),
     ("Session projects response into panels", SessionProjectsResponse),
     ("Response parser rejects incompatible API", ResponseParserRejectsApiMismatch),
     ("Native project API creates and reloads templates", NativeProjectCreatesAndLoads),
@@ -93,6 +100,220 @@ static async Task NativeRunExecutesEmbeddedPython()
         "import python \"math\" as math\nprint(math.gcd(84, 30))\n"));
     Assert(response.Success, "embedded Python execution failed");
     Assert(response.Output.SequenceEqual(["6"]), "embedded Python returned unexpected output");
+}
+
+static async Task NativeLanguageServiceWorks()
+{
+    var engine = new NativeSproutEngineClient();
+    const string Source = "has name = \"Sprout\"\nprint(na)\n";
+    LanguageServiceResponse inspected = await engine.QueryAsync(new LanguageServiceRequest(
+        LanguageServiceOperation.Inspect,
+        SyntaxProfile.Guided,
+        "language.spr",
+        Source,
+        Source.LastIndexOf("na", StringComparison.Ordinal) + 2));
+    Assert(
+        inspected.Completions.Any(item => item.Label == "name"),
+        "completion did not include the visible declaration");
+    Assert(inspected.Symbols.Any(item => item.Name == "name"), "outline did not include name");
+
+    const string CompleteSource = "has name = \"Sprout\"\nprint(name)\n";
+    int hoverCursor = CompleteSource.LastIndexOf("name", StringComparison.Ordinal) + 1;
+    LanguageServiceResponse hovered = await engine.QueryAsync(new LanguageServiceRequest(
+        LanguageServiceOperation.Inspect,
+        SyntaxProfile.Guided,
+        "language.spr",
+        CompleteSource,
+        hoverCursor));
+    Assert(hovered.Hover?.Title.Contains("name", StringComparison.Ordinal) == true,
+        "hover did not identify name");
+    Assert(hovered.Definition?.Name == "name", "go to definition did not resolve name");
+
+    LanguageServiceResponse formatted = await engine.QueryAsync(new LanguageServiceRequest(
+        LanguageServiceOperation.Format,
+        SyntaxProfile.Guided,
+        "language.spr",
+        "has name=\"Sprout\"\n"));
+    Assert(formatted.Success, "formatter returned diagnostics for valid source");
+    Assert(formatted.FormattedSource == "has name = \"Sprout\"\n", "formatter output was not canonical");
+}
+
+static async Task NativeDebuggerAndCanvasWork()
+{
+    var engine = new NativeSproutEngineClient();
+    EngineResponse response = await engine.ExecuteAsync(new EngineRequest(
+        EngineOperation.Debug,
+        SyntaxProfile.Guided,
+        "debug.spr",
+        "has score = 7\ncanvas_clear(\"#101010\")\ncanvas_circle(40, 50, 10, \"green\")\nprint(score)\n"));
+    Assert(response.Success, "debug execution failed");
+    Assert(response.Output.SequenceEqual(["7"]), "debug output was incorrect");
+    Assert(response.DebugSnapshots?.Count > 0, "debugger returned no snapshots");
+    Assert(
+        response.DebugSnapshots!.Any(snapshot => snapshot.Variables.Any(
+            variable => variable.Name == "score" && variable.Value == "7")),
+        "debugger did not expose a real scoped value");
+    Assert(
+        response.CanvasCommands?.Any(command => command.Kind == "circle" && command.Radius == 10) == true,
+        "canvas protocol did not include the circle");
+}
+
+static async Task NativePackageHubAndBuildWork()
+{
+    string parent = TemporaryDirectory("phase9-project");
+    string destination = Path.Combine(parent, "PhaseNine");
+    Directory.CreateDirectory(parent);
+    try
+    {
+        var client = new NativeSproutEngineClient();
+        ProjectResponse created = await client.CreateAsync(
+            destination,
+            "PhaseNine",
+            ProjectTemplate.Guided);
+        Assert(created.Success && created.Project is not null, "project creation failed");
+
+        ProjectResponse updated = await client.UpdateDependencyAsync(
+            destination,
+            ProjectDependencyKind.Python,
+            "pygame",
+            "2.6.*");
+        Assert(updated.Success && updated.Project is not null, "package update failed");
+        ProjectInfo updatedProject = updated.Project
+            ?? throw new InvalidOperationException("package update returned no project");
+        Assert(
+            updatedProject.PythonDependencies?.GetValueOrDefault("pygame") == "2.6.*",
+            "updated package was not returned from the project API");
+
+        BuildResponse built = await client.BuildAsync(destination);
+        Assert(built.Success && built.Artifact is not null, "project build failed");
+        BuildArtifact artifact = built.Artifact
+            ?? throw new InvalidOperationException("build returned no artifact");
+        Assert(Directory.Exists(artifact.Path), "bundle directory was not created");
+        Assert(File.Exists(Path.Combine(artifact.Path, "README.txt")), "bundle disclosure is missing");
+
+        ProjectResponse removed = await client.UpdateDependencyAsync(
+            destination,
+            ProjectDependencyKind.Python,
+            "pygame",
+            null);
+        Assert(
+            removed.Project?.PythonDependencies?.ContainsKey("pygame") == false,
+            "package removal did not update the manifest");
+    }
+    finally
+    {
+        Directory.Delete(parent, recursive: true);
+    }
+}
+
+static async Task EditorWorkspaceSupportsAdditionalLanguages()
+{
+    string directory = TemporaryDirectory("editor-workspace");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        string sprout = Path.Combine(directory, "main.spr");
+        string rust = Path.Combine(directory, "lib.rs");
+        string python = Path.Combine(directory, "lesson.py");
+        await File.WriteAllTextAsync(sprout, "print(1)\n");
+        await File.WriteAllTextAsync(rust, "fn main() {}\n");
+        await File.WriteAllTextAsync(python, "print('lesson')\n");
+
+        var workspace = new EditorWorkspace();
+        EditorDocument sproutDocument = await workspace.OpenAsync(sprout);
+        EditorDocument rustDocument = await workspace.OpenAsync(rust);
+        EditorDocument pythonDocument = await workspace.OpenAsync(python);
+        Assert(workspace.Documents.Count == 3, "multi-tab workspace did not retain all documents");
+        Assert(rustDocument.Language.Id == DocumentLanguage.Rust, "Rust adapter was not selected");
+        Assert(
+            rustDocument.Language.Capabilities.HasFlag(EditorCapability.Build),
+            "Rust build capability was not exposed");
+        Assert(pythonDocument.Language.Id == DocumentLanguage.Python, "Python edit adapter was not selected");
+        Assert(
+            pythonDocument.Language.Capabilities == EditorCapability.None,
+            "Python file advertised an unimplemented toolchain capability");
+
+        sproutDocument.UpdateSource("print(2)\n");
+        await workspace.SaveAsync(sproutDocument);
+        Assert(await File.ReadAllTextAsync(sprout) == "print(2)\n", "workspace save did not persist edits");
+        IReadOnlyList<WorkspaceFile> scanned = await WorkspaceScanner.ScanAsync(directory);
+        Assert(scanned.Count == 3, "workspace scan did not include all supported languages");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static Task EditorCoordinatesNormalizeLineEndings()
+{
+    const string EditorText = "first\rsecond\r\nthird";
+    string normalized = EditorTextCoordinates.NormalizeLineEndings(EditorText);
+    Assert(normalized == "first\nsecond\nthird", "line endings were not normalized");
+    int thirdEditorIndex = EditorText.IndexOf("third", StringComparison.Ordinal);
+    int thirdNormalizedIndex = normalized.IndexOf("third", StringComparison.Ordinal);
+    Assert(
+        EditorTextCoordinates.EditorIndexToNormalizedIndex(EditorText, thirdEditorIndex)
+            == thirdNormalizedIndex,
+        "editor caret did not map to normalized source");
+    Assert(
+        EditorTextCoordinates.NormalizedIndexToEditorIndex(EditorText, thirdNormalizedIndex)
+            == thirdEditorIndex,
+        "normalized source span did not map back to the editor");
+    return Task.CompletedTask;
+}
+
+static Task StudioLayoutStatePersistsAndSanitizes()
+{
+    string directory = TemporaryDirectory("layout-state");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        string path = Path.Combine(directory, "layout.json");
+        var store = new StudioLayoutStateStore(path);
+        store.Save(new StudioLayoutState
+        {
+            ExplorerWidth = 334,
+            InspectorWidth = 372,
+            BottomPanelHeight = 244,
+            ActivityVisible = false,
+            ExplorerVisible = true,
+            InspectorVisible = false,
+            BottomPanelVisible = true,
+            SelectedBottomTab = 2,
+            SelectedInspectorTab = 1,
+            SelectedActivity = "source-control",
+        });
+        StudioLayoutState loaded = store.Load();
+        Assert(loaded.ExplorerWidth == 334, "explorer width did not round-trip");
+        Assert(loaded.InspectorWidth == 372, "inspector width did not round-trip");
+        Assert(!loaded.ActivityVisible && !loaded.InspectorVisible, "panel visibility did not round-trip");
+        Assert(loaded.SelectedBottomTab == 2, "bottom tab did not round-trip");
+        Assert(loaded.SelectedActivity == "source-control", "activity selection did not round-trip");
+
+        StudioLayoutState sanitized = StudioLayoutStateStore.Sanitize(new StudioLayoutState
+        {
+            ExplorerWidth = -1,
+            InspectorWidth = 9_000,
+            BottomPanelHeight = double.PositiveInfinity,
+            SelectedBottomTab = 99,
+            SelectedInspectorTab = -4,
+            SelectedActivity = "unknown",
+        });
+        Assert(sanitized.ExplorerWidth == 200, "explorer minimum was not enforced");
+        Assert(sanitized.InspectorWidth == 480, "inspector maximum was not enforced");
+        Assert(sanitized.BottomPanelHeight == 500, "bottom maximum was not enforced");
+        Assert(sanitized.SelectedBottomTab == 2, "bottom tab bounds were not enforced");
+        Assert(sanitized.SelectedActivity == "explorer", "unknown activity was not reset");
+
+        File.WriteAllText(path, "{ malformed");
+        Assert(store.Load() == new StudioLayoutState(), "corrupt layout did not fall back to defaults");
+        return Task.CompletedTask;
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
 }
 
 static async Task NativeProjectRunIsolatesPythonPackages()

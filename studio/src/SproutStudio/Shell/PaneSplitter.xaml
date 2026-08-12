@@ -1,0 +1,21 @@
+<UserControl
+    x:Class="SproutStudio.Shell.PaneSplitter"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsTabStop="True"
+    AutomationProperties.Name="Resize pane">
+    <Grid x:Name="SplitterSurface"
+          Background="Transparent"
+          PointerEntered="SplitterSurface_PointerEntered"
+          PointerExited="SplitterSurface_PointerExited"
+          PointerPressed="SplitterSurface_PointerPressed"
+          PointerMoved="SplitterSurface_PointerMoved"
+          PointerReleased="SplitterSurface_PointerReleased"
+          PointerCanceled="SplitterSurface_PointerReleased">
+        <Border x:Name="Divider"
+                Background="{StaticResource StudioBorderBrush}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                Width="1" />
+    </Grid>
+</UserControl>

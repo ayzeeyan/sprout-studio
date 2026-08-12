@@ -4,193 +4,83 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:shell="using:SproutStudio.Shell"
+    xmlns:workspace="using:SproutStudio.Workspace"
+    xmlns:studioEditor="using:SproutStudio.Editor"
+    xmlns:tools="using:SproutStudio.Tools"
+    xmlns:inspector="using:SproutStudio.Inspector"
     mc:Ignorable="d"
     Title="Sprout Studio">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid x:Name="RootLayout"
+          RequestedTheme="Dark"
+          Background="{StaticResource StudioBackgroundBrush}"
+          SizeChanged="RootLayout_SizeChanged">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="P" Modifiers="Control,Shift" Invoked="CommandPaletteAccelerator_Invoked" />
+            <KeyboardAccelerator Key="B" Modifiers="Control" Invoked="ExplorerAccelerator_Invoked" />
+            <KeyboardAccelerator Key="J" Modifiers="Control" Invoked="BottomPanelAccelerator_Invoked" />
+            <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewDocumentAccelerator_Invoked" />
+            <KeyboardAccelerator Key="O" Modifiers="Control" Invoked="OpenDocumentAccelerator_Invoked" />
+            <KeyboardAccelerator Key="S" Modifiers="Control" Invoked="SaveDocumentAccelerator_Invoked" />
+            <KeyboardAccelerator Key="F5" Invoked="RunAccelerator_Invoked" />
+        </Grid.KeyboardAccelerators>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="34" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="220" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="24" />
         </Grid.RowDefinitions>
 
-        <CommandBar Grid.Row="0" DefaultLabelPosition="Right">
-            <CommandBar.Content>
-                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <FontIcon Glyph="&#xE82D;" FontSize="22" Foreground="#3AA76D" />
-                    <TextBlock Text="Sprout Studio" FontSize="18" FontWeight="SemiBold" />
-                    <Border Background="#183A2A" CornerRadius="10" Padding="8,3">
-                        <TextBlock Text="Sprout · READY" Foreground="#7EE2A8" FontSize="12" />
-                    </Border>
-                </StackPanel>
-            </CommandBar.Content>
-            <AppBarButton x:Name="NewButton" Icon="Add" Label="New" Click="NewButton_Click" />
-            <AppBarButton x:Name="OpenButton" Icon="OpenFile" Label="Open" Click="OpenButton_Click" />
-            <AppBarButton x:Name="SaveButton" Icon="Save" Label="Save" Click="SaveButton_Click" />
-            <AppBarSeparator />
-            <AppBarButton x:Name="NewProjectButton" Icon="NewFolder" Label="New project" Click="NewProjectButton_Click" />
-            <AppBarButton x:Name="OpenProjectButton" Icon="OpenFile" Label="Open project" Click="OpenProjectButton_Click" />
-            <AppBarSeparator />
-            <AppBarElementContainer>
-                <ComboBox x:Name="ProfileCombo"
-                          Width="140"
-                          Header="Syntax"
-                          SelectionChanged="ProfileCombo_SelectionChanged">
-                    <ComboBoxItem Content="Guided" />
-                    <ComboBoxItem Content="Structured" />
-                    <ComboBoxItem Content="Advanced" />
-                </ComboBox>
-            </AppBarElementContainer>
-            <AppBarButton x:Name="CheckButton" Icon="Accept" Label="Check" Click="CheckButton_Click" />
-            <AppBarButton x:Name="RunButton" Icon="Play" Label="Run" Click="RunButton_Click" />
-            <AppBarSeparator />
-            <AppBarButton x:Name="AcademyButton" Icon="Library" Label="Academy" Click="AcademyButton_Click" />
-            <AppBarButton x:Name="ToolchainsButton" Icon="Setting" Label="Toolchains" Click="ToolchainsButton_Click" />
-        </CommandBar>
+        <shell:StudioTitleBar x:Name="StudioTitle" Grid.Row="0" />
 
-        <Grid Grid.Row="1">
+        <Grid x:Name="ApplicationBody" Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="240" MinWidth="180" />
-                <ColumnDefinition Width="5" />
+                <ColumnDefinition x:Name="ActivityColumn" Width="48" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0"
-                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="0,1,1,0"
-                    Background="{ThemeResource LayerFillColorDefaultBrush}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="140" />
-                    </Grid.RowDefinitions>
-                    <StackPanel Margin="16,14,12,8" Spacing="3">
-                        <TextBlock Text="WORKSPACE"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <TextBlock x:Name="ProjectNameText" Text="Single file" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                    <ListView x:Name="WorkspaceList"
-                              Grid.Row="1"
-                              SelectionMode="Single"
-                              IsItemClickEnabled="True"
-                              ItemClick="WorkspaceList_ItemClick">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="8" Padding="4">
-                                    <FontIcon Glyph="&#xE8A5;" FontSize="14" />
-                                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                    <TextBlock Grid.Row="2"
-                               Text="RECENT PROJECTS"
-                               Margin="16,12,12,6"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <ListView x:Name="RecentProjectsList"
-                              Grid.Row="3"
-                              SelectionMode="None"
-                              IsItemClickEnabled="True"
-                              ItemClick="RecentProjectsList_ItemClick">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Padding="4">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding RootPath}"
-                                               FontSize="11"
-                                               Opacity="0.65"
-                                               TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </Grid>
-            </Border>
+            <shell:ActivityBar x:Name="ActivityRail" Grid.Column="0" />
 
-            <Border Grid.Column="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-            <Grid Grid.Column="2">
+            <Grid Grid.Column="1">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="46" />
+                    <RowDefinition Height="*" MinHeight="240" />
+                    <RowDefinition x:Name="BottomSplitterRow" Height="4" />
+                    <RowDefinition x:Name="BottomPanelRow" Height="190" />
                 </Grid.RowDefinitions>
-                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                        BorderThickness="0,1,0,1"
-                        Padding="14,9">
-                    <TextBlock x:Name="EditorTabTitle" FontWeight="SemiBold" />
-                </Border>
-                <TextBox x:Name="Editor"
-                         Grid.Row="1"
-                         AcceptsReturn="True"
-                         TextWrapping="NoWrap"
-                         FontFamily="Consolas"
-                         FontSize="14"
-                         Padding="16"
-                         BorderThickness="0"
-                         HorizontalAlignment="Stretch"
-                         VerticalAlignment="Stretch"
-                         HorizontalContentAlignment="Stretch"
-                         VerticalContentAlignment="Top"
-                         TextChanged="Editor_TextChanged"
-                         AutomationProperties.Name="Sprout source editor" />
+
+                <shell:MainToolbar x:Name="Toolbar" Grid.Row="0" />
+
+                <Grid x:Name="MainWorkspaceGrid" Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="ExplorerColumn" Width="280" />
+                        <ColumnDefinition x:Name="ExplorerSplitterColumn" Width="4" />
+                        <ColumnDefinition Width="*" MinWidth="320" />
+                        <ColumnDefinition x:Name="InspectorSplitterColumn" Width="4" />
+                        <ColumnDefinition x:Name="InspectorColumn" Width="350" />
+                    </Grid.ColumnDefinitions>
+
+                    <workspace:ExplorerView x:Name="ExplorerPane" Grid.Column="0" />
+                    <shell:PaneSplitter x:Name="ExplorerSplitter"
+                                        Grid.Column="1"
+                                        Orientation="Vertical"
+                                        DragDelta="ExplorerSplitter_DragDelta" />
+                    <studioEditor:EditorHost x:Name="EditorPane" Grid.Column="2" />
+                    <shell:PaneSplitter x:Name="InspectorSplitter"
+                                        Grid.Column="3"
+                                        Orientation="Vertical"
+                                        DragDelta="InspectorSplitter_DragDelta" />
+                    <inspector:InspectorView x:Name="InspectorPane" Grid.Column="4" />
+                </Grid>
+
+                <shell:PaneSplitter x:Name="BottomSplitter"
+                                    Grid.Row="2"
+                                    Orientation="Horizontal"
+                                    DragDelta="BottomSplitter_DragDelta" />
+                <tools:BottomToolPanel x:Name="BottomPane" Grid.Row="3" />
             </Grid>
         </Grid>
 
-        <TabView Grid.Row="2" IsAddTabButtonVisible="False">
-            <TabViewItem Header="Console">
-                <ListView x:Name="ConsoleList" Padding="10" FontFamily="Consolas">
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" TextWrapping="Wrap" />
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </TabViewItem>
-            <TabViewItem Header="Problems">
-                <ListView x:Name="ProblemsList"
-                          Padding="6"
-                          IsItemClickEnabled="True"
-                          ItemClick="ProblemsList_ItemClick">
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Padding="8,6" ColumnSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding Code}" Foreground="#F16D76" FontFamily="Consolas" />
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Opacity="0.75" />
-                                </StackPanel>
-                                <TextBlock Grid.Column="2" Text="{Binding Location}" Opacity="0.65" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </TabViewItem>
-        </TabView>
-
-        <Border Grid.Row="3"
-                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="0,1,0,0"
-                Padding="12,6">
-            <Grid>
-                <TextBlock x:Name="StatusText" Text="Ready" />
-                <ProgressRing x:Name="BusyIndicator"
-                              Width="18"
-                              Height="18"
-                              HorizontalAlignment="Right"
-                              IsActive="False" />
-            </Grid>
-        </Border>
+        <shell:StatusBar x:Name="StudioStatus" Grid.Row="2" />
     </Grid>
 </Window>

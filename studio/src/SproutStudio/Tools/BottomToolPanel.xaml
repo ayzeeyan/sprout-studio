@@ -1,0 +1,84 @@
+<UserControl
+    x:Class="SproutStudio.Tools.BottomToolPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <TabView x:Name="ToolTabs"
+             Style="{StaticResource StudioToolTabViewStyle}"
+             BorderBrush="{StaticResource StudioBorderBrush}"
+             BorderThickness="0,1,0,0">
+        <TabView.TabStripFooter>
+            <Button x:Name="CollapsePaneButton"
+                    Style="{StaticResource StudioIconButtonStyle}"
+                    Width="28" Height="28"
+                    Margin="4,0,5,0"
+                    ToolTipService.ToolTip="Hide bottom panel (Ctrl+J)"
+                    AutomationProperties.Name="Hide bottom panel">
+                <FontIcon Glyph="&#xE70E;" FontSize="11" />
+            </Button>
+        </TabView.TabStripFooter>
+
+        <TabViewItem Header="Problems" IsClosable="False">
+            <Grid>
+                <ListView x:Name="ProblemItems"
+                          IsItemClickEnabled="True"
+                          ItemContainerStyle="{StaticResource StudioListViewItemStyle}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid MinHeight="43" Padding="9,3" ColumnSpacing="9">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="18" />
+                                    <ColumnDefinition Width="58" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xEA39;" FontSize="12" Foreground="{StaticResource StudioErrorBrush}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Code}"
+                                           Foreground="{StaticResource StudioErrorBrush}"
+                                           FontFamily="Cascadia Mono, Consolas" FontSize="11" />
+                                <StackPanel Grid.Column="2" Spacing="1">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Message}" FontSize="11"
+                                               Foreground="{StaticResource StudioTextSecondaryBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="3" Text="{Binding Location}" FontSize="11"
+                                           Foreground="{StaticResource StudioTextMutedBrush}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <TextBlock x:Name="ProblemsEmptyText"
+                           Style="{StaticResource StudioEmptyStateTextStyle}"
+                           Text="No problems detected."
+                           IsHitTestVisible="False" />
+            </Grid>
+        </TabViewItem>
+        <TabViewItem Header="Console" IsClosable="False">
+            <Grid>
+                <ListView x:Name="ConsoleItems"
+                          Padding="10,6"
+                          FontFamily="Cascadia Mono, Consolas"
+                          FontSize="12"
+                          ItemContainerStyle="{StaticResource StudioListViewItemStyle}" />
+                <TextBlock x:Name="ConsoleEmptyText"
+                           Style="{StaticResource StudioEmptyStateTextStyle}"
+                           Text="Run a document to see program output."
+                           IsHitTestVisible="False" />
+            </Grid>
+        </TabViewItem>
+        <TabViewItem Header="Build Output" IsClosable="False">
+            <Grid>
+                <ListView x:Name="BuildItems"
+                          Padding="10,6"
+                          FontFamily="Cascadia Mono, Consolas"
+                          FontSize="12"
+                          ItemContainerStyle="{StaticResource StudioListViewItemStyle}" />
+                <TextBlock x:Name="BuildEmptyText"
+                           Style="{StaticResource StudioEmptyStateTextStyle}"
+                           Text="Build output appears here."
+                           IsHitTestVisible="False" />
+            </Grid>
+        </TabViewItem>
+    </TabView>
+</UserControl>

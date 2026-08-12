@@ -184,7 +184,7 @@ public static class WorkspaceScanner
 {
     private const int MaximumFiles = 5_000;
     private static readonly HashSet<string> IgnoredDirectories = new(
-        [".git", ".sprout", "target", "bin", "obj", "node_modules"],
+        [".git", ".sprout", "build", "target", "bin", "obj", "node_modules"],
         StringComparer.OrdinalIgnoreCase);
 
     public static Task<IReadOnlyList<WorkspaceFile>> ScanAsync(

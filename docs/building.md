@@ -1,4 +1,4 @@
-# Building Sprout Phase 8
+# Building Sprout Phase 9
 
 ## Development requirements
 
@@ -61,6 +61,6 @@ dotnet run --project studio/tests/SproutStudio.Tests/SproutStudio.Tests.csproj -
 dotnet build studio/src/SproutStudio/SproutStudio.csproj -c Debug -p:Platform=x64 --no-restore
 ```
 
-The .NET integration harness creates real projects through the Rust DLL, checks invalid manifests, executes embedded Python with project-local package isolation, verifies structured diagnostic metadata and Unicode editor navigation, enforces recent-project persistence limits, tests atomic Save and Save As behavior, validates Rust/Go adapters with fake processes, exercises real process argument capture/cancellation/timeout behavior, and performs a live environment detection smoke test. Phase 8 tests validate the offline catalog, private local profile, recommendation ordering and explanations, idempotent progress, achievements, concept search, and toolchain-gated enrollment. The harness launches the real WinUI executable into both Academy and Toolchain Settings; it fails if either surface exits early, becomes unresponsive, or cannot close normally.
+The .NET integration harness exercises the real Rust DLL for completion, hover, definitions, formatting, debugger snapshots, Canvas commands, dependency updates, and bundle builds. It also tests multi-tab/additional-language workspace behavior, atomic saves, project isolation, structured diagnostics, Unicode navigation, safe external-process cancellation, toolchain detection, and the Phase 8 Academy suite. The harness launches the real WinUI executable into both Academy and Toolchain Settings and fails if either surface exits early, becomes unresponsive, or cannot close normally.
 
 The Rust toolchain, .NET SDK, and Visual Studio are development requirements only. Studio build output contains the Sprout engine and embedded Python runtime; packaging it into an installer remains deferred.

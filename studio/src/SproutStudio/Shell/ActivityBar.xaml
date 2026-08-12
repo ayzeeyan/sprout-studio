@@ -1,0 +1,74 @@
+<UserControl
+    x:Class="SproutStudio.Shell.ActivityBar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Width="48"
+          Background="{StaticResource StudioSurfaceBrush}"
+          BorderBrush="{StaticResource StudioBorderBrush}"
+          BorderThickness="0,0,1,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel Padding="0,3">
+            <ToggleButton x:Name="ExplorerButton" Style="{StaticResource StudioActivityButtonStyle}"
+                          ToolTipService.ToolTip="Explorer (Ctrl+B)" AutomationProperties.Name="Explorer">
+                <Grid Width="42" Height="42">
+                    <Border x:Name="ExplorerIndicator" Width="2" Height="25" HorizontalAlignment="Left"
+                            Background="{StaticResource StudioAccentBrush}" CornerRadius="0,2,2,0" />
+                    <FontIcon Glyph="&#xE8B7;" FontSize="19" />
+                </Grid>
+            </ToggleButton>
+            <ToggleButton x:Name="SearchButton" Style="{StaticResource StudioActivityButtonStyle}"
+                          ToolTipService.ToolTip="Search workspace" AutomationProperties.Name="Search">
+                <Grid Width="42" Height="42">
+                    <Border x:Name="SearchIndicator" Width="2" Height="25" HorizontalAlignment="Left"
+                            Background="{StaticResource StudioAccentBrush}" Visibility="Collapsed" />
+                    <FontIcon Glyph="&#xE721;" FontSize="19" />
+                </Grid>
+            </ToggleButton>
+            <ToggleButton x:Name="SourceControlButton" Style="{StaticResource StudioActivityButtonStyle}"
+                          ToolTipService.ToolTip="Source Control" AutomationProperties.Name="Source Control">
+                <Grid Width="42" Height="42">
+                    <Border x:Name="SourceControlIndicator" Width="2" Height="25" HorizontalAlignment="Left"
+                            Background="{StaticResource StudioAccentBrush}" Visibility="Collapsed" />
+                    <FontIcon Glyph="&#xE8D7;" FontSize="19" />
+                </Grid>
+            </ToggleButton>
+            <ToggleButton x:Name="AcademyButton" Style="{StaticResource StudioActivityButtonStyle}"
+                          ToolTipService.ToolTip="Academy" AutomationProperties.Name="Academy">
+                <Grid Width="42" Height="42">
+                    <Border x:Name="AcademyIndicator" Width="2" Height="25" HorizontalAlignment="Left"
+                            Background="{StaticResource StudioAccentBrush}" Visibility="Collapsed" />
+                    <FontIcon Glyph="&#xE7BE;" FontSize="19" />
+                </Grid>
+            </ToggleButton>
+            <ToggleButton x:Name="DocumentationButton" Style="{StaticResource StudioActivityButtonStyle}"
+                          ToolTipService.ToolTip="Documentation" AutomationProperties.Name="Documentation">
+                <Grid Width="42" Height="42">
+                    <Border x:Name="DocumentationIndicator" Width="2" Height="25" HorizontalAlignment="Left"
+                            Background="{StaticResource StudioAccentBrush}" Visibility="Collapsed" />
+                    <FontIcon Glyph="&#xE8A5;" FontSize="19" />
+                </Grid>
+            </ToggleButton>
+            <ToggleButton x:Name="PackagesButton" Style="{StaticResource StudioActivityButtonStyle}"
+                          ToolTipService.ToolTip="Package Hub" AutomationProperties.Name="Package Hub">
+                <Grid Width="42" Height="42">
+                    <Border x:Name="PackagesIndicator" Width="2" Height="25" HorizontalAlignment="Left"
+                            Background="{StaticResource StudioAccentBrush}" Visibility="Collapsed" />
+                    <FontIcon Glyph="&#xE7B8;" FontSize="19" />
+                </Grid>
+            </ToggleButton>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Padding="0,3">
+            <ToggleButton x:Name="ToolchainsButton" Style="{StaticResource StudioActivityButtonStyle}"
+                          ToolTipService.ToolTip="Toolchains and settings" AutomationProperties.Name="Toolchains and settings">
+                <Grid Width="42" Height="42">
+                    <Border x:Name="ToolchainsIndicator" Width="2" Height="25" HorizontalAlignment="Left"
+                            Background="{StaticResource StudioAccentBrush}" Visibility="Collapsed" />
+                    <FontIcon Glyph="&#xE713;" FontSize="19" />
+                </Grid>
+            </ToggleButton>
+        </StackPanel>
+    </Grid>
+</UserControl>

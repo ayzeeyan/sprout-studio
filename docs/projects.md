@@ -26,6 +26,8 @@ target = "windows-x86_64"
 
 Dependency names must start and end with a letter or number and may contain letters, numbers, `-`, `_`, or `.`. Requirements must be non-empty. Phase 6 installs Python requirements into the current project's `.sprout/python` directory only; dependencies are never installed into a shared global project directory or the user's system Python.
 
+Phase 9 Package Hub updates `[dependencies]` and `[python]` through the shared Rust project service. It validates each entry, stages a sibling manifest, restores the original on activation failure, and preserves existing TOML comments.
+
 Synchronize the manifest after editing `[python]`:
 
 ```powershell
@@ -64,3 +66,7 @@ sprout run C:\Projects\HelloSprout\sprout.toml
 ```
 
 The CLI loads the manifest entry and syntax profile through `sprout-project`, the same Rust API used by Sprout Studio. Project runs add only that project's `.sprout/python` to the embedded interpreter and remove project-loaded modules from Python's process cache after the run.
+
+## Build from Studio
+
+The graphical **Build** command validates the current entry and writes a unique directory under `build/` with a `.sproutbundle` suffix. It contains the validated manifest, discovered Sprout sources, and a disclosure file. This artifact is portable source for a compatible Sprout runtime; Phase 9 does not claim native compilation or a standalone executable. The CLI `build` command remains deferred.

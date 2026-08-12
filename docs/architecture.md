@@ -1,4 +1,4 @@
-# Phase 8 Architecture
+# Phase 9 Architecture
 
 ## Implemented pipeline
 
@@ -13,7 +13,7 @@ Guided / Structured / Advanced source
     -> captured program output or structured diagnostic
 ```
 
-`sprout-core` owns the language pipeline and has no dependency on projects, the CLI, C#, WinUI, PyO3, or external crates. Its host-neutral interop traits describe foreign values, objects, errors, and imports. `sprout-python` implements those traits with embedded CPython. `sprout-project` owns versioned manifest parsing, validation, source discovery, and built-in templates. `sprout-cli` is a thin adapter over those shared APIs. `sprout-ffi` exposes the language and project services to Studio as owned UTF-8 JSON responses. The runtime never evaluates generated Python or host-language source.
+`sprout-core` owns the language pipeline, formatter, cursor-sensitive language service, recorded debugger, and Canvas command protocol. It has no dependency on projects, the CLI, C#, WinUI, PyO3, or external crates. Its host-neutral interop traits describe foreign values, objects, errors, and imports. `sprout-python` implements those traits with embedded CPython. `sprout-project` owns versioned manifest parsing, validation, comment-preserving dependency updates, source discovery, templates, and validated interpreted bundles. `sprout-cli` is a thin adapter over shared APIs. `sprout-ffi` exposes those services to Studio as owned UTF-8 JSON responses. The runtime never evaluates generated Python or host-language source.
 
 The canonical AST is independent of surface syntax. Guided, Structured, and Advanced parser paths produce the same node types without translating text between profiles. Advanced indentation is converted into structural `Indent`/`Dedent` tokens before parsing. Every source token and AST node carries a `SourceSpan` with file, byte offsets, and one-based line/column coordinates.
 
@@ -55,9 +55,11 @@ The runtime is a tree-walking AST interpreter with nested lexical environments. 
 
 ## Studio boundary
 
-The WinUI 3 executable depends on four UI-independent .NET libraries. `SproutStudio.Core` owns document state and session orchestration, `SproutStudio.Interop` owns native library loading and response deserialization, `SproutStudio.Toolchains` owns external-tool detection, validation, settings, and process execution, and `SproutStudio.Academy` owns offline learning content, local state, recommendations, enrollment rules, progress, and achievements. The UI passes structured requests to these services and renders results after returning to the UI thread.
+The WinUI 3 executable depends on five UI-independent .NET libraries. `SproutStudio.Core` owns durable request/response models, `SproutStudio.Editor` owns multi-tab documents, atomic saves, workspace scanning, language capabilities, and Rust/Go action routing, `SproutStudio.Interop` owns native loading and deserialization, `SproutStudio.Toolchains` owns external-tool detection and safe process execution, and `SproutStudio.Academy` owns offline learning content and state. The UI passes structured requests to these services and renders results after returning to the UI thread.
 
-The FFI exposes a small versioned surface: execute a structured request with optional project context, load or create a project, inspect the returned buffer, and free it with the matching Rust allocator. Panics are contained at the ABI boundary. C# never parses console text to recover diagnostics; source spans, related locations, suggestions, fixes, and project issues remain structured end to end. Rust byte offsets are converted to UTF-16 editor indices before WinUI navigation.
+The WinUI shell is split into reusable `Shell`, `Workspace`, `Editor`, `Tools`, and `Inspector` controls instead of embedding every region in `MainWindow.xaml`. `MainWindow` coordinates existing services and a shared command registry; the controls own presentation and expose only the interaction surfaces required by that coordinator. Shared colors, brushes, spacing, radii, and compact control styles live in one theme dictionary. `StudioLayoutStateStore` remains in the UI-independent editor library so persistence, corruption fallback, and size clamping are integration-tested without starting WinUI.
+
+The FFI exposes coarse versioned operations for execution/debugging, language inspection/formatting, project load/create/dependency updates, and bundle builds. Panics are contained at the ABI boundary and returned buffers use the matching Rust allocator. C# never parses console text to recover language diagnostics; spans, suggestions, fixes, symbols, variables, stack frames, Canvas commands, artifacts, and project issues remain structured end to end. Rust byte offsets are converted to UTF-16 indices, including WinUI line-ending normalization, before navigation.
 
 ## Toolchain system
 
@@ -67,7 +69,7 @@ Detection considers an authoritative user-selected location, PATH, and known Win
 
 Process requests carry an executable, an argument list, an optional working directory, and an optional timeout. `UseShellExecute` is disabled and each argument is passed through `ProcessStartInfo.ArgumentList`; user strings are never concatenated into shell commands. stdout, stderr, exit code, duration, start failure, and timeout state are captured. Cancellation and timeout terminate the complete child process tree without blocking the WinUI thread.
 
-Custom locations are stored in a versioned JSON document under local application data and replaced atomically. The manager exposes validated Run, Build, Format, and Test action requests for Rust and Go; editor/project UI for external-language projects remains deferred.
+Custom locations are stored in a versioned JSON document under local application data and replaced atomically. Rust and Go documents route Run, Build, Format, and Test through these validated adapters. Python, Java, JavaScript, TypeScript, JSON, TOML, Markdown, and plain-text files can be opened, edited, tabbed, and saved, but Studio disables semantic or execution commands it does not implement.
 
 ## Academy system
 
@@ -84,7 +86,8 @@ Rust and Go enrollment invokes validated detection only for tracks that require 
 - Fields, constructors with parameters, inheritance, Sprout collection literals, native Sprout modules/imports, and Sprout error handling
 - Python keyword arguments, assignment through Python indexes/members, and compatibility guarantees for arbitrary PyPI packages
 - Remaining CLI commands (`test`, `fmt`, `repl`, `add`, and `build`)
-- Graphical Package Hub, general Sprout package infrastructure, bytecode, and VM
-- Interactive Academy exercises and grading, cloud profile synchronization, automated toolchain installation, additional language adapters, and external-language project editors
+- General Sprout package resolution/registry infrastructure, native executables, bytecode, and VM
+- Live pause/resume debugging, conditional breakpoints, rename refactoring, rich syntax coloring, and language servers for non-Sprout files
+- Interactive Academy exercises and grading, cloud profile synchronization, and automated toolchain installation
 
 No deferred command or feature is exposed as if it works.

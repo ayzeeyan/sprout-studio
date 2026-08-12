@@ -1,22 +1,37 @@
 # Sprout Studio
 
-Phase 8 preserves the end-to-end Windows project workflow, embedded Python execution, and validated external toolchain settings while adding the optional offline Academy. The x64 WinUI 3 application can create and save individual `.spr` files, create a project from any syntax template, validate and open `sprout.toml`, browse project sources, save edits, check and run through the real Rust engine, execute explicit Python imports, inspect Rust/Go installations, learn across six tracks, and reopen recent projects.
+Phase 9 presents the x64 WinUI 3 application as a responsive dark IDE with an activity rail, project explorer, multi-tab editor, bottom output tools, and an optional right inspector. Sprout files use the real Rust engine for completion, hover information, outline, definition lookup, formatting, checking, running, recorded debugging, variables, watches, call stacks, and Canvas rendering.
 
 ## Workflow
 
 1. Start `SproutStudio.exe`.
 2. Select **New project**, enter a name and template, and choose its parent directory; or select **Open project** and choose `sprout.toml`.
-3. Select a `.spr` source in **Workspace**, edit it, and select **Save**. Check and Run also save an opened source before invoking the engine.
-4. Select **Check** to validate without executing, or **Run** to execute.
-5. Read program output in **Console** and structured diagnostics in **Problems**. Recent projects remain available in the left pane.
-6. Select **Toolchains** to validate Rust and Go, recheck the environment, return to automatic detection, or save a custom executable/folder.
-7. Select **Academy** to create a local learning profile, follow an explained recommendation, enroll in a track, read or complete lessons, compare concepts across languages, and review progress.
+3. Open any supported source file in a tab, edit it, and select **Save**. Sprout, Rust, Go, Python, Java, JavaScript, TypeScript, JSON, TOML, Markdown, and text extensions are recognized.
+4. In Sprout files, use **Ctrl+Space** for completion, **F12** for definition lookup, **Format**, **Check**, **Run**, or **Debug**. The debugger records actual execution snapshots; its controls review the trace rather than claiming a live paused process.
+5. Read structured diagnostics in **Problems**, output in **Console**, artifacts in **Build Output**, and graphics in **Canvas**. A breakpoint selects the matching recorded snapshot when one exists.
+6. Select **Package Hub** to add, update, or remove validated `[dependencies]` or `[python]` entries without discarding manifest comments. Python installation remains the explicit `sprout python sync` operation.
+7. Select **Build** in an open Sprout project to create a checked `.sproutbundle`. The UI identifies it as an interpreted bundle that requires a compatible runtime, not a native executable.
+8. Rust and Go files route Run, Build, and Format to validated toolchain adapters. Other languages remain honest edit/save adapters with unsupported commands disabled.
+9. Use the activity rail for Explorer, search, source control, Academy, documentation, Package Hub, and toolchains.
+
+## Layout and keyboard workflow
+
+Drag the dividers beside Explorer and Inspector or above the bottom tools to resize those panes. Use the pane header controls to hide Explorer, Inspector, or bottom tools; hidden panes do not reserve blank space. The shell remembers sizes, visibility, selected tabs, and the selected activity destination for the next launch.
+
+- `Ctrl+Shift+P` opens the command palette.
+- `Ctrl+B` toggles Explorer.
+- `Ctrl+J` toggles the bottom tool panel.
+- `Ctrl+N`, `Ctrl+O`, and `Ctrl+S` create, open, and save documents.
+- `F5` runs the active supported document.
+- `Ctrl+Space` requests Sprout completion and `F12` navigates to a definition.
+
+At narrower widths the Inspector collapses first, then Explorer, so the editor remains usable. The toolbar moves lower-priority commands into its overflow menu rather than clipping them.
 
 Selecting a problem moves the editor selection to its source span, including when non-ASCII text precedes the error. Engine work runs asynchronously so execution does not block the WinUI thread.
 
 ## Python project context
 
-When Studio runs a source from an open project, it passes the validated project root through the native API. Rust resolves Python packages from that project's `.sprout/python` directory and cleans the project modules from CPython's process-wide import cache after execution. Use `sprout python sync <project>` to install dependencies before opening or running a project in Studio; a graphical Package Hub remains a Phase 9 feature.
+When Studio runs a source from an open project, it passes the validated project root through the native API. Rust resolves Python packages from that project's `.sprout/python` directory and cleans project modules from CPython's process-wide import cache after execution. Package Hub manages manifest declarations; use `sprout python sync <project>` to perform the cancellable, isolated installation workflow.
 
 The application output contains CPython and pip beside `SproutStudio.exe`; users do not need a system Python installation for supported interoperability. An installer and the remaining planned CLI commands are still deferred, and no disabled or placeholder action is exposed as complete.
 
