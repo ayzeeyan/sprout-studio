@@ -1,0 +1,124 @@
+<UserControl
+    x:Class="SproutStudio.Views.SourceControl.SourceControlModeView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SproutStudio.Views.SourceControl"
+    x:CompileBindings="False">
+  <Grid RowDefinitions="58,*,74" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Classes="mode-header">
+      <Grid ColumnDefinitions="*,Auto" Margin="18,0">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <StackPanel>
+            <TextBlock Text="Source Control" Classes="mode-title" />
+            <TextBlock Name="RepositoryText" Text="Open a Git project to begin"
+                       Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+          </StackPanel>
+          <Border Name="BranchBadge" Classes="status-badge" IsVisible="False">
+            <TextBlock Name="BranchText" />
+          </Border>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button Name="FetchButton" Content="Fetch" Click="Fetch_Click" />
+          <Button Name="PullButton" Content="Pull" Click="Pull_Click" />
+          <Button Name="PushButton" Content="Push" Click="Push_Click" />
+          <Button Name="RefreshButton" Content="Refresh" Click="Refresh_Click" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="350,1,*">
+      <Grid RowDefinitions="Auto,*,Auto,*" Margin="10,8">
+        <Grid ColumnDefinitions="*,Auto" Height="34">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <TextBlock Text="CHANGES" Classes="panel-header" />
+            <TextBlock Name="ChangesCount" Foreground="{DynamicResource StudioTextMutedBrush}" />
+          </StackPanel>
+          <Button Grid.Column="1" Name="StageAllButton" Classes="icon-button" Click="StageAll_Click" ToolTip.Tip="Stage all changes">
+            <TextBlock Classes="icon small" Text="&#xE710;" />
+          </Button>
+        </Grid>
+        <Grid Grid.Row="1">
+          <TextBlock Name="ChangesEmpty" Text="No unstaged changes." Classes="empty-state" />
+          <ListBox Name="ChangesList" IsVisible="False" SelectionChanged="ChangeList_SelectionChanged">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="local:GitChangeRow">
+                <Grid ColumnDefinitions="28,*,Auto" Margin="7,5">
+                  <TextBlock Text="{Binding Status}" Foreground="{DynamicResource StudioWarningBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Directory}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <Button Grid.Column="2" Classes="icon-button small" Click="Stage_Click" ToolTip.Tip="Stage file">
+                    <TextBlock Classes="icon small" Text="&#xE710;" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Height="34">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <TextBlock Text="STAGED CHANGES" Classes="panel-header" />
+            <TextBlock Name="StagedCount" Foreground="{DynamicResource StudioTextMutedBrush}" />
+          </StackPanel>
+          <Button Grid.Column="1" Name="UnstageAllButton" Classes="icon-button" Click="UnstageAll_Click" ToolTip.Tip="Unstage all">
+            <TextBlock Classes="icon small" Text="&#xE711;" />
+          </Button>
+        </Grid>
+        <Grid Grid.Row="3">
+          <TextBlock Name="StagedEmpty" Text="No staged changes." Classes="empty-state" />
+          <ListBox Name="StagedList" IsVisible="False" SelectionChanged="ChangeList_SelectionChanged">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="local:GitChangeRow">
+                <Grid ColumnDefinitions="28,*,Auto" Margin="7,5">
+                  <TextBlock Text="{Binding Status}" Foreground="{DynamicResource StudioAccentBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Directory}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <Button Grid.Column="2" Classes="icon-button small" Click="Unstage_Click" ToolTip.Tip="Unstage file">
+                    <TextBlock Classes="icon small" Text="&#xE711;" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Grid>
+
+      <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
+
+      <Grid Grid.Column="2" RowDefinitions="38,*">
+        <Grid ColumnDefinitions="*,Auto" Background="{DynamicResource StudioPanelBrush}" Margin="0">
+          <TextBlock Name="DiffTitle" Text="DIFF" Classes="panel-header" Margin="12,0" />
+          <TextBlock Name="DiffKind" Grid.Column="1" Margin="12,0" VerticalAlignment="Center"
+                     Foreground="{DynamicResource StudioTextMutedBrush}" />
+        </Grid>
+        <Grid Grid.Row="1">
+          <TextBlock Name="DiffEmpty" Text="Select a changed file to inspect its unified diff."
+                     Classes="empty-state" />
+          <ScrollViewer Name="DiffScroll" IsVisible="False" HorizontalScrollBarVisibility="Auto">
+            <ItemsControl Name="DiffLines" Margin="12,8">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="local:DiffLineRow">
+                  <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
+                             FontFamily="Cascadia Mono, Consolas" FontSize="11.5" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Grid>
+    </Grid>
+
+    <Border Grid.Row="2" Classes="mode-footer">
+      <Grid RowDefinitions="32,18" ColumnDefinitions="*,Auto,Auto" Margin="12,7" ColumnSpacing="8">
+        <TextBox Name="CommitMessageBox" PlaceholderText="Commit message" />
+        <Button Name="CommitButton" Grid.Column="1" Content="Commit" Click="Commit_Click" />
+        <Button Name="CommitPushButton" Grid.Column="2" Classes="accent" Content="Commit &amp; Push" Click="CommitPush_Click" />
+        <TextBlock Name="OperationStatus" Grid.Row="1" Grid.ColumnSpan="3" Margin="2,2,0,0"
+                   FontSize="11" TextTrimming="CharacterEllipsis" IsVisible="False" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

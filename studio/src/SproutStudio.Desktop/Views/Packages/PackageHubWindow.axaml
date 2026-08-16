@@ -1,0 +1,59 @@
+<Window
+    x:Class="SproutStudio.Views.Packages.PackageHubWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SproutStudio.Views.Packages"
+    Title="Package Hub — Sprout Studio"
+    Width="820"
+    Height="570"
+    MinWidth="680"
+    MinHeight="460"
+    WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="22" RowSpacing="14">
+    <StackPanel Spacing="5">
+      <TextBlock Text="Package Hub" Classes="dialog-title" />
+      <TextBlock Text="Manage validated dependencies in sprout.toml. Python dependencies remain project-local under .sprout/python when synchronized by the Sprout CLI."
+                 TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+    </StackPanel>
+
+    <Border Grid.Row="1" Classes="dialog-card">
+      <Grid RowDefinitions="34,*">
+        <Grid ColumnDefinitions="110,*,190" Margin="12,0">
+          <TextBlock Classes="table-header" Text="Kind" />
+          <TextBlock Grid.Column="1" Classes="table-header" Text="Package" />
+          <TextBlock Grid.Column="2" Classes="table-header" Text="Requirement" />
+        </Grid>
+        <Grid Grid.Row="1">
+          <TextBlock Name="EmptyText" Text="No dependencies are declared yet." Classes="empty-state" />
+          <ListBox Name="PackageList" IsVisible="False">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="local:PackageRow">
+                <Grid ColumnDefinitions="110,*,190" Margin="12,7">
+                  <TextBlock Text="{Binding KindLabel}" Foreground="{DynamicResource StudioAccentBrush}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" FontFamily="Cascadia Mono, Consolas" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding Requirement}" FontFamily="Cascadia Mono, Consolas" TextTrimming="CharacterEllipsis" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="145,*,190,Auto,Auto" ColumnSpacing="8">
+      <ComboBox Name="KindBox" SelectedIndex="1" HorizontalContentAlignment="Stretch">
+        <ComboBoxItem Content="Sprout" />
+        <ComboBoxItem Content="Python" />
+      </ComboBox>
+      <TextBox Name="NameBox" Grid.Column="1" PlaceholderText="Package name" />
+      <TextBox Name="RequirementBox" Grid.Column="2" PlaceholderText="Version, e.g. &gt;=2.0" />
+      <Button Name="SaveButton" Grid.Column="3" Classes="accent" Content="Add or update" Click="Save_Click" />
+      <Button Name="RemoveButton" Grid.Column="4" Content="Remove" Click="Remove_Click" />
+    </Grid>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+      <TextBlock Name="StatusText" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Content="Close" Click="Close_Click" MinWidth="84" />
+    </Grid>
+  </Grid>
+</Window>

@@ -72,13 +72,18 @@ impl EmbeddedPythonHost {
 
         let modules = sys.getattr("modules")?.cast_into::<PyDict>()?;
         let mut remove = Vec::new();
-        for (name, module) in modules.iter() {
-            let Ok(name) = name.extract::<String>() else {
-                continue;
-            };
+        let module_names: Vec<String> = modules
+            .keys()
+            .iter()
+            .filter_map(|name| name.extract::<String>().ok())
+            .collect();
+        for name in module_names {
             if self.baseline_modules.contains(&name) {
                 continue;
             }
+            let Some(module) = modules.get_item(&name)? else {
+                continue;
+            };
             let Ok(file) = module
                 .getattr("__file__")
                 .and_then(|file| file.extract::<String>())

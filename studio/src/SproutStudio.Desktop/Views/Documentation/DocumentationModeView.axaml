@@ -1,0 +1,96 @@
+<UserControl
+    x:Class="SproutStudio.Views.Documentation.DocumentationModeView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SproutStudio.Views.Documentation"
+    x:CompileBindings="False">
+  <Grid RowDefinitions="58,*" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Classes="mode-header">
+      <Grid ColumnDefinitions="Auto,*,290,Auto" Margin="12,0" ColumnSpacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+          <Button Name="BackButton" Classes="icon-button" Click="Back_Click" ToolTip.Tip="Back">
+            <TextBlock Classes="icon" Text="&#xE72B;" />
+          </Button>
+          <Button Name="ForwardButton" Classes="icon-button" Click="Forward_Click" ToolTip.Tip="Forward">
+            <TextBlock Classes="icon" Text="&#xE72A;" />
+          </Button>
+        </StackPanel>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="Documentation" Classes="mode-title" />
+          <TextBlock Name="TopicSubtitle" Text="Bundled offline reference"
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+        <TextBox Name="SearchBox" Grid.Column="2" VerticalAlignment="Center"
+                 PlaceholderText="Search documentation" TextChanged="SearchBox_TextChanged" />
+        <Button Name="ViewSourceButton" Grid.Column="3" Content="Open Markdown Source"
+                VerticalAlignment="Center" Click="ViewSource_Click" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="250,1,*,1,210">
+      <Grid RowDefinitions="34,*" Margin="8">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Name="NavigationHeader" Text="CONTENTS" Classes="panel-header" Margin="8,0" />
+          <TextBlock Name="SearchCount" Grid.Column="1" Margin="8,0" VerticalAlignment="Center"
+                     Foreground="{DynamicResource StudioTextMutedBrush}" />
+        </Grid>
+        <Grid Grid.Row="1">
+          <ListBox Name="TopicList" SelectionChanged="TopicList_SelectionChanged">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="local:DocumentationTopic">
+                <TextBlock Text="{Binding Title}" Margin="8,7" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <ListBox Name="SearchResults" IsVisible="False" SelectionChanged="SearchResults_SelectionChanged">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="local:DocumentationSearchResult">
+                <StackPanel Margin="8,7" Spacing="3">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Section}" FontSize="10" Foreground="{DynamicResource StudioAccentBrush}" />
+                  <TextBlock Text="{Binding Excerpt}" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{DynamicResource StudioTextMutedBrush}" MaxHeight="48" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock Name="SearchEmpty" Text="No documentation matches this search."
+                     Classes="empty-state" IsVisible="False" Margin="16" TextWrapping="Wrap" />
+        </Grid>
+      </Grid>
+
+      <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
+
+      <Grid Grid.Column="2">
+        <StackPanel Name="DocumentEmpty" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+          <TextBlock Text="Sprout Documentation" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="Choose a topic from the contents."
+                     Foreground="{DynamicResource StudioTextMutedBrush}" />
+        </StackPanel>
+        <ScrollViewer Name="DocumentScroll" IsVisible="False" Padding="26,18,30,42"
+                      HorizontalScrollBarVisibility="Disabled">
+          <ContentControl Name="DocumentHost" HorizontalContentAlignment="Stretch" />
+        </ScrollViewer>
+      </Grid>
+
+      <Border Grid.Column="3" Background="{DynamicResource StudioBorderBrush}" />
+
+      <Grid Grid.Column="4" RowDefinitions="36,*,Auto" Margin="8">
+        <TextBlock Text="ON THIS PAGE" Classes="panel-header" Margin="8,0" />
+        <ItemsControl Name="TableOfContents" Grid.Row="1">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="local:DocumentationHeading">
+              <Button Classes="toc-link" Tag="{Binding Id}" Click="Toc_Click">
+                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Grid.Row="2" Margin="6,10" Spacing="6">
+          <TextBlock Text="Learn this concept" Classes="panel-header" />
+          <Button Content="Open Sprout Academy" Click="OpenAcademy_Click" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

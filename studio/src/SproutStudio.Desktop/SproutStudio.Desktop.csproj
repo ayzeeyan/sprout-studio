@@ -1,0 +1,77 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SproutStudio</RootNamespace>
+    <AssemblyName>SproutStudio</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>$(SproutRepositoryRoot)\assets\sprout-studio.ico</ApplicationIcon>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <NativeCargoArguments Condition="'$(Configuration)' == 'Release'">--release --locked</NativeCargoArguments>
+    <NativeCargoArguments Condition="'$(Configuration)' != 'Release'">--locked</NativeCargoArguments>
+    <NativeCargoDirectory Condition="'$(Configuration)' == 'Release'">release</NativeCargoDirectory>
+    <NativeCargoDirectory Condition="'$(Configuration)' != 'Release'">debug</NativeCargoDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Markdig" Version="1.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\..\docs\*.md" Link="Content\Docs\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Content\Sprout.xshd" LogicalName="SproutStudio.Content.Sprout.xshd" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SproutStudio.Academy\SproutStudio.Academy.csproj" />
+    <ProjectReference Include="..\SproutStudio.Core\SproutStudio.Core.csproj" />
+    <ProjectReference Include="..\SproutStudio.Editor\SproutStudio.Editor.csproj" />
+    <ProjectReference Include="..\SproutStudio.Interop\SproutStudio.Interop.csproj" />
+    <ProjectReference Include="..\SproutStudio.Toolchains\SproutStudio.Toolchains.csproj" />
+  </ItemGroup>
+
+  <Target Name="BuildAndCopySproutEngine"
+          BeforeTargets="Build"
+          DependsOnTargets="PrepareAndCopySproutPython">
+    <Exec Command="cargo build -p sprout-ffi -p sprout-cli $(NativeCargoArguments)"
+          WorkingDirectory="$(SproutRepositoryRoot)" />
+    <Copy SourceFiles="$(SproutRepositoryRoot)\target\$(NativeCargoDirectory)\sprout_ffi.dll"
+          DestinationFolder="$(OutDir)" />
+    <Copy SourceFiles="$(SproutRepositoryRoot)\target\$(NativeCargoDirectory)\sprout.exe"
+          DestinationFolder="$(OutDir)" />
+  </Target>
+
+  <Target Name="CopySproutRuntimeToPublish"
+          AfterTargets="Publish"
+          DependsOnTargets="BuildAndCopySproutEngine;PrepareAndCopySproutPython">
+    <Copy SourceFiles="$(SproutRepositoryRoot)\target\$(NativeCargoDirectory)\sprout_ffi.dll;$(SproutRepositoryRoot)\target\$(NativeCargoDirectory)\sprout.exe"
+          DestinationFolder="$(PublishDir)" />
+    <ItemGroup>
+      <PublishedPythonFile Include="$(SproutPythonRuntimeDirectory)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PublishedPythonFile)"
+          DestinationFiles="@(PublishedPythonFile-&gt;'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="PrepareAndCopySproutPython" BeforeTargets="Build">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(SproutPreparePythonScript)&quot; -Destination &quot;$(SproutPythonRuntimeDirectory)&quot;" />
+    <ItemGroup>
+      <BundledPythonFile Include="$(SproutPythonRuntimeDirectory)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BundledPythonFile)"
+          DestinationFiles="@(BundledPythonFile-&gt;'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>

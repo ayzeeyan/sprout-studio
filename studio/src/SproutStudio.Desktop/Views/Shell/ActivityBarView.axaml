@@ -1,0 +1,40 @@
+<UserControl
+    x:Class="SproutStudio.Views.Shell.ActivityBarView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    x:DataType="vm:MainWindowViewModel">
+  <Border Classes="activity-surface" IsVisible="{Binding ActivityVisible}">
+    <Grid RowDefinitions="*,Auto">
+      <StackPanel Margin="0,4">
+        <Button Classes="activity" Classes.selected="{Binding IsExplorerSelected}" Command="{Binding ShowExplorerCommand}" ToolTip.Tip="Explorer (Ctrl+B)">
+          <StackPanel Spacing="3"><TextBlock Classes="activity-icon" Text="&#xE838;" /><TextBlock Classes="activity-label" Text="Workspace" /></StackPanel>
+        </Button>
+        <Button Classes="activity" Classes.selected="{Binding IsSearchSelected}" Command="{Binding ShowSearchCommand}" ToolTip.Tip="Search">
+          <StackPanel Spacing="3"><TextBlock Classes="activity-icon" Text="&#xE721;" /><TextBlock Classes="activity-label" Text="Search" /></StackPanel>
+        </Button>
+        <Button Classes="activity" Classes.selected="{Binding IsSourceControlSelected}" Command="{Binding ShowSourceControlCommand}"
+                ToolTip.Tip="Source Control">
+          <StackPanel Spacing="3"><TextBlock Classes="activity-icon" Text="&#xE8F0;" /><TextBlock Classes="activity-label" Text="Source" /></StackPanel>
+        </Button>
+        <Button Classes="activity" Classes.selected="{Binding IsAcademySelected}" Command="{Binding ShowAcademyCommand}" ToolTip.Tip="Academy">
+          <StackPanel Spacing="3"><TextBlock Classes="activity-icon" Text="&#xE7BE;" /><TextBlock Classes="activity-label" Text="Academy" /></StackPanel>
+        </Button>
+        <Button Classes="activity" Classes.selected="{Binding IsDocumentationSelected}" Command="{Binding ShowDocumentationCommand}" ToolTip.Tip="Offline documentation">
+          <StackPanel Spacing="3"><TextBlock Classes="activity-icon" Text="&#xE8A5;" /><TextBlock Classes="activity-label" Text="Docs" /></StackPanel>
+        </Button>
+        <Button Classes="activity" Classes.selected="{Binding IsPackagesSelected}" Command="{Binding ShowPackagesCommand}" ToolTip.Tip="Project Package Hub">
+          <StackPanel Spacing="3"><TextBlock Classes="activity-icon" Text="&#xE7B8;" /><TextBlock Classes="activity-label" Text="Packages" /></StackPanel>
+        </Button>
+        <Button Classes="activity" Classes.selected="{Binding IsToolchainsSelected}" Command="{Binding ShowToolchainsCommand}" ToolTip.Tip="External language toolchains">
+          <StackPanel Spacing="3"><TextBlock Classes="activity-icon" Text="&#xE90F;" /><TextBlock Classes="activity-label" Text="Toolchains" /></StackPanel>
+        </Button>
+      </StackPanel>
+      <StackPanel Grid.Row="1" Margin="0,4">
+        <Button Classes="activity" Classes.selected="{Binding IsSettingsSelected}" Command="{Binding ShowSettingsCommand}" ToolTip.Tip="Settings">
+          <StackPanel Spacing="3"><TextBlock Classes="activity-icon" Text="&#xE713;" /><TextBlock Classes="activity-label" Text="Settings" /></StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

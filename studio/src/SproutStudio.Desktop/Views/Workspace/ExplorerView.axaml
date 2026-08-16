@@ -1,0 +1,62 @@
+<UserControl
+    x:Class="SproutStudio.Views.Workspace.ExplorerView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shared="using:SproutStudio.Views.Shared"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    x:DataType="vm:MainWindowViewModel">
+  <Border Classes="pane-surface" IsVisible="{Binding ExplorerVisible}">
+    <Grid RowDefinitions="38,34,30,*,Auto">
+      <Grid ColumnDefinitions="*,Auto" Margin="12,0,8,0">
+        <TextBlock Classes="panel-header" Text="EXPLORER" />
+        <Button Grid.Column="1" Classes="icon-button" Command="{Binding OpenProjectCommand}" ToolTip.Tip="Open project">
+          <TextBlock Classes="icon small" Text="&#xE8E5;" />
+        </Button>
+      </Grid>
+      <TextBox Name="WorkspaceFilterBox" Grid.Row="1" Margin="8,1,8,3"
+               Text="{Binding WorkspaceFilter, Mode=TwoWay}"
+               PlaceholderText="Filter workspace" />
+      <Border Grid.Row="2" Background="{DynamicResource StudioRaisedBrush}" Padding="12,0">
+        <TextBlock Classes="panel-header" Text="{Binding ProjectHeader}" TextTrimming="CharacterEllipsis" />
+      </Border>
+
+      <Grid Grid.Row="3">
+        <StackPanel IsVisible="{Binding ShowProjectEmptyState}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="16">
+          <TextBlock Text="Open or create a project to begin." Foreground="{DynamicResource StudioTextMutedBrush}" TextAlignment="Center" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+            <Button Command="{Binding NewProjectCommand}" Content="New Project" />
+            <Button Command="{Binding OpenProjectCommand}" Content="Open Project" />
+          </StackPanel>
+        </StackPanel>
+        <TreeView ItemsSource="{Binding WorkspaceRoots}" IsVisible="{Binding HasProject}" DoubleTapped="WorkspaceTree_DoubleTapped">
+          <TreeView.ItemTemplate>
+            <TreeDataTemplate DataType="vm:WorkspaceNodeViewModel" ItemsSource="{Binding Children}">
+              <StackPanel Orientation="Horizontal" Spacing="7" Height="26" VerticalAlignment="Center">
+                <TextBlock Classes="icon explorer-icon" Text="{Binding IconGlyph}" IsVisible="{Binding IsDirectory}" />
+                <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="18" Height="18" IsVisible="{Binding IsFile}" />
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </TreeDataTemplate>
+          </TreeView.ItemTemplate>
+        </TreeView>
+      </Grid>
+      <Expander Grid.Row="4" IsVisible="{Binding HasSourceControl}" IsExpanded="{Binding IsSourceControlSelected}" Background="{DynamicResource StudioPanelBrush}">
+        <Expander.Header>
+          <Grid ColumnDefinitions="*,Auto" Height="32">
+            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+              <TextBlock Classes="panel-header" Text="SOURCE CONTROL" />
+              <TextBlock Text="{Binding GitBranch}" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="icon-button small" Command="{Binding RefreshSourceControlCommand}" ToolTip.Tip="Refresh source control">
+              <TextBlock Classes="icon small" Text="&#xE72C;" />
+            </Button>
+          </Grid>
+        </Expander.Header>
+        <Grid MinHeight="70" MaxHeight="180">
+          <TextBlock IsVisible="{Binding NoSourceControlChanges}" Text="✓  Working tree clean." Classes="empty-state success" />
+          <ListBox ItemsSource="{Binding SourceControlChanges}" FontFamily="Cascadia Mono, Consolas" FontSize="11" />
+        </Grid>
+      </Expander>
+    </Grid>
+  </Border>
+</UserControl>

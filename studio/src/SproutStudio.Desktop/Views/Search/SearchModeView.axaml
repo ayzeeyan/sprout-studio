@@ -1,0 +1,59 @@
+<UserControl
+    x:Class="SproutStudio.Views.Search.SearchModeView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:editor="using:SproutStudio.Editor"
+    x:CompileBindings="False">
+  <Grid RowDefinitions="58,*" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Classes="mode-header">
+      <Grid ColumnDefinitions="*,Auto" Margin="18,0">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Project Search" Classes="mode-title" />
+          <TextBlock Text="Search the current project without indexing it at startup."
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+        <TextBlock Name="ResultSummary" Grid.Column="1" VerticalAlignment="Center"
+                   Foreground="{DynamicResource StudioTextMutedBrush}" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="300,1,*">
+      <StackPanel Margin="16" Spacing="10">
+        <TextBlock Text="SEARCH" Classes="panel-header" />
+        <TextBox Name="QueryBox" PlaceholderText="Text to find" KeyDown="QueryBox_KeyDown" />
+        <TextBox Name="FilterBox" PlaceholderText="Files to include, e.g. *.spr, *.md" />
+        <CheckBox Name="MatchCaseBox" Content="Match case" />
+        <CheckBox Name="WholeWordBox" Content="Match whole word" />
+        <Button Name="SearchButton" Classes="accent" Content="Search Project" Click="Search_Click" />
+        <TextBlock Name="SearchStatus" TextWrapping="Wrap"
+                   Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+      </StackPanel>
+      <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
+      <Grid Grid.Column="2">
+        <StackPanel Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+          <TextBlock Name="EmptyTitle" Text="Search across the active project" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Name="EmptyDescription" Text="Results include file, line, and matching context."
+                     Foreground="{DynamicResource StudioTextMutedBrush}" />
+        </StackPanel>
+        <ListBox Name="ResultList" Margin="10" IsVisible="False" SelectionChanged="ResultList_SelectionChanged">
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="editor:ProjectSearchResult">
+              <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" Margin="10,7">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding RelativePath}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Line, StringFormat='line {0}'}" Foreground="{DynamicResource StudioAccentBrush}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding Column, StringFormat='col {0}'}"
+                           Foreground="{DynamicResource StudioTextMutedBrush}" />
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Preview}"
+                           FontFamily="Cascadia Mono, Consolas" FontSize="11"
+                           Foreground="{DynamicResource StudioTextSecondaryBrush}"
+                           TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -114,7 +114,7 @@ public sealed class AcademyCatalog
                 || string.IsNullOrWhiteSpace(track.Summary)
                 || track.Lessons.Length == 0
                 || (track.RequiredToolchainId is not null
-                    && track.RequiredToolchainId is not ("rust" or "go")))
+                    && track.RequiredToolchainId is not ("rust" or "go" or "python" or "java")))
             {
                 throw new InvalidDataException($"Academy track `{track.Id}` is incomplete.");
             }

@@ -5,6 +5,7 @@
 .vs/
 **/bin/
 **/obj/
-packages/
+/packages/
 /runtime/
 /artifacts/
+/examples/*/build/

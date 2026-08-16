@@ -106,9 +106,11 @@ public sealed class RecentProjectStore
             await using FileStream stream = File.OpenRead(_filePath);
             IReadOnlyList<RecentProject>? projects = await JsonSerializer.DeserializeAsync<
                 List<RecentProject>>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
-            return projects ?? [];
+            return Sanitize(projects ?? []);
         }
-        catch (JsonException)
+        catch (Exception exception) when (exception is JsonException
+            or IOException
+            or UnauthorizedAccessException)
         {
             return [];
         }
@@ -119,13 +121,14 @@ public sealed class RecentProjectStore
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(project);
+        string normalizedRoot = Path.GetFullPath(project.RootPath);
         IReadOnlyList<RecentProject> existing = await LoadAsync(cancellationToken)
             .ConfigureAwait(false);
         List<RecentProject> updated = [
-            new(project.Name, project.RootPath, DateTimeOffset.UtcNow),
+            new(project.Name, normalizedRoot, DateTimeOffset.UtcNow),
             .. existing.Where(item => !string.Equals(
                 item.RootPath,
-                project.RootPath,
+                normalizedRoot,
                 StringComparison.OrdinalIgnoreCase)),
         ];
         if (updated.Count > MaximumEntries)
@@ -133,17 +136,42 @@ public sealed class RecentProjectStore
             updated.RemoveRange(MaximumEntries, updated.Count - MaximumEntries);
         }
 
+        await SaveAsync(updated, cancellationToken).ConfigureAwait(false);
+        return updated;
+    }
+
+    public async Task<IReadOnlyList<RecentProject>> RemoveAsync(
+        string rootPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
+        string normalizedPath = Path.GetFullPath(rootPath);
+        IReadOnlyList<RecentProject> existing = await LoadAsync(cancellationToken)
+            .ConfigureAwait(false);
+        RecentProject[] updated = existing.Where(item => !string.Equals(
+                item.RootPath,
+                normalizedPath,
+                StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        await SaveAsync(updated, cancellationToken).ConfigureAwait(false);
+        return updated;
+    }
+
+    private async Task SaveAsync(
+        IReadOnlyList<RecentProject> projects,
+        CancellationToken cancellationToken)
+    {
         string? directory = Path.GetDirectoryName(_filePath);
         if (!string.IsNullOrEmpty(directory))
         {
             Directory.CreateDirectory(directory);
         }
-        string temporaryPath = _filePath + ".tmp";
+        string temporaryPath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
         try
         {
             await using (FileStream stream = File.Create(temporaryPath))
             {
-                await JsonSerializer.SerializeAsync(stream, updated, JsonOptions, cancellationToken)
+                await JsonSerializer.SerializeAsync(stream, projects, JsonOptions, cancellationToken)
                     .ConfigureAwait(false);
             }
             File.Move(temporaryPath, _filePath, overwrite: true);
@@ -155,7 +183,40 @@ public sealed class RecentProjectStore
                 File.Delete(temporaryPath);
             }
         }
-        return updated;
+    }
+
+    private static IReadOnlyList<RecentProject> Sanitize(
+        IEnumerable<RecentProject> projects)
+    {
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var sanitized = new List<RecentProject>(MaximumEntries);
+        foreach (RecentProject project in projects.OrderByDescending(item => item.LastOpenedUtc))
+        {
+            if (string.IsNullOrWhiteSpace(project.Name)
+                || string.IsNullOrWhiteSpace(project.RootPath))
+            {
+                continue;
+            }
+            try
+            {
+                string normalizedPath = Path.GetFullPath(project.RootPath);
+                if (seenPaths.Add(normalizedPath))
+                {
+                    sanitized.Add(project with { RootPath = normalizedPath });
+                }
+            }
+            catch (Exception exception) when (exception is ArgumentException
+                or NotSupportedException
+                or PathTooLongException)
+            {
+                // Ignore invalid metadata without touching the filesystem.
+            }
+            if (sanitized.Count == MaximumEntries)
+            {
+                break;
+            }
+        }
+        return sanitized;
     }
 }
 
@@ -196,6 +257,17 @@ public sealed class ProjectWorkspace
     public async Task LoadRecentAsync(CancellationToken cancellationToken = default)
     {
         IReadOnlyList<RecentProject> projects = await _recentStore.LoadAsync(cancellationToken)
+            .ConfigureAwait(false);
+        _recentProjects.Clear();
+        _recentProjects.AddRange(projects);
+    }
+
+    public async Task RemoveRecentAsync(
+        string rootPath,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<RecentProject> projects = await _recentStore
+            .RemoveAsync(rootPath, cancellationToken)
             .ConfigureAwait(false);
         _recentProjects.Clear();
         _recentProjects.AddRange(projects);

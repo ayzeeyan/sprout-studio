@@ -1,0 +1,29 @@
+<Window
+    x:Class="SproutStudio.Views.Dialogs.CommandPaletteDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:model="using:SproutStudio.Models"
+    Width="650"
+    Height="440"
+    CanResize="False"
+    WindowStartupLocation="CenterOwner"
+    ShowInTaskbar="False"
+    WindowDecorations="None"
+    Title="Command Palette">
+  <Border Classes="palette-surface">
+    <Grid RowDefinitions="52,*">
+      <TextBox Name="QueryBox" Margin="10" FontSize="15" PlaceholderText=">  Type a command" TextChanged="QueryBox_TextChanged" KeyDown="QueryBox_KeyDown" />
+      <ListBox Name="CommandList" Grid.Row="1" DoubleTapped="CommandList_DoubleTapped">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="model:CommandPaletteItem">
+            <Grid ColumnDefinitions="90,*,Auto" Margin="10,7">
+              <TextBlock Text="{Binding Category}" Foreground="{DynamicResource StudioAccentBrush}" FontSize="11" />
+              <TextBlock Grid.Column="1" Text="{Binding Label}" />
+              <TextBlock Grid.Column="2" Text="{Binding Shortcut}" Foreground="{DynamicResource StudioTextMutedBrush}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+  </Border>
+</Window>

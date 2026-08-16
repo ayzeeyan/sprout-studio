@@ -21,6 +21,7 @@ use std::str;
 use std::str::FromStr;
 
 pub const SPROUT_API_VERSION: u32 = 1;
+pub const SPROUT_ENGINE_VERSION: &str = include_str!("../../../../VERSION");
 
 pub const SPROUT_OPERATION_CHECK: u32 = 0;
 pub const SPROUT_OPERATION_RUN: u32 = 1;
@@ -62,6 +63,28 @@ impl SproutBuffer {
 #[unsafe(no_mangle)]
 pub extern "C" fn sprout_api_version() -> u32 {
     SPROUT_API_VERSION
+}
+
+/// Returns structured build and ABI metadata for compatibility validation.
+/// Release the returned UTF-8 JSON buffer with `sprout_buffer_free`.
+#[unsafe(no_mangle)]
+pub extern "C" fn sprout_engine_info() -> SproutBuffer {
+    let configuration = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    };
+    let mut json = String::from("{\"engineVersion\":");
+    push_json_string(&mut json, SPROUT_ENGINE_VERSION.trim());
+    let _ = write!(
+        json,
+        ",\"abiVersion\":{SPROUT_API_VERSION},\"architecture\":"
+    );
+    push_json_string(&mut json, std::env::consts::ARCH);
+    json.push_str(",\"buildConfiguration\":");
+    push_json_string(&mut json, configuration);
+    json.push('}');
+    SproutBuffer::from_string(json)
 }
 
 /// Executes a complete high-level engine operation.
@@ -871,6 +894,37 @@ fn push_json_string(output: &mut String, value: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn engine_info_reports_version_abi_architecture_and_configuration() {
+        let buffer = sprout_engine_info();
+        // SAFETY: The exported buffer owns `length` readable bytes until it is freed below.
+        let bytes = unsafe { slice::from_raw_parts(buffer.data, buffer.length) };
+        let response = str::from_utf8(bytes).unwrap();
+        assert!(
+            response.contains(&format!(
+                "\"engineVersion\":\"{}\"",
+                SPROUT_ENGINE_VERSION.trim()
+            )),
+            "{response}"
+        );
+        assert!(response.contains("\"abiVersion\":1"), "{response}");
+        assert!(
+            response.contains("\"architecture\":\"x86_64\""),
+            "{response}"
+        );
+        let configuration = if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        };
+        assert!(
+            response.contains(&format!("\"buildConfiguration\":\"{configuration}\"")),
+            "{response}"
+        );
+        // SAFETY: This is the matching allocator release operation, called exactly once.
+        unsafe { sprout_buffer_free(buffer) };
+    }
 
     #[test]
     fn run_response_contains_output_and_version() {

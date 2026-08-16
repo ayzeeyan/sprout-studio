@@ -1,0 +1,56 @@
+<UserControl
+    x:Class="SproutStudio.Views.Toolchains.ToolchainsModeView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SproutStudio.Views.Toolchains"
+    xmlns:shared="using:SproutStudio.Views.Shared"
+    x:CompileBindings="False">
+  <Grid RowDefinitions="58,*" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Classes="mode-header">
+      <Grid ColumnDefinitions="*,Auto" Margin="18,0">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Languages &amp; Toolchains" Classes="mode-title" />
+          <TextBlock Text="Validated local runtimes used by Studio and Academy. Sprout is bundled."
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+        <Button Name="RefreshButton" Grid.Column="1" Content="Detect Again" Click="Refresh_Click" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+    <Grid Grid.Row="1">
+      <TextBlock Name="LoadingText" Text="Detecting installed toolchains…" Classes="empty-state" />
+      <ScrollViewer Name="ToolchainScroll" IsVisible="False" Padding="20,16,28,40"
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ItemsControl Name="ToolchainList" MaxWidth="980" HorizontalAlignment="Stretch">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="local:ToolchainModeRow">
+              <Border Classes="toolchain-card" Margin="0,0,0,9">
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="14" ColumnSpacing="12" RowSpacing="5">
+                  <shared:LanguageIconView Grid.RowSpan="3" LanguageKey="{Binding LanguageKey}" Width="36" Height="36" />
+                  <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <StackPanel>
+                      <TextBlock Text="{Binding DisplayName}" FontSize="15" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Message}" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Border Grid.Column="1" Classes="status-badge" VerticalAlignment="Top">
+                      <TextBlock Text="{Binding StatusLabel}" />
+                    </Border>
+                  </Grid>
+                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding VersionLabel}" FontFamily="Cascadia Mono, Consolas"
+                             Foreground="{DynamicResource StudioAccentBrush}" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ExecutablePath}" FontFamily="Cascadia Mono, Consolas"
+                             Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding ExecutablePath}" />
+                  <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                              HorizontalAlignment="Right" IsVisible="{Binding CanConfigure}">
+                    <Button Content="Configure…" Click="Browse_Click" />
+                    <Button Content="Auto Detect" Click="Clear_Click" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

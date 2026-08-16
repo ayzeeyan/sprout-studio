@@ -164,7 +164,7 @@
       "id": "python-automation",
       "title": "Python Automation",
       "summary": "Automate repeatable work while keeping inputs, effects, and failures visible.",
-      "requiredToolchainId": null,
+      "requiredToolchainId": "python",
       "lessons": [
         {
           "id": "python-sequences",

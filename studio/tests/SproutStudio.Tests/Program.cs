@@ -3,6 +3,7 @@ using SproutStudio.Academy;
 using SproutStudio.Core;
 using SproutStudio.Editor;
 using SproutStudio.Interop;
+using SproutStudio.SourceControl;
 using SproutStudio.Toolchains;
 
 if (args is ["--toolchain-test-wait"])
@@ -19,6 +20,7 @@ if (args is ["--toolchain-test-echo", string value])
 
 var tests = new (string Name, Func<Task> Run)[]
 {
+    ("Native engine metadata validates compatibility", NativeEngineMetadataValidatesCompatibility),
     ("Native run returns actual output", NativeRunReturnsOutput),
     ("Native run executes embedded Python", NativeRunExecutesEmbeddedPython),
     ("Native project run isolates Python packages", NativeProjectRunIsolatesPythonPackages),
@@ -29,7 +31,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Native debugger records variables and canvas commands", NativeDebuggerAndCanvasWork),
     ("Native package hub updates manifests and builds bundles", NativePackageHubAndBuildWork),
     ("Editor workspace supports tabs and additional languages", EditorWorkspaceSupportsAdditionalLanguages),
-    ("Editor coordinates normalize WinUI line endings", EditorCoordinatesNormalizeLineEndings),
+    ("Editor coordinates normalize line endings", EditorCoordinatesNormalizeLineEndings),
+    ("Editor breadcrumbs stay project relative", EditorBreadcrumbsStayProjectRelative),
+    ("Language registry supplies shared product identities", LanguageRegistrySuppliesSharedIdentities),
+    ("Project search filters source and ignores generated output", ProjectSearchFiltersAndIgnoresGeneratedOutput),
+    ("Git status parser preserves branch and file state", GitStatusParserPreservesState),
+    ("Git service stages commits diffs and unstages", GitServiceRunsLocalWorkflow),
     ("Studio layout state persists and sanitizes", StudioLayoutStatePersistsAndSanitizes),
     ("Session projects response into panels", SessionProjectsResponse),
     ("Response parser rejects incompatible API", ResponseParserRejectsApiMismatch),
@@ -37,6 +44,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Native project API returns validation diagnostics", NativeProjectValidation),
     ("Recent projects persist without duplicates", RecentProjectsPersistWithoutDuplicates),
     ("Recent projects retain only the ten newest entries", RecentProjectsRetainTenNewest),
+    ("Recent projects sanitize metadata and support removal", RecentProjectsSanitizeAndRemove),
     ("Studio session saves edited source atomically", StudioSessionSavesSource),
     ("Studio session saves a new source file", StudioSessionSavesNewSource),
     ("Phase 5 project workflow executes edited source", PhaseFiveProjectWorkflow),
@@ -48,6 +56,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Rust detector rejects unsupported version", RustDetectorRejectsUnsupportedVersion),
     ("Rust detector reports broken executable", RustDetectorReportsBrokenExecutable),
     ("Go detector validates go and gofmt", GoDetectorValidatesCompleteToolchain),
+    ("Python detector validates runtime and actions", PythonDetectorValidatesRuntimeAndActions),
+    ("Java detector distinguishes full and partial JDKs", JavaDetectorDistinguishesFullAndPartialJdks),
     ("Toolchain settings persist and clear custom paths", ToolchainSettingsPersistCustomPaths),
     ("Toolchain manager builds safe action requests", ToolchainManagerBuildsSafeActionRequests),
     ("Live toolchain detection returns structured states", LiveToolchainDetectionReturnsStructuredStates),
@@ -57,8 +67,9 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Academy progress prevents repeated XP awards", AcademyProgressPreventsXpFarming),
     ("Academy enrollment validates required toolchains", AcademyEnrollmentValidatesToolchains),
     ("Academy concept browser searches transferable examples", AcademyConceptBrowserSearchesExamples),
-    ("WinUI Academy surface starts and responds", WinUiAcademyStarts),
-    ("WinUI application starts and responds", WinUiApplicationStarts),
+    ("Avalonia integrated Academy mode starts and responds", AvaloniaAcademyStarts),
+    ("Avalonia integrated Documentation mode starts and responds", AvaloniaDocumentationStarts),
+    ("Avalonia integrated Toolchains mode starts and responds", AvaloniaApplicationStarts),
 };
 
 int failures = 0;
@@ -77,6 +88,20 @@ foreach ((string name, Func<Task> run) in tests)
 }
 
 return failures == 0 ? 0 : 1;
+
+static async Task NativeEngineMetadataValidatesCompatibility()
+{
+    var engine = new NativeSproutEngineClient();
+    EngineInfo info = await engine.GetInfoAsync();
+    Assert(info.EngineVersion.Length > 0, "engine version was empty");
+    Assert(info.AbiVersion == NativeSproutEngineClient.SupportedApiVersion, "engine ABI was incompatible");
+    Assert(info.Architecture == "x86_64", "engine architecture was not x64");
+#if DEBUG
+    Assert(info.BuildConfiguration == "debug", "debug tests loaded a non-debug engine");
+#else
+    Assert(info.BuildConfiguration == "release", "release tests loaded a non-release engine");
+#endif
+}
 
 static async Task NativeRunReturnsOutput()
 {
@@ -230,8 +255,10 @@ static async Task EditorWorkspaceSupportsAdditionalLanguages()
             "Rust build capability was not exposed");
         Assert(pythonDocument.Language.Id == DocumentLanguage.Python, "Python edit adapter was not selected");
         Assert(
-            pythonDocument.Language.Capabilities == EditorCapability.None,
-            "Python file advertised an unimplemented toolchain capability");
+            pythonDocument.Language.Capabilities.HasFlag(EditorCapability.Run)
+                && pythonDocument.Language.Capabilities.HasFlag(EditorCapability.Build)
+                && pythonDocument.Language.Capabilities.HasFlag(EditorCapability.Test),
+            "Python toolchain capabilities were not exposed");
 
         sproutDocument.UpdateSource("print(2)\n");
         await workspace.SaveAsync(sproutDocument);
@@ -250,6 +277,9 @@ static Task EditorCoordinatesNormalizeLineEndings()
     const string EditorText = "first\rsecond\r\nthird";
     string normalized = EditorTextCoordinates.NormalizeLineEndings(EditorText);
     Assert(normalized == "first\nsecond\nthird", "line endings were not normalized");
+    Assert(
+        EditorTextCoordinates.ToEditorLineEndings(normalized) == "first\rsecond\rthird",
+        "normalized source was not converted to WinUI editor line breaks");
     int thirdEditorIndex = EditorText.IndexOf("third", StringComparison.Ordinal);
     int thirdNormalizedIndex = normalized.IndexOf("third", StringComparison.Ordinal);
     Assert(
@@ -263,6 +293,164 @@ static Task EditorCoordinatesNormalizeLineEndings()
     return Task.CompletedTask;
 }
 
+static Task EditorBreadcrumbsStayProjectRelative()
+{
+    string root = Path.Combine(Path.GetTempPath(), "sprout-breadcrumb-project");
+    string nested = Path.Combine(root, "src", "game", "main.spr");
+    Assert(
+        EditorBreadcrumbs.Format("main.spr", nested, root) == "src  ›  game  ›  main.spr",
+        "project breadcrumb was not compact and relative");
+    Assert(
+        EditorBreadcrumbs.Format("untitled.spr", null, root) == "untitled.spr",
+        "untitled document breadcrumb changed unexpectedly");
+    Assert(
+        EditorBreadcrumbs.Format("notes.spr", nested, Path.Combine(root, "elsewhere")) == "main.spr",
+        "external document breadcrumb exposed an absolute path");
+    return Task.CompletedTask;
+}
+
+static Task LanguageRegistrySuppliesSharedIdentities()
+{
+    string[] required =
+    [
+        "sprout", "rust", "python", "go", "java", "c", "cpp", "csharp",
+        "javascript", "typescript",
+    ];
+    foreach (string key in required)
+    {
+        LanguageDescriptor language = LanguageRegistry.Get(key);
+        Assert(language.IconGlyph.Length > 0, $"{key} has no local icon identity");
+        Assert(language.Accent.StartsWith('#') && language.Accent.Length == 7, $"{key} has an invalid accent");
+    }
+    Assert(
+        LanguageRegistry.All.Select(language => language.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+            == LanguageRegistry.All.Count,
+        "language registry contains duplicate keys");
+    Assert(LanguageRegistry.ForPath("program.cpp").Key == "cpp", "C++ extension mapping was lost");
+    Assert(LanguageRegistry.ForPath("Program.cs").Key == "csharp", "C# extension mapping was lost");
+    Assert(
+        LanguageRegistry.ForAcademyTrack("rust-systems").Key == "rust",
+        "Academy track did not resolve through the shared registry");
+    return Task.CompletedTask;
+}
+
+static async Task ProjectSearchFiltersAndIgnoresGeneratedOutput()
+{
+    string directory = TemporaryDirectory("project-search");
+    Directory.CreateDirectory(Path.Combine(directory, "src"));
+    Directory.CreateDirectory(Path.Combine(directory, "build", "generated"));
+    Directory.CreateDirectory(Path.Combine(directory, ".git"));
+    try
+    {
+        await File.WriteAllTextAsync(Path.Combine(directory, "src", "main.spr"), "has project = \"Sprout\"\n");
+        await File.WriteAllTextAsync(Path.Combine(directory, "notes.md"), "Project notes\n");
+        await File.WriteAllTextAsync(Path.Combine(directory, "build", "generated", "main.spr"), "project project\n");
+        await File.WriteAllTextAsync(Path.Combine(directory, ".git", "ignored.txt"), "project\n");
+
+        var search = new ProjectSearchService();
+        IReadOnlyList<ProjectSearchResult> all = await search.SearchAsync(
+            directory,
+            new ProjectSearchQuery("project", string.Empty, MatchCase: false, WholeWord: true));
+        Assert(all.Count == 2, "search included generated output or missed a source result");
+        Assert(all.All(result => !result.RelativePath.StartsWith("build", StringComparison.OrdinalIgnoreCase)),
+            "search returned a generated build artifact");
+
+        IReadOnlyList<ProjectSearchResult> sproutOnly = await search.SearchAsync(
+            directory,
+            new ProjectSearchQuery("project", "*.spr", MatchCase: false, WholeWord: true));
+        Assert(
+            sproutOnly.Count == 1 && sproutOnly[0].RelativePath.EndsWith("main.spr", StringComparison.OrdinalIgnoreCase),
+            "file filtering did not isolate Sprout source");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static Task GitStatusParserPreservesState()
+{
+    string porcelain = string.Join('\0',
+    [
+        "# branch.oid abcdef",
+        "# branch.head main",
+        "# branch.upstream origin/main",
+        "# branch.ab +2 -1",
+        "1 M. N... 100644 100644 100644 abc def src/main.spr",
+        "1 .M N... 100644 100644 100644 abc def README.md",
+        "2 R. N... 100644 100644 100644 abc def R100 src/new.spr",
+        "src/old.spr",
+        "? notes.txt",
+        string.Empty,
+    ]);
+    GitRepositoryState state = GitStatusParser.Parse(Path.GetTempPath(), porcelain, hasRemote: true);
+    Assert(state.Branch == "main" && state.Upstream == "origin/main", "branch tracking metadata was lost");
+    Assert(state.Ahead == 2 && state.Behind == 1, "ahead/behind counts were parsed incorrectly");
+    Assert(state.HasRemote && state.Changes.Count == 4, "repository status did not retain all changes");
+    GitFileChange renamed = state.Changes.Single(change => change.Path == "src/new.spr");
+    Assert(renamed.OriginalPath == "src/old.spr" && renamed.IsStaged, "rename metadata was lost");
+    Assert(state.Changes.Single(change => change.Path == "notes.txt").IsUnstaged, "untracked state was lost");
+    return Task.CompletedTask;
+}
+
+static async Task GitServiceRunsLocalWorkflow()
+{
+    string directory = TemporaryDirectory("git-workflow");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        var runner = new ProcessRunner();
+        async Task Git(params string[] arguments)
+        {
+            ProcessResult result = await runner.RunAsync(new ProcessRequest(
+                "git",
+                arguments,
+                directory,
+                TimeSpan.FromSeconds(15)));
+            Assert(result.Success, $"git {string.Join(' ', arguments)} failed: {result.StandardError}");
+        }
+
+        await Git("init");
+        await Git("config", "user.email", "sprout-studio-tests@example.invalid");
+        await Git("config", "user.name", "Sprout Studio Tests");
+        string source = Path.Combine(directory, "main.spr");
+        await File.WriteAllTextAsync(source, "print(\"one\")\n");
+
+        var service = new GitRepositoryService(runner);
+        GitRepositoryState untracked = await service.GetStatusAsync(directory);
+        Assert(untracked.IsRepository, "Git service did not detect the repository");
+        Assert(untracked.Changes.Single().IndexStatus == '?', "untracked file status was not returned");
+
+        await service.StageAsync(directory, "main.spr");
+        GitRepositoryState staged = await service.GetStatusAsync(directory);
+        Assert(staged.Changes.Single().IsStaged, "stage did not update repository state");
+        await service.CommitAsync(directory, "Initial Sprout source");
+        Assert((await service.GetStatusAsync(directory)).Changes.Count == 0, "commit did not clean the tree");
+
+        await File.AppendAllTextAsync(source, "print(\"two\")\n");
+        string diff = await service.GetDiffAsync(directory, "main.spr", staged: false);
+        Assert(diff.Contains("+print(\"two\")", StringComparison.Ordinal), "working-tree diff was incomplete");
+        await service.StageAsync(directory, "main.spr");
+        await service.UnstageAsync(directory, "main.spr");
+        GitFileChange unstaged = (await service.GetStatusAsync(directory)).Changes.Single();
+        Assert(unstaged.IsUnstaged && !unstaged.IsStaged, "unstage did not restore working-tree state");
+    }
+    finally
+    {
+        if (Directory.Exists(directory))
+        {
+            foreach (string file in Directory.EnumerateFiles(
+                directory,
+                "*",
+                SearchOption.AllDirectories))
+            {
+                File.SetAttributes(file, FileAttributes.Normal);
+            }
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+}
+
 static Task StudioLayoutStatePersistsAndSanitizes()
 {
     string directory = TemporaryDirectory("layout-state");
@@ -273,6 +461,10 @@ static Task StudioLayoutStatePersistsAndSanitizes()
         var store = new StudioLayoutStateStore(path);
         store.Save(new StudioLayoutState
         {
+            WindowX = 120,
+            WindowY = 80,
+            WindowWidth = 1440,
+            WindowHeight = 860,
             ExplorerWidth = 334,
             InspectorWidth = 372,
             BottomPanelHeight = 244,
@@ -285,6 +477,8 @@ static Task StudioLayoutStatePersistsAndSanitizes()
             SelectedActivity = "source-control",
         });
         StudioLayoutState loaded = store.Load();
+        Assert(loaded.WindowX == 120 && loaded.WindowY == 80, "window position did not round-trip");
+        Assert(loaded.WindowWidth == 1440 && loaded.WindowHeight == 860, "window size did not round-trip");
         Assert(loaded.ExplorerWidth == 334, "explorer width did not round-trip");
         Assert(loaded.InspectorWidth == 372, "inspector width did not round-trip");
         Assert(!loaded.ActivityVisible && !loaded.InspectorVisible, "panel visibility did not round-trip");
@@ -293,6 +487,10 @@ static Task StudioLayoutStatePersistsAndSanitizes()
 
         StudioLayoutState sanitized = StudioLayoutStateStore.Sanitize(new StudioLayoutState
         {
+            WindowX = -200_000,
+            WindowY = 200_000,
+            WindowWidth = 40,
+            WindowHeight = 50_000,
             ExplorerWidth = -1,
             InspectorWidth = 9_000,
             BottomPanelHeight = double.PositiveInfinity,
@@ -300,10 +498,13 @@ static Task StudioLayoutStatePersistsAndSanitizes()
             SelectedInspectorTab = -4,
             SelectedActivity = "unknown",
         });
-        Assert(sanitized.ExplorerWidth == 200, "explorer minimum was not enforced");
-        Assert(sanitized.InspectorWidth == 480, "inspector maximum was not enforced");
+        Assert(sanitized.ExplorerWidth == 220, "explorer minimum was not enforced");
+        Assert(sanitized.WindowX == -100_000 && sanitized.WindowY == 100_000, "window position bounds were not enforced");
+        Assert(sanitized.WindowWidth == 900 && sanitized.WindowHeight == 4_320, "window size bounds were not enforced");
+        Assert(sanitized.InspectorWidth == 440, "inspector maximum was not enforced");
         Assert(sanitized.BottomPanelHeight == 500, "bottom maximum was not enforced");
-        Assert(sanitized.SelectedBottomTab == 2, "bottom tab bounds were not enforced");
+        Assert(sanitized.SelectedBottomTab == 3, "bottom tab bounds were not enforced");
+        Assert(sanitized.SelectedInspectorTab == 0, "inspector tab bounds were not enforced");
         Assert(sanitized.SelectedActivity == "explorer", "unknown activity was not reset");
 
         File.WriteAllText(path, "{ malformed");
@@ -478,10 +679,19 @@ static async Task RecentProjectsPersistWithoutDuplicates()
             SyntaxProfile.Guided,
             []);
         await store.AddAsync(project);
+        string otherRoot = Path.Combine(directory, "OtherProject");
+        await store.AddAsync(project with
+        {
+            RootPath = otherRoot,
+            ManifestPath = Path.Combine(otherRoot, "sprout.toml"),
+            Name = "OtherProject",
+            EntryPath = Path.Combine(otherRoot, "src", "main.spr"),
+        });
         await store.AddAsync(project);
         IReadOnlyList<RecentProject> recent = await new RecentProjectStore(settingsPath).LoadAsync();
-        Assert(recent.Count == 1, "duplicate project was retained");
+        Assert(recent.Count == 2, "recent project metadata was not persisted");
         Assert(recent[0].Name == "RecentProject", "recent project was not persisted");
+        Assert(recent.Count(item => item.Name == "RecentProject") == 1, "duplicate project was retained");
     }
     finally
     {
@@ -512,6 +722,35 @@ static async Task RecentProjectsRetainTenNewest()
         Assert(recent.Count == 10, "recent project limit was not enforced");
         Assert(recent[0].Name == "Project11", "newest project was not first");
         Assert(recent[^1].Name == "Project2", "oldest retained project was incorrect");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task RecentProjectsSanitizeAndRemove()
+{
+    string directory = TemporaryDirectory("recent-project-sanitize");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        string settingsPath = Path.Combine(directory, "recent-projects.json");
+        string projectRoot = Path.Combine(directory, "Project");
+        var store = new RecentProjectStore(settingsPath);
+        await store.AddAsync(new ProjectInfo(
+            projectRoot,
+            Path.Combine(projectRoot, "sprout.toml"),
+            "Project",
+            "0.1.0",
+            Path.Combine(projectRoot, "src", "main.spr"),
+            SyntaxProfile.Guided,
+            []));
+
+        IReadOnlyList<RecentProject> removed = await store.RemoveAsync(projectRoot);
+        Assert(removed.Count == 0, "recent project removal did not persist");
+        await File.WriteAllTextAsync(settingsPath, "[{\"Name\":\"\",\"RootPath\":\"\",\"LastOpenedUtc\":\"2026-01-01T00:00:00Z\"}]");
+        Assert((await store.LoadAsync()).Count == 0, "invalid recent metadata was not ignored");
     }
     finally
     {
@@ -761,6 +1000,71 @@ static async Task GoDetectorValidatesCompleteToolchain()
     }
 }
 
+static async Task PythonDetectorValidatesRuntimeAndActions()
+{
+    string directory = TemporaryDirectory("python-ready");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        CreateExecutables(directory, "python");
+        var runner = new FakeProcessRunner(request =>
+            request.Arguments.SequenceEqual(["--version"])
+                ? ProcessSuccess("Python 3.13.7")
+                : ProcessSuccess("python action completed"));
+        ToolchainManager manager = ManagerWith(
+            new PythonToolchainAdapter(runner),
+            runner,
+            Path.Combine(directory, "settings.json"));
+        ToolchainDetectionResult result = await manager.DetectAsync("python", directory);
+        Assert(result.Status == ToolchainStatus.CustomLocation, "custom Python was not distinguished");
+        Assert(result.Version == "3.13.7", "Python version was not parsed");
+        ProcessResult action = await manager.ExecuteAsync(
+            "python",
+            ToolchainAction.Run,
+            directory,
+            ["script with spaces.py"]);
+        Assert(action.Success, "Python action did not complete");
+        Assert(
+            runner.Requests.Last().Arguments.SequenceEqual(["script with spaces.py"]),
+            "Python script argument was not preserved");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
+static async Task JavaDetectorDistinguishesFullAndPartialJdks()
+{
+    string directory = TemporaryDirectory("java-ready");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        CreateExecutables(directory, "java", "javac");
+        var runner = new FakeProcessRunner(request =>
+            ProcessSuccess($"{Path.GetFileNameWithoutExtension(request.FileName)} 21.0.6"));
+        ToolchainDetectionResult ready = await ManagerWith(
+                new JavaToolchainAdapter(runner),
+                runner,
+                Path.Combine(directory, "settings.json"))
+            .DetectAsync("java", directory);
+        Assert(ready.Status == ToolchainStatus.CustomLocation, "complete JDK was not usable");
+        Assert(ready.Components.Count == 2 && ready.Components.All(item => item.Valid), "JDK components were not validated");
+
+        File.Delete(Path.Combine(directory, OperatingSystem.IsWindows() ? "javac.exe" : "javac"));
+        ToolchainDetectionResult partial = await ManagerWith(
+                new JavaToolchainAdapter(runner),
+                runner,
+                Path.Combine(directory, "partial-settings.json"))
+            .DetectAsync("java", directory);
+        Assert(partial.Status == ToolchainStatus.PartialInstallation, "JRE-only Java was not classified as partial");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+}
+
 static async Task ToolchainSettingsPersistCustomPaths()
 {
     string directory = TemporaryDirectory("toolchain-settings");
@@ -824,7 +1128,7 @@ static async Task LiveToolchainDetectionReturnsStructuredStates()
             Path.Combine(directory, "toolchains.json"));
         IReadOnlyList<ToolchainDetectionResult> results = await manager.DetectAllAsync();
         Assert(
-            results.Select(item => item.Id).Order().SequenceEqual(["go", "rust"]),
+            results.Select(item => item.Id).Order().SequenceEqual(["go", "java", "python", "rust"]),
             "registered toolchains were missing");
         foreach (ToolchainDetectionResult result in results)
         {
@@ -1002,7 +1306,7 @@ static Task AcademyConceptBrowserSearchesExamples()
     return Task.CompletedTask;
 }
 
-static async Task WinUiAcademyStarts()
+static async Task AvaloniaAcademyStarts()
 {
     string directory = TemporaryDirectory("academy-startup");
     Directory.CreateDirectory(directory);
@@ -1018,10 +1322,10 @@ static async Task WinUiAcademyStarts()
                 [ProgrammingGoal.ComputerScience],
                 true),
         });
-        await AssertAcademyWindowStartsAsync(statePath, "Sprout Studio — Academy");
+        await AssertAcademyWindowStartsAsync(statePath, "Sprout Studio");
         await AssertAcademyWindowStartsAsync(
             Path.Combine(directory, "new-user.json"),
-            "Sprout Studio — Academy Profile");
+            "Sprout Studio");
     }
     finally
     {
@@ -1076,7 +1380,7 @@ static async Task AssertAcademyWindowStartsAsync(string statePath, string expect
     }
 }
 
-static async Task WinUiApplicationStarts()
+static async Task AvaloniaApplicationStarts()
 {
     string executable = StudioExecutablePath();
 
@@ -1101,17 +1405,63 @@ static async Task WinUiApplicationStarts()
                     $"Sprout Studio exited during startup with code {process.ExitCode}.");
             }
         }
-        while ((!process.MainWindowTitle.Contains("Toolchain Settings", StringComparison.Ordinal)
+        while ((!string.Equals(process.MainWindowTitle, "Sprout Studio", StringComparison.Ordinal)
                 || process.MainWindowHandle == IntPtr.Zero)
             && DateTime.UtcNow < deadline);
 
         Assert(process.MainWindowHandle != IntPtr.Zero, "Sprout Studio did not create a main window.");
         Assert(process.Responding, "Sprout Studio created a window but is not responding.");
         Assert(
-            process.MainWindowTitle.Contains("Toolchain Settings", StringComparison.Ordinal),
-            $"Sprout Studio did not open the functional Toolchain Settings surface; title was `{process.MainWindowTitle}`.");
-        Assert(process.CloseMainWindow(), "Sprout Studio did not accept a normal close request.");
+            string.Equals(process.MainWindowTitle, "Sprout Studio", StringComparison.Ordinal),
+            $"Toolchains did not remain in the integrated Studio shell; title was `{process.MainWindowTitle}`.");
+        Assert(process.CloseMainWindow(), "Integrated Toolchains mode did not accept a normal close request.");
         Assert(await WaitForExitAsync(process, TimeSpan.FromSeconds(5)), "Sprout Studio did not exit cleanly.");
+    }
+    finally
+    {
+        if (!process.HasExited)
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+        }
+    }
+}
+
+static async Task AvaloniaDocumentationStarts()
+{
+    string executable = StudioExecutablePath();
+    var startInfo = new ProcessStartInfo(executable)
+    {
+        UseShellExecute = false,
+        WorkingDirectory = Path.GetDirectoryName(executable),
+        Arguments = "--open-docs",
+    };
+    using var process = Process.Start(startInfo)
+        ?? throw new InvalidOperationException("Could not start integrated Documentation mode.");
+    try
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(10);
+        do
+        {
+            await Task.Delay(250);
+            process.Refresh();
+            if (process.HasExited)
+            {
+                throw new InvalidOperationException(
+                    $"Sprout Studio exited during Documentation startup with code {process.ExitCode}.");
+            }
+        }
+        while ((!string.Equals(process.MainWindowTitle, "Sprout Studio", StringComparison.Ordinal)
+                || process.MainWindowHandle == IntPtr.Zero)
+            && DateTime.UtcNow < deadline);
+
+        Assert(process.MainWindowHandle != IntPtr.Zero, "Documentation did not create the integrated Studio window.");
+        Assert(process.Responding, "Integrated Documentation mode is not responding.");
+        Assert(
+            string.Equals(process.MainWindowTitle, "Sprout Studio", StringComparison.Ordinal),
+            $"Documentation did not remain in the integrated Studio shell; title was `{process.MainWindowTitle}`.");
+        Assert(process.CloseMainWindow(), "Integrated Documentation mode did not accept a normal close request.");
+        Assert(await WaitForExitAsync(process, TimeSpan.FromSeconds(5)), "Documentation did not exit cleanly.");
     }
     finally
     {
@@ -1135,11 +1485,11 @@ static string StudioExecutablePath()
         repositoryRoot,
         "studio",
         "src",
-        "SproutStudio",
+        "SproutStudio.Desktop",
         "bin",
         "x64",
         Configuration,
-        "net8.0-windows10.0.19041.0",
+        "net10.0",
         "win-x64",
         "SproutStudio.exe");
     Assert(File.Exists(executable), $"Sprout Studio executable was not built at {executable}");

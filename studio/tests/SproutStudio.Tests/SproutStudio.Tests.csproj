@@ -1,9 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
+    <NativeCargoArguments Condition="'$(Configuration)' == 'Release'">--release --locked</NativeCargoArguments>
+    <NativeCargoArguments Condition="'$(Configuration)' != 'Release'">--locked</NativeCargoArguments>
+    <NativeCargoDirectory Condition="'$(Configuration)' == 'Release'">release</NativeCargoDirectory>
+    <NativeCargoDirectory Condition="'$(Configuration)' != 'Release'">debug</NativeCargoDirectory>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\SproutStudio.Academy\SproutStudio.Academy.csproj" />
@@ -12,11 +16,11 @@
     <ProjectReference Include="..\..\src\SproutStudio.Interop\SproutStudio.Interop.csproj" />
     <ProjectReference Include="..\..\src\SproutStudio.Toolchains\SproutStudio.Toolchains.csproj" />
   </ItemGroup>
-  <Target Name="BuildSproutNativeDebug"
+  <Target Name="BuildSproutNativeForTests"
           BeforeTargets="Build"
           DependsOnTargets="PrepareAndCopySproutPythonForTests">
-    <Exec Command="cargo build -p sprout-ffi" WorkingDirectory="$(MSBuildThisFileDirectory)..\..\.." />
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\..\target\debug\sprout_ffi.dll"
+    <Exec Command="cargo build -p sprout-ffi $(NativeCargoArguments)" WorkingDirectory="$(MSBuildThisFileDirectory)..\..\.." />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\..\target\$(NativeCargoDirectory)\sprout_ffi.dll"
           DestinationFolder="$(OutDir)" />
   </Target>
   <Target Name="PrepareAndCopySproutPythonForTests" BeforeTargets="Build">
@@ -31,7 +35,7 @@
   <Target Name="BuildSproutStudioForStartupTest"
           BeforeTargets="Build"
           Condition="'$(BuildingSolutionFile)' != 'true'">
-    <MSBuild Projects="..\..\src\SproutStudio\SproutStudio.csproj"
+    <MSBuild Projects="..\..\src\SproutStudio.Desktop\SproutStudio.Desktop.csproj"
              Targets="Build"
              Properties="Configuration=$(Configuration);Platform=x64" />
   </Target>

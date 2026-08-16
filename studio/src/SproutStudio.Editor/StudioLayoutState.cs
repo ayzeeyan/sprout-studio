@@ -4,10 +4,14 @@ namespace SproutStudio.Editor;
 
 public sealed record StudioLayoutState
 {
-    public int SchemaVersion { get; init; } = 1;
-    public double ExplorerWidth { get; init; } = 280;
-    public double InspectorWidth { get; init; } = 350;
-    public double BottomPanelHeight { get; init; } = 190;
+    public int SchemaVersion { get; init; } = 5;
+    public int? WindowX { get; init; }
+    public int? WindowY { get; init; }
+    public int? WindowWidth { get; init; }
+    public int? WindowHeight { get; init; }
+    public double ExplorerWidth { get; init; } = 260;
+    public double InspectorWidth { get; init; } = 340;
+    public double BottomPanelHeight { get; init; } = 220;
     public bool ActivityVisible { get; init; } = true;
     public bool ExplorerVisible { get; init; } = true;
     public bool InspectorVisible { get; init; } = true;
@@ -22,12 +26,14 @@ public sealed class StudioLayoutStateStore
     private static readonly HashSet<string> ActivityKeys = new(StringComparer.Ordinal)
     {
         "explorer",
+        "workspace",
         "search",
         "source-control",
         "academy",
         "documentation",
         "packages",
         "toolchains",
+        "settings",
     };
 
     private readonly string _path;
@@ -51,6 +57,10 @@ public sealed class StudioLayoutStateStore
 
             StudioLayoutState? state = JsonSerializer.Deserialize<StudioLayoutState>(
                 File.ReadAllText(_path));
+            if (state?.SchemaVersion != 5)
+            {
+                return new StudioLayoutState();
+            }
             return Sanitize(state ?? new StudioLayoutState());
         }
         catch (Exception exception) when (exception is IOException
@@ -90,14 +100,22 @@ public sealed class StudioLayoutStateStore
     public static StudioLayoutState Sanitize(StudioLayoutState state)
     {
         ArgumentNullException.ThrowIfNull(state);
+        bool hasWindowBounds = state.WindowX.HasValue
+            && state.WindowY.HasValue
+            && state.WindowWidth.HasValue
+            && state.WindowHeight.HasValue;
         return state with
         {
-            SchemaVersion = 1,
-            ExplorerWidth = Math.Clamp(state.ExplorerWidth, 200, 420),
-            InspectorWidth = Math.Clamp(state.InspectorWidth, 260, 480),
+            SchemaVersion = 5,
+            WindowX = hasWindowBounds ? Math.Clamp(state.WindowX!.Value, -100_000, 100_000) : null,
+            WindowY = hasWindowBounds ? Math.Clamp(state.WindowY!.Value, -100_000, 100_000) : null,
+            WindowWidth = hasWindowBounds ? Math.Clamp(state.WindowWidth!.Value, 900, 7_680) : null,
+            WindowHeight = hasWindowBounds ? Math.Clamp(state.WindowHeight!.Value, 600, 4_320) : null,
+            ExplorerWidth = Math.Clamp(state.ExplorerWidth, 220, 360),
+            InspectorWidth = Math.Clamp(state.InspectorWidth, 280, 440),
             BottomPanelHeight = Math.Clamp(state.BottomPanelHeight, 120, 500),
-            SelectedBottomTab = Math.Clamp(state.SelectedBottomTab, 0, 2),
-            SelectedInspectorTab = Math.Clamp(state.SelectedInspectorTab, 0, 3),
+            SelectedBottomTab = Math.Clamp(state.SelectedBottomTab, 0, 3),
+            SelectedInspectorTab = Math.Clamp(state.SelectedInspectorTab, 0, 4),
             SelectedActivity = ActivityKeys.Contains(state.SelectedActivity)
                 ? state.SelectedActivity
                 : "explorer",

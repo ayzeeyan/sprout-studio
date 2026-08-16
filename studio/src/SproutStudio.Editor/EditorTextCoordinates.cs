@@ -8,6 +8,12 @@ public static class EditorTextCoordinates
         return value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
     }
 
+    public static string ToEditorLineEndings(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return NormalizeLineEndings(value).Replace("\n", "\r", StringComparison.Ordinal);
+    }
+
     public static int EditorIndexToNormalizedIndex(string editorText, int editorIndex)
     {
         ArgumentNullException.ThrowIfNull(editorText);

@@ -57,6 +57,8 @@ public sealed class ToolchainManager
         [
             new RustToolchainAdapter(processRunner),
             new GoToolchainAdapter(processRunner),
+            new PythonToolchainAdapter(processRunner),
+            new JavaToolchainAdapter(processRunner),
         ]);
         return new ToolchainManager(
             registry,

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Sprout Studio</title>
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#202621" />
+      <stop offset="1" stop-color="#101411" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#67df94" />
+      <stop offset="1" stop-color="#34b96b" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#surface)" stroke="#3b463e" stroke-width="8" />
+  <path d="M190 49C112 54 64 95 64 154c0 25 10 42 29 53 2-48 24-87 67-118-31 31-50 69-57 116 57-5 91-44 91-99 0-22-2-41-4-57Z" fill="url(#leaf)" />
+  <path d="M73 213c16-54 45-99 91-132" fill="none" stroke="#9cf0b9" stroke-width="9" stroke-linecap="round" />
+</svg>

@@ -7,8 +7,8 @@ using SproutStudio.Editor;
 
 namespace SproutStudio.Interop;
 
-public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectClient,
-    IProjectAdvancedClient, ISproutLanguageService
+public sealed partial class NativeSproutEngineClient : IEngineClient, IEngineInformationClient,
+    IProjectClient, IProjectAdvancedClient, ISproutLanguageService
 {
     public const int SupportedApiVersion = 1;
 
@@ -17,13 +17,30 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
         PropertyNameCaseInsensitive = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
+    private static readonly Lazy<EngineInfo> CompatibleEngine = new(
+        LoadAndValidateEngine,
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
+    static NativeSproutEngineClient()
+    {
+        NativeLibrary.SetDllImportResolver(
+            typeof(NativeSproutEngineClient).Assembly,
+            ResolveSproutLibrary);
+    }
+
+    public Task<EngineInfo> GetInfoAsync(CancellationToken cancellationToken = default) =>
+        Task.Run(() => CompatibleEngine.Value, cancellationToken);
 
     public Task<EngineResponse> ExecuteAsync(
         EngineRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return Task.Run(() => Execute(request), cancellationToken);
+        return Task.Run(() =>
+        {
+            _ = CompatibleEngine.Value;
+            return Execute(request);
+        }, cancellationToken);
     }
 
     public Task<ProjectResponse> LoadAsync(
@@ -31,7 +48,11 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
-        return Task.Run(() => LoadProject(projectPath), cancellationToken);
+        return Task.Run(() =>
+        {
+            _ = CompatibleEngine.Value;
+            return LoadProject(projectPath);
+        }, cancellationToken);
     }
 
     public Task<ProjectResponse> CreateAsync(
@@ -42,7 +63,11 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destination);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return Task.Run(() => CreateProject(destination, name, template), cancellationToken);
+        return Task.Run(() =>
+        {
+            _ = CompatibleEngine.Value;
+            return CreateProject(destination, name, template);
+        }, cancellationToken);
     }
 
     public Task<LanguageServiceResponse> QueryAsync(
@@ -50,7 +75,11 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return Task.Run(() => QueryLanguageService(request), cancellationToken);
+        return Task.Run(() =>
+        {
+            _ = CompatibleEngine.Value;
+            return QueryLanguageService(request);
+        }, cancellationToken);
     }
 
     public Task<ProjectResponse> UpdateDependencyAsync(
@@ -63,7 +92,11 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return Task.Run(
-            () => UpdateDependency(projectPath, kind, name, requirement),
+            () =>
+            {
+                _ = CompatibleEngine.Value;
+                return UpdateDependency(projectPath, kind, name, requirement);
+            },
             cancellationToken);
     }
 
@@ -72,7 +105,65 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
-        return Task.Run(() => BuildProject(projectPath), cancellationToken);
+        return Task.Run(() =>
+        {
+            _ = CompatibleEngine.Value;
+            return BuildProject(projectPath);
+        }, cancellationToken);
+    }
+
+    public static EngineInfo ParseEngineInfo(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        return JsonSerializer.Deserialize<EngineInfo>(json, JsonOptions)
+            ?? throw new InvalidDataException("The Sprout engine returned empty metadata.");
+    }
+
+    private static EngineInfo LoadAndValidateEngine()
+    {
+        EngineInfo info = ParseEngineInfo(ReadBuffer(NativeMethods.SproutEngineInfo()));
+        if (info.AbiVersion != SupportedApiVersion)
+        {
+            throw new InvalidDataException(
+                $"Sprout engine ABI {info.AbiVersion} is incompatible with Studio ABI {SupportedApiVersion}.");
+        }
+        if (!string.Equals(info.Architecture, "x86_64", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BadImageFormatException(
+                $"Sprout Studio requires an x64 engine; the bundled engine reports {info.Architecture}.");
+        }
+#if DEBUG
+        const string expectedConfiguration = "debug";
+#else
+        const string expectedConfiguration = "release";
+#endif
+        if (!string.Equals(
+            info.BuildConfiguration,
+            expectedConfiguration,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                $"Sprout Studio {expectedConfiguration} requires a {expectedConfiguration} engine; the bundled engine is {info.BuildConfiguration}.");
+        }
+        return info;
+    }
+
+    private static IntPtr ResolveSproutLibrary(
+        string libraryName,
+        System.Reflection.Assembly assembly,
+        DllImportSearchPath? searchPath)
+    {
+        if (!string.Equals(libraryName, "sprout_ffi", StringComparison.Ordinal))
+        {
+            return IntPtr.Zero;
+        }
+        string path = Path.Combine(AppContext.BaseDirectory, "sprout_ffi.dll");
+        if (!File.Exists(path))
+        {
+            throw new DllNotFoundException(
+                $"The bundled Sprout engine was not found at `{path}`.");
+        }
+        return NativeLibrary.Load(path);
     }
 
     public static EngineResponse ParseResponse(string json)
@@ -264,6 +355,10 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IProjectCl
     private static partial class NativeMethods
     {
         private const string LibraryName = "sprout_ffi";
+
+        [LibraryImport(LibraryName, EntryPoint = "sprout_engine_info")]
+        [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+        internal static partial NativeBuffer SproutEngineInfo();
 
         [LibraryImport(LibraryName, EntryPoint = "sprout_execute")]
         [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]

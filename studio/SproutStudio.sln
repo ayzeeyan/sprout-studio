@@ -8,13 +8,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Interop", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Tests", "tests\SproutStudio.Tests\SproutStudio.Tests.csproj", "{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio", "src\SproutStudio\SproutStudio.csproj", "{AC900514-C674-453E-83E2-4D6B41F0E2C4}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Toolchains", "src\SproutStudio.Toolchains\SproutStudio.Toolchains.csproj", "{F81762AD-A6E1-4F51-9A2D-0214017BE838}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Academy", "src\SproutStudio.Academy\SproutStudio.Academy.csproj", "{B6FBD525-3819-4C1A-A4AA-137C3A139483}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Editor", "src\SproutStudio.Editor\SproutStudio.Editor.csproj", "{8E3675E0-11D1-46E7-BBF0-875AD0A8549B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SproutStudio.Desktop", "src\SproutStudio.Desktop\SproutStudio.Desktop.csproj", "{4B9739DE-9364-4BCB-88B4-BE14B733DF6E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,14 +30,10 @@ Global
 		{C5E0CC55-C3CD-44AB-9A95-E64F2B57E367}.Debug|x64.Build.0 = Debug|Any CPU
 		{C5E0CC55-C3CD-44AB-9A95-E64F2B57E367}.Release|x64.ActiveCfg = Release|Any CPU
 		{C5E0CC55-C3CD-44AB-9A95-E64F2B57E367}.Release|x64.Build.0 = Release|Any CPU
-		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Debug|x64.Build.0 = Debug|Any CPU
-		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Release|x64.ActiveCfg = Release|Any CPU
-		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Release|x64.Build.0 = Release|Any CPU
-		{AC900514-C674-453E-83E2-4D6B41F0E2C4}.Debug|x64.ActiveCfg = Debug|x64
-		{AC900514-C674-453E-83E2-4D6B41F0E2C4}.Debug|x64.Build.0 = Debug|x64
-		{AC900514-C674-453E-83E2-4D6B41F0E2C4}.Release|x64.ActiveCfg = Release|x64
-		{AC900514-C674-453E-83E2-4D6B41F0E2C4}.Release|x64.Build.0 = Release|x64
+		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Debug|x64.ActiveCfg = Debug|x64
+		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Debug|x64.Build.0 = Debug|x64
+		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Release|x64.ActiveCfg = Release|x64
+		{D9A47ED9-4829-4FD3-AD6F-015FC09FDFB1}.Release|x64.Build.0 = Release|x64
 		{F81762AD-A6E1-4F51-9A2D-0214017BE838}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{F81762AD-A6E1-4F51-9A2D-0214017BE838}.Debug|x64.Build.0 = Debug|Any CPU
 		{F81762AD-A6E1-4F51-9A2D-0214017BE838}.Release|x64.ActiveCfg = Release|Any CPU
@@ -50,5 +46,9 @@ Global
 		{8E3675E0-11D1-46E7-BBF0-875AD0A8549B}.Debug|x64.Build.0 = Debug|Any CPU
 		{8E3675E0-11D1-46E7-BBF0-875AD0A8549B}.Release|x64.ActiveCfg = Release|Any CPU
 		{8E3675E0-11D1-46E7-BBF0-875AD0A8549B}.Release|x64.Build.0 = Release|Any CPU
+		{4B9739DE-9364-4BCB-88B4-BE14B733DF6E}.Debug|x64.ActiveCfg = Debug|x64
+		{4B9739DE-9364-4BCB-88B4-BE14B733DF6E}.Debug|x64.Build.0 = Debug|x64
+		{4B9739DE-9364-4BCB-88B4-BE14B733DF6E}.Release|x64.ActiveCfg = Release|x64
+		{4B9739DE-9364-4BCB-88B4-BE14B733DF6E}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 EndGlobal

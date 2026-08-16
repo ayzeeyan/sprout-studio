@@ -1,0 +1,34 @@
+name: Windows release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+          components: clippy,rustfmt
+      - name: Install NSIS
+        shell: powershell
+        run: choco install nsis --version=3.12 -y --no-progress
+      - name: Build and validate release
+        shell: powershell
+        run: ./scripts/build-release.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sprout-studio-win-x64
+          path: artifacts/release/*
+          if-no-files-found: error

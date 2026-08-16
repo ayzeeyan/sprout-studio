@@ -1,0 +1,58 @@
+<Window
+    x:Class="SproutStudio.Views.About.AboutWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="610"
+    Height="500"
+    MinWidth="560"
+    MinHeight="450"
+    CanResize="False"
+    ShowInTaskbar="False"
+    WindowStartupLocation="CenterOwner"
+    Title="About Sprout Studio">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="24" RowSpacing="16">
+    <StackPanel Orientation="Horizontal" Spacing="14">
+      <Border Width="54" Height="54" Background="{DynamicResource StudioSelectedBrush}" CornerRadius="12">
+        <Path Width="28" Height="34" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
+              Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
+      </Border>
+      <StackPanel VerticalAlignment="Center" Spacing="3">
+        <TextBlock Text="Sprout Studio" Classes="dialog-title" />
+        <TextBlock Name="StudioVersionText" Foreground="{DynamicResource StudioSuccessBrush}" />
+        <TextBlock Text="A focused IDE and learning hub for the Sprout language."
+                   Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+      </StackPanel>
+    </StackPanel>
+
+    <Border Grid.Row="1" Classes="dialog-card">
+      <Grid Margin="18" ColumnDefinitions="155,*" RowDefinitions="32,32,32,32,32,32,32,Auto">
+        <TextBlock Classes="table-header" Text="Studio build" />
+        <TextBlock Name="StudioBuildText" Grid.Column="1" />
+        <TextBlock Grid.Row="1" Classes="table-header" Text="Sprout engine" />
+        <TextBlock Name="EngineVersionText" Grid.Row="1" Grid.Column="1" />
+        <TextBlock Grid.Row="2" Classes="table-header" Text="Engine ABI" />
+        <TextBlock Name="EngineAbiText" Grid.Row="2" Grid.Column="1" />
+        <TextBlock Grid.Row="3" Classes="table-header" Text="Engine architecture" />
+        <TextBlock Name="EngineArchitectureText" Grid.Row="3" Grid.Column="1" />
+        <TextBlock Grid.Row="4" Classes="table-header" Text="Engine build" />
+        <TextBlock Name="EngineBuildText" Grid.Row="4" Grid.Column="1" />
+        <TextBlock Grid.Row="5" Classes="table-header" Text=".NET runtime" />
+        <TextBlock Name="RuntimeText" Grid.Row="5" Grid.Column="1" />
+        <TextBlock Grid.Row="6" Classes="table-header" Text="Process architecture" />
+        <TextBlock Name="ProcessArchitectureText" Grid.Row="6" Grid.Column="1" />
+        <Border Grid.Row="7" Grid.ColumnSpan="2" Background="{DynamicResource StudioRaisedBrush}" CornerRadius="5" Padding="12" Margin="0,8,0,0">
+          <TextBlock Text="Diagnostics are read from the running application and bundled Rust engine. No sample build information is shown."
+                     TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" FontSize="11" />
+        </Border>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
+      <Button Content="Copy System Info" Click="CopySystemInfo_Click" />
+      <Button Grid.Column="1" Content="Open Logs Folder" Click="OpenLogsFolder_Click" />
+      <TextBlock Name="ActionStatus" Grid.Column="2" VerticalAlignment="Center"
+                 Foreground="{DynamicResource StudioSuccessBrush}" />
+      <Button Grid.Column="3" Classes="accent" Content="Close" MinWidth="86" Click="Close_Click" />
+    </Grid>
+  </Grid>
+</Window>

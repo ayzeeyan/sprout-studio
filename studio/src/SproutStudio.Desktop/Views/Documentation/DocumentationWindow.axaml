@@ -1,0 +1,37 @@
+<Window
+    x:Class="SproutStudio.Views.Documentation.DocumentationWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:CompileBindings="False"
+    Width="1040"
+    Height="700"
+    MinWidth="780"
+    MinHeight="520"
+    WindowStartupLocation="CenterOwner"
+    Title="Documentation — Sprout Studio">
+  <Grid RowDefinitions="58,*" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Classes="dialog-header">
+      <Grid ColumnDefinitions="*,260" Margin="18,0">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Sprout Documentation" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Bundled offline reference" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+        <TextBox Name="SearchBox" Grid.Column="1" VerticalAlignment="Center" PlaceholderText="Filter topics" TextChanged="SearchBox_TextChanged" />
+      </Grid>
+    </Border>
+    <Grid Grid.Row="1" ColumnDefinitions="250,1,*">
+      <ListBox Name="TopicList" Margin="10" SelectionChanged="TopicList_SelectionChanged">
+        <ListBox.ItemTemplate>
+          <DataTemplate><TextBlock Text="{Binding Title}" Margin="8,7" /></DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
+      <Grid Grid.Column="2" RowDefinitions="42,*" Margin="18,8,18,18">
+        <TextBlock Name="TopicTitle" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBox Name="DocumentText" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                 FontFamily="Cascadia Mono, Consolas" FontSize="13" Background="Transparent" BorderThickness="0"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

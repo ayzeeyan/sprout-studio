@@ -1,0 +1,68 @@
+<UserControl
+    x:Class="SproutStudio.Views.Packages.PackagesModeView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SproutStudio.Views.Packages"
+    x:CompileBindings="False">
+  <Grid RowDefinitions="58,*" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Classes="mode-header">
+      <Grid ColumnDefinitions="*,Auto" Margin="18,0">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Packages" Classes="mode-title" />
+          <TextBlock Name="ProjectText" Text="Validated project dependencies from sprout.toml"
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+        <Button Name="OpenManifestButton" Grid.Column="1" Content="Open Manifest" Click="OpenManifest_Click" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1">
+      <StackPanel Name="NoProjectPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+        <TextBlock Text="Open a Sprout project to manage its dependencies." Classes="empty-state" />
+        <Button Content="Open Project" Click="OpenProject_Click" />
+      </StackPanel>
+
+      <Grid Name="PackageContent" IsVisible="False" RowDefinitions="Auto,*,Auto" Margin="22" RowSpacing="14" MaxWidth="980" HorizontalAlignment="Center">
+        <StackPanel Spacing="4">
+          <TextBlock Text="PROJECT DEPENDENCIES" Classes="panel-header" />
+          <TextBlock Text="Sprout and Python requirements are updated through the validated native project API."
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Border Grid.Row="1" Classes="dialog-card">
+          <Grid RowDefinitions="36,*">
+            <Grid ColumnDefinitions="110,*,190" Margin="12,0">
+              <TextBlock Classes="table-header" Text="Kind" />
+              <TextBlock Grid.Column="1" Classes="table-header" Text="Package" />
+              <TextBlock Grid.Column="2" Classes="table-header" Text="Requirement" />
+            </Grid>
+            <Grid Grid.Row="1">
+              <TextBlock Name="PackageEmpty" Text="No dependencies are declared yet." Classes="empty-state" />
+              <ListBox Name="PackageList" IsVisible="False">
+                <ListBox.ItemTemplate>
+                  <DataTemplate DataType="local:PackageRow">
+                    <Grid ColumnDefinitions="110,*,190" Margin="12,7">
+                      <TextBlock Text="{Binding KindLabel}" Foreground="{DynamicResource StudioAccentBrush}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontFamily="Cascadia Mono, Consolas" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="2" Text="{Binding Requirement}" FontFamily="Cascadia Mono, Consolas" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+          </Grid>
+        </Border>
+        <Grid Grid.Row="2" RowDefinitions="32,Auto" ColumnDefinitions="145,*,190,Auto,Auto" ColumnSpacing="8" RowSpacing="7">
+          <ComboBox Name="KindBox" SelectedIndex="1" HorizontalContentAlignment="Stretch">
+            <ComboBoxItem Content="Sprout" />
+            <ComboBoxItem Content="Python" />
+          </ComboBox>
+          <TextBox Name="NameBox" Grid.Column="1" PlaceholderText="Package name" />
+          <TextBox Name="RequirementBox" Grid.Column="2" PlaceholderText="Version, e.g. &gt;=2.0" />
+          <Button Name="SaveButton" Grid.Column="3" Classes="accent" Content="Add or update" Click="Save_Click" />
+          <Button Name="RemoveButton" Grid.Column="4" Content="Remove" Click="Remove_Click" />
+          <TextBlock Name="StatusText" Grid.Row="1" Grid.ColumnSpan="5" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+        </Grid>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

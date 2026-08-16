@@ -1,0 +1,71 @@
+<UserControl
+    x:Class="SproutStudio.Views.Shell.MainToolbarView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    x:DataType="vm:MainWindowViewModel">
+  <Border Classes="toolbar-surface">
+    <Grid ColumnDefinitions="210,Auto,Auto,Auto,*,Auto" VerticalAlignment="Center">
+      <Button Grid.Column="0" Classes="toolbar project" Command="{Binding OpenProjectCommand}" ToolTip.Tip="Open a Sprout project">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+          <TextBlock Classes="icon" Text="&#xE8B7;" />
+          <TextBlock Grid.Column="1" Text="{Binding ProjectSelectorText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <TextBlock Grid.Column="2" Classes="icon small" Text="&#xE70D;" />
+        </Grid>
+      </Button>
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0">
+        <Button Classes="toolbar" Command="{Binding NewDocumentCommand}" ToolTip.Tip="New file (Ctrl+N)">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE710;" /><TextBlock Text="New" /></StackPanel>
+        </Button>
+        <Button Classes="toolbar" Command="{Binding OpenDocumentCommand}" ToolTip.Tip="Open file (Ctrl+O)">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE8E5;" /><TextBlock Text="Open" /></StackPanel>
+        </Button>
+        <Button Classes="toolbar" Command="{Binding SaveDocumentCommand}" ToolTip.Tip="Save (Ctrl+S)">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE74E;" /><TextBlock Text="Save" /></StackPanel>
+        </Button>
+      </StackPanel>
+
+      <Border Grid.Column="2" Classes="toolbar-separator" />
+
+      <StackPanel Grid.Column="3" Orientation="Horizontal" IsVisible="{Binding ShowProjectToolbarGroup}">
+        <Button Classes="toolbar" Command="{Binding NewProjectCommand}" ToolTip.Tip="Create project">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE7C5;" /><TextBlock Text="New Project" /></StackPanel>
+        </Button>
+        <Button Classes="toolbar" Command="{Binding OpenProjectCommand}" ToolTip.Tip="Open project">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE8B7;" /><TextBlock Text="Open Project" /></StackPanel>
+        </Button>
+      </StackPanel>
+
+      <StackPanel Grid.Column="3" Orientation="Horizontal" IsVisible="{Binding CompactToolbar}">
+        <Button Classes="toolbar" Width="36" Command="{Binding NewProjectCommand}"
+                ToolTip.Tip="New project">
+          <TextBlock Classes="icon" Text="&#xE7C5;" />
+        </Button>
+        <Button Classes="toolbar" Width="36" Command="{Binding OpenProjectCommand}"
+                ToolTip.Tip="Open project">
+          <TextBlock Classes="icon" Text="&#xE8B7;" />
+        </Button>
+      </StackPanel>
+
+      <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
+        <TextBlock Text="Mode" Classes="toolbar-caption" IsVisible="{Binding ShowProjectToolbarGroup}" />
+        <ComboBox Width="110" Height="34" Margin="0,0,8,0"
+                  ItemsSource="{Binding SyntaxProfiles}"
+                  SelectedItem="{Binding SelectedProfile}" />
+        <Button Classes="toolbar" Command="{Binding CheckCommand}" ToolTip.Tip="Check (Ctrl+F5)">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon accent" Text="&#xE73E;" /><TextBlock Text="Check" /></StackPanel>
+        </Button>
+        <Button Classes="toolbar" Command="{Binding RunCommand}" ToolTip.Tip="Run (F5)">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon accent" Text="&#xE768;" /><TextBlock Text="Run" Foreground="{DynamicResource StudioAccentBrush}" /></StackPanel>
+        </Button>
+        <Button Classes="toolbar" Command="{Binding DebugCommand}" ToolTip.Tip="Debug (F6)">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE8A7;" /><TextBlock Text="Debug" /></StackPanel>
+        </Button>
+        <Button Classes="toolbar" Command="{Binding BuildCommand}" ToolTip.Tip="Build (Ctrl+Shift+B)">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE90F;" /><TextBlock Text="Build" /></StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

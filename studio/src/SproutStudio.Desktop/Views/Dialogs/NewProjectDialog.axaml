@@ -1,0 +1,46 @@
+<Window
+    x:Class="SproutStudio.Views.Dialogs.NewProjectDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shared="using:SproutStudio.Views.Shared"
+    Width="520"
+    SizeToContent="Height"
+    CanResize="False"
+    WindowStartupLocation="CenterOwner"
+    ShowInTaskbar="False"
+    Title="Create Sprout Project">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="22" RowSpacing="12">
+    <StackPanel>
+      <TextBlock Text="Create Sprout Project" FontSize="18" FontWeight="SemiBold" />
+      <TextBlock Name="ParentPathText" Margin="0,5,0,0" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
+    </StackPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="110,*" VerticalAlignment="Center">
+      <TextBlock Text="Language" Classes="field-label" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+        <shared:LanguageIconView LanguageKey="sprout" Width="24" Height="24" />
+        <TextBlock Text="Sprout" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Text="Bundled" FontSize="11" Foreground="{DynamicResource StudioAccentBrush}" VerticalAlignment="Center" />
+      </StackPanel>
+    </Grid>
+    <Grid Grid.Row="2" ColumnDefinitions="110,*" VerticalAlignment="Center">
+      <TextBlock Text="Project name" Classes="field-label" />
+      <TextBox Name="NameBox" Grid.Column="1" PlaceholderText="MySproutProject" TextChanged="NameBox_TextChanged" />
+    </Grid>
+    <Grid Grid.Row="3" ColumnDefinitions="110,*" VerticalAlignment="Center">
+      <TextBlock Text="Syntax profile" Classes="field-label" />
+      <ComboBox Name="TemplateBox" Grid.Column="1" SelectedIndex="0">
+        <ComboBoxItem Content="Guided" />
+        <ComboBoxItem Content="Structured" />
+        <ComboBoxItem Content="Advanced" />
+      </ComboBox>
+    </Grid>
+    <TextBlock Name="DestinationText" Grid.Row="4" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+    <Grid Grid.Row="5" ColumnDefinitions="*,Auto">
+      <TextBlock Name="ValidationText" Foreground="{DynamicResource StudioErrorBrush}" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Click="Cancel_Click" Content="Cancel" MinWidth="86" />
+        <Button Name="CreateButton" Click="Create_Click" Classes="accent" Content="Create" MinWidth="96" IsEnabled="False" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

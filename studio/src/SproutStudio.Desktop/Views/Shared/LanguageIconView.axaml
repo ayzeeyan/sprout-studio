@@ -1,0 +1,15 @@
+<UserControl
+    x:Class="SproutStudio.Views.Shared.LanguageIconView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="28"
+    Height="28"
+    Focusable="False">
+  <Border Name="IconSurface" CornerRadius="6">
+    <TextBlock Name="IconGlyph"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               FontFamily="Segoe UI Variable Text, Segoe UI"
+               FontWeight="SemiBold" />
+  </Border>
+</UserControl>

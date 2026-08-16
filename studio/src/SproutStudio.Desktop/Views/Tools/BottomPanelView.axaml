@@ -1,0 +1,85 @@
+<UserControl
+    x:Class="SproutStudio.Views.Tools.BottomPanelView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    x:DataType="vm:MainWindowViewModel">
+  <Border Classes="bottom-surface" IsVisible="{Binding BottomPanelVisible}">
+    <TabControl SelectedIndex="{Binding SelectedBottomTab, Mode=TwoWay}">
+      <TabItem>
+        <TabItem.Header>
+          <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="Problems" /><Border Classes="count-badge" IsVisible="{Binding HasProblems}"><TextBlock Text="{Binding ProblemCount}" /></Border></StackPanel>
+        </TabItem.Header>
+        <Grid>
+          <TextBlock IsVisible="{Binding NoProblems}" Text="✓  No problems detected." Classes="empty-state success" />
+          <ListBox IsVisible="{Binding HasProblems}" ItemsSource="{Binding Problems}" DoubleTapped="Problems_DoubleTapped">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="vm:ProblemItemViewModel">
+                <Grid ColumnDefinitions="24,78,70,92,*" ColumnSpacing="8" Margin="6,5">
+                  <TextBlock Text="●" Foreground="{DynamicResource StudioErrorBrush}" HorizontalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding Line}" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  <TextBlock Grid.Column="3" Text="{Binding Severity}" Foreground="{DynamicResource StudioErrorBrush}" />
+                  <StackPanel Grid.Column="4">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Message}" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Console">
+        <Grid>
+          <TextBlock IsVisible="{Binding NoConsoleOutput}" Text="Run a Sprout document to see program output." Classes="empty-state" />
+          <ScrollViewer IsVisible="{Binding HasConsoleOutput}" Margin="12,8">
+            <ItemsControl ItemsSource="{Binding ConsoleLines}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:ConsoleLineViewModel">
+                  <TextBlock Classes="console-line" Classes.muted="{Binding IsMuted}" Classes.success="{Binding IsSuccess}"
+                             Classes.warning="{Binding IsWarning}" Classes.error="{Binding IsError}" Text="{Binding Text}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Build Output">
+        <Grid>
+          <TextBlock IsVisible="{Binding NoBuildOutput}" Text="Build a project to see output." Classes="empty-state" />
+          <ListBox IsVisible="{Binding HasBuildOutput}" ItemsSource="{Binding BuildOutput}" Classes="monospace-list" />
+        </Grid>
+      </TabItem>
+      <TabItem Header="REPL">
+        <Grid RowDefinitions="*,Auto">
+          <Grid>
+            <TextBlock IsVisible="{Binding NoReplOutput}" Text="Enter an expression to see its value. Definitions persist; type :clear to reset."
+                       Classes="empty-state" />
+            <ScrollViewer Name="ReplOutputScroll" IsVisible="{Binding HasReplOutput}" Margin="12,8">
+              <ItemsControl ItemsSource="{Binding ReplLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:ConsoleLineViewModel">
+                    <TextBlock Classes="console-line" Classes.muted="{Binding IsMuted}" Classes.success="{Binding IsSuccess}"
+                               Classes.warning="{Binding IsWarning}" Classes.error="{Binding IsError}" Text="{Binding Text}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Grid>
+          <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="12,8" ColumnSpacing="8" VerticalAlignment="Center">
+            <TextBlock Text="&gt;" Width="16" TextAlignment="Center" FontFamily="Cascadia Mono, Consolas"
+                       Foreground="{DynamicResource StudioAccentBrush}" VerticalAlignment="Center" />
+            <TextBox Name="ReplInputBox" Grid.Column="1" Text="{Binding ReplInput, Mode=TwoWay}" PlaceholderText="Sprout expression or statement"
+                     Height="36" Padding="10,0" VerticalContentAlignment="Center"
+                     FontFamily="Cascadia Mono, Consolas" KeyDown="ReplInput_KeyDown" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <Button Content="Run" Height="36" Classes="accent" Command="{Binding RunReplCommand}" />
+              <Button Content="Clear" Height="36" Command="{Binding ClearReplCommand}" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </Border>
+</UserControl>

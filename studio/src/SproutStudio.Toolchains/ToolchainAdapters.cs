@@ -388,6 +388,311 @@ public sealed partial class GoToolchainAdapter : IToolchainAdapter
     }
 }
 
+public sealed partial class PythonToolchainAdapter : IToolchainAdapter
+{
+    private static readonly Version MinimumVersion = new(3, 10, 0);
+    private static readonly TimeSpan ValidationTimeout = TimeSpan.FromSeconds(5);
+    private readonly IProcessRunner _processRunner;
+
+    public PythonToolchainAdapter(IProcessRunner processRunner)
+    {
+        _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
+    }
+
+    public string Id => "python";
+
+    public string DisplayName => "Python";
+
+    public ToolchainCapability Capabilities =>
+        ToolchainCapability.Run |
+        ToolchainCapability.Build |
+        ToolchainCapability.Test;
+
+    public async Task<ToolchainDetectionResult> DetectAsync(
+        string? customPath,
+        ToolchainLocationSource? customSource,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<ToolchainCandidate> candidates = ToolchainCandidateResolver.Resolve(
+            ExecutableName("python"),
+            customPath,
+            customSource,
+            PythonCommonDirectories());
+        ToolchainDetectionResult? bestFailure = null;
+        foreach (ToolchainCandidate candidate in candidates)
+        {
+            string pythonPath = Path.Combine(candidate.Directory, ExecutableName("python"));
+            ToolchainComponent python = await ToolchainValidation.ValidateVersionComponentAsync(
+                _processRunner,
+                "python",
+                pythonPath,
+                required: true,
+                ["--version"],
+                ParseVersion,
+                ValidationTimeout,
+                cancellationToken).ConfigureAwait(false);
+
+            ToolchainStatus status;
+            string message;
+            if (!python.Available)
+            {
+                status = ToolchainStatus.FoundButBroken;
+                message = $"Python was not found under {candidate.Directory}.";
+            }
+            else if (!python.Valid)
+            {
+                status = ToolchainStatus.FoundButBroken;
+                message = $"Python was found but validation failed. {python.Failure}";
+            }
+            else if (!TrySemanticVersion(python.Version, out Version? version) || version < MinimumVersion)
+            {
+                status = ToolchainStatus.UnsupportedVersion;
+                message = $"Sprout Studio requires Python {MinimumVersion} or newer; found {python.Version ?? "an unknown version"}.";
+            }
+            else
+            {
+                status = IsCustom(candidate.Source)
+                    ? ToolchainStatus.CustomLocation
+                    : ToolchainStatus.Ready;
+                message = IsCustom(candidate.Source)
+                    ? "Python is ready from the saved custom location."
+                    : "Python is installed and validated.";
+            }
+
+            var result = new ToolchainDetectionResult(
+                Id,
+                DisplayName,
+                status,
+                candidate.Source,
+                pythonPath,
+                python.Version,
+                status is ToolchainStatus.Ready or ToolchainStatus.CustomLocation
+                    ? Capabilities
+                    : ToolchainCapability.None,
+                [python],
+                message);
+            if (result.IsUsable)
+            {
+                return result;
+            }
+            if (bestFailure is null || FailurePriority(result.Status) > FailurePriority(bestFailure.Status))
+            {
+                bestFailure = result;
+            }
+        }
+
+        return bestFailure ?? NotInstalled(
+            Id,
+            DisplayName,
+            "Python was not found on PATH, in common installation locations, or in settings.");
+    }
+
+    public ProcessRequest CreateActionRequest(
+        ToolchainAction action,
+        ToolchainDetectionResult detection,
+        string workingDirectory,
+        IReadOnlyList<string> additionalArguments)
+    {
+        EnsureUsable(detection);
+        string python = RequiredComponentPath(detection, "python");
+        var arguments = action switch
+        {
+            ToolchainAction.Run when additionalArguments.Count > 0 => new List<string>(),
+            ToolchainAction.Run => throw new ArgumentException("Python Run requires a script path."),
+            ToolchainAction.Build => ["-m", "compileall", "."],
+            ToolchainAction.Test => ["-m", "unittest", "discover"],
+            ToolchainAction.Format => throw new NotSupportedException(
+                "Python formatting requires an explicitly configured formatter and is not advertised by this adapter."),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+        arguments.AddRange(additionalArguments);
+        return new ProcessRequest(python, arguments, Path.GetFullPath(workingDirectory));
+    }
+
+    private static string? ParseVersion(string output)
+    {
+        Match match = PythonVersionPattern().Match(output);
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
+    [GeneratedRegex(@"\bPython\s+(\d+\.\d+(?:\.\d+)?)\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex PythonVersionPattern();
+
+    private static IEnumerable<string> PythonCommonDirectories()
+    {
+        string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        foreach (int minor in Enumerable.Range(10, 6).Reverse())
+        {
+            if (!string.IsNullOrWhiteSpace(local))
+            {
+                yield return Path.Combine(local, "Programs", "Python", $"Python3{minor}");
+            }
+            if (!string.IsNullOrWhiteSpace(programFiles))
+            {
+                yield return Path.Combine(programFiles, $"Python3{minor}");
+            }
+        }
+    }
+}
+
+public sealed partial class JavaToolchainAdapter : IToolchainAdapter
+{
+    private static readonly Version MinimumVersion = new(17, 0, 0);
+    private static readonly TimeSpan ValidationTimeout = TimeSpan.FromSeconds(5);
+    private readonly IProcessRunner _processRunner;
+
+    public JavaToolchainAdapter(IProcessRunner processRunner)
+    {
+        _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
+    }
+
+    public string Id => "java";
+
+    public string DisplayName => "Java";
+
+    public ToolchainCapability Capabilities => ToolchainCapability.Run | ToolchainCapability.Build;
+
+    public async Task<ToolchainDetectionResult> DetectAsync(
+        string? customPath,
+        ToolchainLocationSource? customSource,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<ToolchainCandidate> candidates = ToolchainCandidateResolver.Resolve(
+            ExecutableName("java"),
+            customPath,
+            customSource,
+            JavaCommonDirectories());
+        ToolchainDetectionResult? bestFailure = null;
+        foreach (ToolchainCandidate candidate in candidates)
+        {
+            string javaPath = Path.Combine(candidate.Directory, ExecutableName("java"));
+            string javacPath = Path.Combine(candidate.Directory, ExecutableName("javac"));
+            ToolchainComponent java = await ToolchainValidation.ValidateVersionComponentAsync(
+                _processRunner, "java", javaPath, true, ["--version"], ParseVersion,
+                ValidationTimeout, cancellationToken).ConfigureAwait(false);
+            ToolchainComponent javac = await ToolchainValidation.ValidateVersionComponentAsync(
+                _processRunner, "javac", javacPath, true, ["--version"], ParseVersion,
+                ValidationTimeout, cancellationToken).ConfigureAwait(false);
+            ToolchainComponent[] components = [java, javac];
+
+            ToolchainStatus status;
+            string message;
+            if (!components.Any(component => component.Available))
+            {
+                status = ToolchainStatus.FoundButBroken;
+                message = $"No Java executables were found under {candidate.Directory}.";
+            }
+            else if (components.Any(component => !component.Available))
+            {
+                status = ToolchainStatus.PartialInstallation;
+                message = MissingMessage("Java", components);
+            }
+            else if (components.Any(component => !component.Valid))
+            {
+                status = ToolchainStatus.FoundButBroken;
+                message = BrokenMessage("Java", components);
+            }
+            else if (!TrySemanticVersion(java.Version, out Version? version) || version < MinimumVersion)
+            {
+                status = ToolchainStatus.UnsupportedVersion;
+                message = $"Sprout Studio requires Java {MinimumVersion.Major} or newer; found {java.Version ?? "an unknown version"}.";
+            }
+            else
+            {
+                status = IsCustom(candidate.Source)
+                    ? ToolchainStatus.CustomLocation
+                    : ToolchainStatus.Ready;
+                message = IsCustom(candidate.Source)
+                    ? "Java is ready from the saved custom location."
+                    : "Java is installed and validated.";
+            }
+
+            var result = new ToolchainDetectionResult(
+                Id,
+                DisplayName,
+                status,
+                candidate.Source,
+                javaPath,
+                java.Version,
+                status is ToolchainStatus.Ready or ToolchainStatus.CustomLocation
+                    ? Capabilities
+                    : ToolchainCapability.None,
+                components,
+                message);
+            if (result.IsUsable)
+            {
+                return result;
+            }
+            if (bestFailure is null || FailurePriority(result.Status) > FailurePriority(bestFailure.Status))
+            {
+                bestFailure = result;
+            }
+        }
+
+        return bestFailure ?? NotInstalled(
+            Id,
+            DisplayName,
+            "A Java Development Kit was not found on PATH, in common installation locations, or in settings.");
+    }
+
+    public ProcessRequest CreateActionRequest(
+        ToolchainAction action,
+        ToolchainDetectionResult detection,
+        string workingDirectory,
+        IReadOnlyList<string> additionalArguments)
+    {
+        EnsureUsable(detection);
+        if (additionalArguments.Count == 0)
+        {
+            throw new ArgumentException($"Java {action} requires an explicit class or source argument.");
+        }
+        string executable = action switch
+        {
+            ToolchainAction.Run => RequiredComponentPath(detection, "java"),
+            ToolchainAction.Build => RequiredComponentPath(detection, "javac"),
+            ToolchainAction.Format or ToolchainAction.Test => throw new NotSupportedException(
+                $"Java {action} is not advertised by this adapter."),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+        return new ProcessRequest(executable, additionalArguments, Path.GetFullPath(workingDirectory));
+    }
+
+    private static string? ParseVersion(string output)
+    {
+        Match match = JavaVersionPattern().Match(output);
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
+    [GeneratedRegex(@"\b(?:openjdk|java|javac)(?:\s+version)?\s+""?(\d+(?:\.\d+){0,2})", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex JavaVersionPattern();
+
+    private static IEnumerable<string> JavaCommonDirectories()
+    {
+        string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        if (string.IsNullOrWhiteSpace(programFiles))
+        {
+            yield break;
+        }
+        foreach (string parent in new[]
+        {
+            Path.Combine(programFiles, "Java"),
+            Path.Combine(programFiles, "Eclipse Adoptium"),
+            Path.Combine(programFiles, "Microsoft"),
+        })
+        {
+            if (!Directory.Exists(parent))
+            {
+                continue;
+            }
+            foreach (string directory in Directory.EnumerateDirectories(parent))
+            {
+                yield return Path.Combine(directory, "bin");
+            }
+        }
+    }
+}
+
 internal sealed record ToolchainCandidate(string Directory, ToolchainLocationSource Source);
 
 internal static class ToolchainCandidateResolver

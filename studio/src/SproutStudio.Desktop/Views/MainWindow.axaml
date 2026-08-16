@@ -1,0 +1,98 @@
+<Window
+    x:Class="SproutStudio.Views.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    xmlns:shell="using:SproutStudio.Views.Shell"
+    xmlns:workspace="using:SproutStudio.Views.Workspace"
+    xmlns:editor="using:SproutStudio.Views.Editor"
+    xmlns:tools="using:SproutStudio.Views.Tools"
+    xmlns:inspector="using:SproutStudio.Views.Inspector"
+    x:DataType="vm:MainWindowViewModel"
+    Title="Sprout Studio"
+    Width="1440"
+    Height="820"
+    MinWidth="980"
+    MinHeight="640"
+    WindowStartupLocation="CenterScreen"
+    WindowDecorations="BorderOnly"
+    Opened="MainWindow_Opened"
+    Closing="MainWindow_Closing"
+    SizeChanged="MainWindow_SizeChanged">
+
+  <Grid RowDefinitions="38,48,*,26" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Name="TitleBar" Grid.Row="0" Classes="title-surface" PointerPressed="TitleBar_PointerPressed" DoubleTapped="TitleBar_DoubleTapped">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,46,46,46" Margin="14,0,0,0">
+        <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+          <Path Width="17" Height="21" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
+                Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
+          <TextBlock Text="Sprout Studio" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <Border Grid.Column="1" Classes="ready-pill" Margin="12,0,0,0">
+          <TextBlock Text="Sprout · READY" FontSize="11" Foreground="{DynamicResource StudioSuccessBrush}" />
+        </Border>
+        <Border Grid.Column="2" Classes="title-separator" Margin="12,0" />
+        <TextBlock Grid.Column="3" Text="{Binding WindowContext}" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <StackPanel Grid.Column="4" Orientation="Horizontal">
+          <Button Classes="title-command" Command="{Binding ShowAboutCommand}" ToolTip.Tip="About Sprout Studio">
+            <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE946;" /><TextBlock Text="About" /></StackPanel>
+          </Button>
+          <Button Classes="title-command" Command="{Binding CommandPaletteCommand}" ToolTip.Tip="Command palette (Ctrl+Shift+P)">
+            <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE945;" /><TextBlock Text="Commands" /></StackPanel>
+          </Button>
+        </StackPanel>
+        <Button Grid.Column="5" Classes="caption" Click="Minimize_Click" ToolTip.Tip="Minimize"><TextBlock Classes="caption-icon" Text="&#xE921;" /></Button>
+        <Button Name="MaximizeButton" Grid.Column="6" Classes="caption" Click="Maximize_Click" ToolTip.Tip="Maximize">
+          <TextBlock Name="MaximizeIcon" Classes="caption-icon" Text="&#xE922;" />
+        </Button>
+        <Button Grid.Column="7" Classes="caption close" Click="Close_Click" ToolTip.Tip="Close"><TextBlock Classes="caption-icon" Text="&#xE8BB;" /></Button>
+      </Grid>
+    </Border>
+
+    <shell:MainToolbarView Grid.Row="1" />
+
+    <Grid Name="ShellBodyGrid" Grid.Row="2">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="88" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <shell:ActivityBarView Grid.Column="0" />
+
+      <Grid Name="WorkspaceGrid" Grid.Column="1" IsVisible="{Binding IsWorkspaceMode}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="280" MinWidth="0" />
+          <ColumnDefinition Width="4" />
+          <ColumnDefinition Width="*" MinWidth="420" />
+          <ColumnDefinition Width="4" />
+          <ColumnDefinition Width="360" MinWidth="0" />
+        </Grid.ColumnDefinitions>
+
+        <workspace:ExplorerView Name="ExplorerPane" Grid.Column="0" />
+        <GridSplitter Name="ExplorerSplitter" Grid.Column="1" Classes="pane-splitter" ResizeDirection="Columns" />
+
+        <Grid Name="EditorToolGrid" Grid.Column="2">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*" MinHeight="240" />
+            <RowDefinition Height="4" />
+            <RowDefinition Height="220" MinHeight="0" />
+          </Grid.RowDefinitions>
+          <editor:EditorHostView Name="EditorHost" Grid.Row="0" />
+          <GridSplitter Name="BottomSplitter" Grid.Row="1" Classes="pane-splitter" ResizeDirection="Rows" />
+          <tools:BottomPanelView Grid.Row="2" />
+        </Grid>
+
+        <GridSplitter Name="InspectorSplitter" Grid.Column="3" Classes="pane-splitter" ResizeDirection="Columns" />
+        <inspector:InspectorView Grid.Column="4" />
+      </Grid>
+
+      <ContentControl Name="StudioModeHost"
+                      Grid.Column="1"
+                      IsVisible="{Binding IsIntegratedMode}"
+                      HorizontalContentAlignment="Stretch"
+                      VerticalContentAlignment="Stretch" />
+    </Grid>
+
+    <shell:StatusBarView Grid.Row="3" />
+  </Grid>
+</Window>

@@ -22,7 +22,7 @@ Writes use a uniquely named temporary sibling and replacement, so partial conten
 
 ## Offline catalog
 
-The catalog is stored separately from WinUI in `academy/catalog.json` and embedded into the UI-independent `SproutStudio.Academy` library at build time. It contains six working tracks, each with three lessons:
+The catalog is stored separately from Avalonia in `academy/catalog.json` and embedded into the UI-independent `SproutStudio.Academy` library at build time. It contains six working tracks, each with three lessons:
 
 | Track | External prerequisite |
 |---|---|
@@ -69,9 +69,15 @@ Completing a lesson records its stable identifier once. Repeating the action awa
 
 Current achievements reward meaningful milestones: first enrollment, first lesson, completing Sprout Fundamentals, beginning Python Automation, learning across two tracks, and completing an entire track. XP and levels are a projection of completed lesson values rather than a separately mutable counter.
 
+## Integrated experience
+
+Academy runs inside the main Studio shell and preserves the live Workspace when users switch modes. **Home** presents continue-learning, deterministic recommendations, projected progress, and current toolchain readiness. **My Learning** lists enrolled tracks; **Learning Tracks** exposes module-grouped lessons, progress, prerequisites, enrollment, and completion; **Concept Browser** searches and compares linked language examples; **Profile & Progress** edits the local profile and presents earned achievements.
+
+Sprout lessons can open a real runnable practice document in Workspace. The generated source contains the lesson objective and uses the authoritative Sprout engine when the user runs or checks it. This bridge is deliberately identified as practice, not as an automatically graded exercise. Academy links to relevant Documentation and Toolchains views through the shared Studio navigation system.
+
 ## Explicitly deferred
 
-- Interactive code exercises, code grading, quizzes, and certificates
+- Automatic exercise grading, quizzes, and certificates
 - Cloud accounts, profile synchronization, leaderboards, and analytics
 - Automatic installation of Rust or Go
 - Academy-authored external-language project creation or execution

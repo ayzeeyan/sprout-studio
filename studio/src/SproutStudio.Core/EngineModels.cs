@@ -91,6 +91,17 @@ public interface IEngineClient
         CancellationToken cancellationToken = default);
 }
 
+public sealed record EngineInfo(
+    string EngineVersion,
+    int AbiVersion,
+    string Architecture,
+    string BuildConfiguration);
+
+public interface IEngineInformationClient
+{
+    Task<EngineInfo> GetInfoAsync(CancellationToken cancellationToken = default);
+}
+
 public static class SourceTextCoordinates
 {
     public static int Utf8OffsetToUtf16Index(string source, long byteOffset)

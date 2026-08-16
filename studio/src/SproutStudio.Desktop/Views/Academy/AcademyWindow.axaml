@@ -1,0 +1,168 @@
+<Window
+    x:Class="SproutStudio.Views.Academy.AcademyWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:CompileBindings="False"
+    Width="1080"
+    Height="720"
+    MinWidth="860"
+    MinHeight="560"
+    WindowStartupLocation="CenterOwner"
+    Title="Academy — Sprout Studio">
+  <Grid RowDefinitions="64,*" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Classes="dialog-header">
+      <Grid ColumnDefinitions="*,Auto" Margin="18,0">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Sprout Academy" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Structured learning, real prerequisites, and progress stored on this device."
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+        <StackPanel Name="ProgressSummary" Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Name="LevelText" FontWeight="SemiBold" Foreground="{DynamicResource StudioAccentBrush}" />
+          <TextBlock Name="XpText" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <TabControl Grid.Row="1">
+      <TabItem Header="Learning Tracks">
+        <Grid ColumnDefinitions="360,1,*">
+          <ListBox Name="TrackList" Margin="12" SelectionChanged="TrackList_SelectionChanged">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Border Classes="academy-card" Margin="0,0,0,8">
+                  <StackPanel Margin="12" Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                      <TextBlock Grid.Column="1" Text="{Binding ProgressLabel}" Foreground="{DynamicResource StudioAccentBrush}" />
+                    </Grid>
+                    <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                    <TextBlock Text="{Binding PrerequisiteLabel}" IsVisible="{Binding HasPrerequisite}" FontSize="11"
+                               Foreground="{DynamicResource StudioWarningBrush}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                      <ProgressBar Minimum="0" Maximum="100" Value="{Binding CompletionPercent}" Height="5" VerticalAlignment="Center" />
+                      <Button Grid.Column="1" Margin="10,0,0,0" Click="Enroll_Click" Content="{Binding EnrollmentLabel}" IsEnabled="{Binding CanEnroll}" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
+          <Grid Grid.Column="2" RowDefinitions="Auto,*" Margin="18">
+            <StackPanel>
+              <TextBlock Name="SelectedTrackTitle" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Name="SelectedTrackSummary" Margin="0,5,0,14" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </StackPanel>
+            <ListBox Name="LessonList" Grid.Row="1">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="lesson-row" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="*,Auto" Margin="12">
+                      <StackPanel Spacing="5">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextMutedBrush}" MaxHeight="72" />
+                        <TextBlock Text="{Binding ConceptsLabel}" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Margin="12,0,0,0" Spacing="7">
+                        <TextBlock Text="{Binding XpLabel}" HorizontalAlignment="Right" Foreground="{DynamicResource StudioAccentBrush}" />
+                        <Button Click="CompleteLesson_Click" Content="{Binding CompletionLabel}" IsEnabled="{Binding CanComplete}" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Concept Browser">
+        <Grid ColumnDefinitions="320,1,*" Margin="12">
+          <Grid RowDefinitions="Auto,*">
+            <TextBox Name="ConceptSearchBox" PlaceholderText="Search concepts or languages" Margin="0,0,0,8" TextChanged="ConceptSearch_TextChanged" />
+            <ListBox Name="ConceptList" Grid.Row="1" SelectionChanged="ConceptList_SelectionChanged" DisplayMemberBinding="{Binding Title}" />
+          </Grid>
+          <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" Margin="12,0" />
+          <ScrollViewer Grid.Column="2">
+            <StackPanel Spacing="10" Margin="8,2,14,14">
+              <TextBlock Name="ConceptTitle" FontSize="19" FontWeight="SemiBold" />
+              <TextBlock Name="ConceptSummary" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+              <TextBlock Name="RelatedConceptsText" TextWrapping="Wrap" Foreground="{DynamicResource StudioAccentBrush}" />
+              <TextBlock Text="Examples" Classes="panel-header" Margin="0,8,0,0" />
+              <ItemsControl Name="ConceptExamples">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Classes="lesson-row" Margin="0,0,0,8">
+                      <StackPanel Margin="12" Spacing="6">
+                        <TextBlock Text="{Binding Language}" FontWeight="SemiBold" Foreground="{DynamicResource StudioAccentBrush}" />
+                        <TextBlock Text="{Binding Code}" FontFamily="Cascadia Mono, Consolas" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Profile &amp; Recommendations">
+        <ScrollViewer>
+          <Grid ColumnDefinitions="420,1,*" Margin="22" MaxWidth="980" HorizontalAlignment="Center">
+            <StackPanel Spacing="10">
+              <TextBlock Text="Local learner profile" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="Used only to explain and order track recommendations. It is stored locally."
+                         TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+              <TextBlock Text="Display name" Classes="table-header" />
+              <TextBox Name="DisplayNameBox" PlaceholderText="Your name" />
+              <TextBlock Text="Preferred username" Classes="table-header" />
+              <TextBox Name="UsernameBox" PlaceholderText="sprout-learner" />
+              <TextBlock Text="Experience" Classes="table-header" />
+              <ComboBox Name="ExperienceBox" HorizontalContentAlignment="Stretch" />
+              <TextBlock Text="Goals" Classes="table-header" />
+              <UniformGrid Columns="2" Rows="3">
+                <CheckBox Name="GoalGeneral" Content="General programming" />
+                <CheckBox Name="GoalGames" Content="Game development" />
+                <CheckBox Name="GoalBackend" Content="Web / backend" />
+                <CheckBox Name="GoalAi" Content="AI / automation" />
+                <CheckBox Name="GoalCs" Content="Computer science" />
+                <CheckBox Name="GoalSystems" Content="Systems programming" />
+              </UniformGrid>
+              <CheckBox Name="GamificationBox" Content="Show levels, XP, and achievements" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="accent" Content="Save profile" Click="SaveProfile_Click" />
+                <TextBlock Name="ProfileStatusText" VerticalAlignment="Center" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+              </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" Margin="24,0" />
+            <StackPanel Grid.Column="2" Spacing="10">
+              <TextBlock Text="Recommended learning path" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="Recommendations use visible rules—never hidden scoring or remote profiling."
+                         TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+              <TextBlock Name="RecommendationEmptyText" Text="Save a profile to receive recommendations." Classes="empty-state" Margin="0,40" />
+              <ItemsControl Name="RecommendationList">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Classes="academy-card" Margin="0,0,0,8">
+                      <StackPanel Margin="12" Spacing="5">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                        <TextBlock Text="{Binding Rule}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Earned achievements" Classes="panel-header" Margin="0,8,0,0" />
+              <ItemsControl Name="AchievementList" />
+            </StackPanel>
+          </Grid>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</Window>

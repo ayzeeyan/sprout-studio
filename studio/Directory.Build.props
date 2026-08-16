@@ -6,6 +6,12 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
     <SproutRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))</SproutRepositoryRoot>
+    <SproutVersion>$([System.IO.File]::ReadAllText('$(SproutRepositoryRoot)\VERSION').Trim())</SproutVersion>
+    <Version>$(SproutVersion)</Version>
+    <Product>Sprout Studio</Product>
+    <Company>Sprout Studio</Company>
+    <Authors>Sprout Studio Contributors</Authors>
+    <Copyright>Copyright © Sprout Studio contributors</Copyright>
     <SproutPythonRuntimeDirectory>$(SproutRepositoryRoot)\runtime\python-3.13.14-win-x64</SproutPythonRuntimeDirectory>
     <SproutPreparePythonScript>$(SproutRepositoryRoot)\tools\prepare-python-runtime.ps1</SproutPreparePythonScript>
   </PropertyGroup>

@@ -1,0 +1,48 @@
+<Window
+    x:Class="SproutStudio.Views.Toolchains.ToolchainsWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:toolchains="using:SproutStudio.Toolchains"
+    x:CompileBindings="False"
+    Width="880"
+    Height="610"
+    MinWidth="720"
+    MinHeight="480"
+    WindowStartupLocation="CenterOwner"
+    Title="Toolchains — Sprout Studio">
+  <Grid RowDefinitions="58,*" Background="{DynamicResource StudioBackgroundBrush}">
+    <Border Classes="dialog-header">
+      <Grid ColumnDefinitions="*,Auto" Margin="18,0">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="External Language Toolchains" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Detected locally; Sprout itself is already bundled." Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+        <Button Grid.Column="1" Click="Refresh_Click" Content="Refresh" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+    <Grid Grid.Row="1">
+      <TextBlock Name="LoadingText" Text="Detecting installed toolchains…" Classes="empty-state" />
+      <ListBox Name="ToolchainList" Margin="16" IsVisible="False">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="toolchains:ToolchainDetectionResult">
+            <Border Classes="toolchain-card" Margin="0,0,0,10">
+              <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" Margin="14" RowSpacing="7">
+                <StackPanel>
+                  <TextBlock Text="{Binding DisplayName}" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Message}" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Grid.Column="1" Classes="status-badge" VerticalAlignment="Top"><TextBlock Text="{Binding Status}" /></Border>
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Version}" FontFamily="Cascadia Mono, Consolas" Foreground="{DynamicResource StudioAccentBrush}" />
+                <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding ExecutablePath}" FontFamily="Cascadia Mono, Consolas" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="0,3,0,0">
+                  <Button Click="Browse_Click" Content="Choose custom location…" />
+                  <Button Click="Clear_Click" Content="Use automatic detection" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+  </Grid>
+</Window>

@@ -1,0 +1,38 @@
+<Window
+    x:Class="SproutStudio.Views.Settings.SettingsWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Settings — Sprout Studio"
+    Width="560"
+    Height="390"
+    MinWidth="500"
+    MinHeight="340"
+    WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="22" RowSpacing="16">
+    <StackPanel Spacing="5">
+      <TextBlock Text="Settings" Classes="dialog-title" />
+      <TextBlock Text="Personalize the editor. Settings are stored for this Windows account."
+                 Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+    </StackPanel>
+    <Border Grid.Row="1" Classes="dialog-card">
+      <StackPanel Margin="16" Spacing="14">
+        <TextBlock Text="EDITOR" Classes="panel-header" />
+        <Grid ColumnDefinitions="*,150">
+          <StackPanel>
+            <TextBlock Text="Font size" FontWeight="SemiBold" />
+            <TextBlock Text="Applies to every code document." FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+          </StackPanel>
+          <NumericUpDown Name="FontSizeBox" Grid.Column="1" Minimum="11" Maximum="24" Increment="1" FormatString="0" />
+        </Grid>
+        <CheckBox Name="WordWrapBox" Content="Wrap long editor lines" />
+        <CheckBox Name="WhitespaceBox" Content="Show spaces and tab markers" />
+        <TextBlock Text="Layout dimensions and pane visibility are saved automatically when the main window closes."
+                   TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+      </StackPanel>
+    </Border>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="Cancel" MinWidth="84" Click="Cancel_Click" />
+      <Button Content="Save settings" MinWidth="110" Classes="accent" Click="Save_Click" />
+    </StackPanel>
+  </Grid>
+</Window>
