@@ -114,7 +114,7 @@ public sealed class StudioLayoutStateStore
             ExplorerWidth = Math.Clamp(state.ExplorerWidth, 220, 360),
             InspectorWidth = Math.Clamp(state.InspectorWidth, 280, 440),
             BottomPanelHeight = Math.Clamp(state.BottomPanelHeight, 120, 500),
-            SelectedBottomTab = Math.Clamp(state.SelectedBottomTab, 0, 3),
+            SelectedBottomTab = Math.Clamp(state.SelectedBottomTab, 0, 4),
             SelectedInspectorTab = Math.Clamp(state.SelectedInspectorTab, 0, 4),
             SelectedActivity = ActivityKeys.Contains(state.SelectedActivity)
                 ? state.SelectedActivity

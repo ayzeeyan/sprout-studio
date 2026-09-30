@@ -67,9 +67,9 @@
           <TextBlock Text="Choose a topic from the contents."
                      Foreground="{DynamicResource StudioTextMutedBrush}" />
         </StackPanel>
-        <ScrollViewer Name="DocumentScroll" IsVisible="False" Padding="26,18,30,42"
+        <ScrollViewer Name="DocumentScroll" IsVisible="False"
                       HorizontalScrollBarVisibility="Disabled">
-          <ContentControl Name="DocumentHost" HorizontalContentAlignment="Stretch" />
+          <ContentControl Name="DocumentHost" HorizontalContentAlignment="Stretch" Margin="26,18,30,42" />
         </ScrollViewer>
       </Grid>
 

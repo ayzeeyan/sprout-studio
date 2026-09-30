@@ -73,17 +73,19 @@ Detection considers an authoritative user-selected location, PATH, and known Win
 
 Process requests carry an executable, an argument list, an optional working directory, and an optional timeout. `UseShellExecute` is disabled and each argument is passed through `ProcessStartInfo.ArgumentList`; user strings are never concatenated into shell commands. stdout, stderr, exit code, duration, start failure, and timeout state are captured. Cancellation and timeout terminate the complete child process tree without blocking the Avalonia UI thread.
 
-Custom locations are stored in a versioned JSON document under local application data and replaced atomically. Rust and Go documents route Run, Build, Format, and Test through these validated adapters. Python, Java, JavaScript, TypeScript, JSON, TOML, Markdown, and plain-text files can be opened, edited, tabbed, and saved, but Studio disables semantic or execution commands it does not implement.
+Custom locations are stored in a versioned JSON document under local application data and replaced atomically. Rust and Go documents route Run, Build, Format, and Test through these validated adapters. Academy additionally uses the Rust, Go, Python, and Java adapters for isolated graded activities. Python, Java, JavaScript, TypeScript, JSON, TOML, Markdown, and plain-text files can be opened, edited, tabbed, and saved in the general workspace, but Studio disables general-purpose semantic or execution commands it does not implement.
 
 ## Academy system
 
 Academy content is authored in `academy/catalog.json`, embedded as an offline resource, and validated for unique identifiers and valid track/lesson/concept relationships when loaded. Academy is a lazy integrated Studio mode rather than a second window. Avalonia does not own track rules or lesson semantics. `AcademyService` coordinates the catalog, atomic local state store, recommendation engine, and `ToolchainManager`.
 
-The local state contains only a display name, preferred username, experience level, goals, gamification preference, enrollments, distinct completed lesson identifiers, and achievement timestamps. XP, levels, course completion, and earned achievements are projections of that durable state. Completing an existing lesson is idempotent and awards zero additional XP.
+The local state contains a display name, preferred username, experience level, goals, gamification preference, enrollments, distinct completed activity identifiers, official submission records, hint usage, and achievement timestamps. XP, levels, course completion, and earned achievements are projections of that durable state. Passing an existing activity is idempotent and awards zero additional XP.
 
 Recommendations are ordered rules with user-visible explanations. Beginners receive Sprout fundamentals before their goal track; intermediate and advanced users receive their selected goal tracks directly. No AI capability is claimed. Cross-language concepts use linked Sprout, Rust, Go, and Python examples so the content teaches transferable ideas rather than isolated syntax.
 
-Rust and Go enrollment invokes validated detection only for tracks that require those external tools. Failed enrollment preserves the exact ready/missing/broken/partial/unsupported/custom state and offers auto-detection, persisted location selection, offline setup guidance, retry, and cancel. Other Academy workflows do not spawn external processes.
+Rust, Go, and Java enrollment invokes validated detection only for tracks that require those external tools. Failed enrollment preserves the exact ready/missing/broken/partial/unsupported/custom state and offers auto-detection, persisted location selection, offline setup guidance, retry, and cancel.
+
+Academy activities open as native editor tabs rather than a separate window. Coding lessons link to a persistent companion source file and use a responsive lesson/editor split; quizzes and checkpoints occupy a single document surface. Sandbox **Run Tests** and official **Submit** share the same structured grading path, but only Submit atomically appends an attempt and awards completion, XP, and achievements. Java lessons compile and run an isolated generated harness, Rust/Go/Python exercises use their validated adapters, and Sprout exercises use the native engine. Runtime tests, output comparisons, compiler diagnostics, expected/observed values, durations, and source-navigation hints remain structured through the Tests panel and lesson checklist. Module checkpoints remain locked until their module lessons are complete. Hint state preserves four progressive tiers with a local-calendar-day allowance and free rereads.
 
 ## Explicitly deferred
 
@@ -92,6 +94,6 @@ Rust and Go enrollment invokes validated detection only for tracks that require 
 - Remaining CLI commands (`test`, `fmt`, `repl`, `add`, and `build`)
 - General Sprout package resolution/registry infrastructure, native executables, bytecode, and VM
 - Live pause/resume debugging, conditional breakpoints, rename refactoring, rich syntax coloring, and language servers for non-Sprout files
-- Graded Academy exercises, cloud profile synchronization, and automated toolchain installation. The implemented Sprout practice bridge opens a real runnable scratch document but does not claim grading.
+- Academy certificates, cloud profile synchronization, and automated toolchain installation
 
 No deferred command or feature is exposed as if it works.

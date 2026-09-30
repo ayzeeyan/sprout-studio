@@ -8,6 +8,7 @@
     xmlns:editor="using:SproutStudio.Views.Editor"
     xmlns:tools="using:SproutStudio.Views.Tools"
     xmlns:inspector="using:SproutStudio.Views.Inspector"
+    xmlns:academy="using:SproutStudio.Views.Academy"
     x:DataType="vm:MainWindowViewModel"
     Title="Sprout Studio"
     Width="1440"
@@ -35,10 +36,10 @@
         <TextBlock Grid.Column="3" Text="{Binding WindowContext}" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         <StackPanel Grid.Column="4" Orientation="Horizontal">
           <Button Classes="title-command" Command="{Binding ShowAboutCommand}" ToolTip.Tip="About Sprout Studio">
-            <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE946;" /><TextBlock Text="About" /></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE946;" /><TextBlock Text="About" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
           </Button>
           <Button Classes="title-command" Command="{Binding CommandPaletteCommand}" ToolTip.Tip="Command palette (Ctrl+Shift+P)">
-            <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE945;" /><TextBlock Text="Commands" /></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE945;" /><TextBlock Text="Commands" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
           </Button>
         </StackPanel>
         <Button Grid.Column="5" Classes="caption" Click="Minimize_Click" ToolTip.Tip="Minimize"><TextBlock Classes="caption-icon" Text="&#xE921;" /></Button>
@@ -68,7 +69,10 @@
           <ColumnDefinition Width="360" MinWidth="0" />
         </Grid.ColumnDefinitions>
 
-        <workspace:ExplorerView Name="ExplorerPane" Grid.Column="0" />
+        <Grid Grid.Column="0">
+          <workspace:ExplorerView Name="ExplorerPane" IsVisible="{Binding !IsAcademySelected}" />
+          <academy:AcademySidebarView IsVisible="{Binding IsAcademySelected}" />
+        </Grid>
         <GridSplitter Name="ExplorerSplitter" Grid.Column="1" Classes="pane-splitter" ResizeDirection="Columns" />
 
         <Grid Name="EditorToolGrid" Grid.Column="2">

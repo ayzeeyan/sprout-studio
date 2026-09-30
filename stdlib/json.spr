@@ -1,0 +1,26 @@
+# Sprout Standard Library: JSON Module
+# JSON encoding, decoding, and validation functions written in native Sprout syntax.
+
+## Parses a JSON string into native Sprout objects, lists, numbers, booleans, or strings.
+## @param json_text String The JSON encoded text.
+## @returns Any Decoded Sprout data structure.
+## @example json.parse("{\"name\": \"Alice\", \"age\": 30}")
+action parse(json_text)
+    return __json_parse(json_text)
+end
+
+## Serializes a Sprout value or collection into a JSON formatted string.
+## @param value Any The Sprout data structure to encode.
+## @returns String Serialized JSON text.
+## @example json.stringify({"count": 42}) # -> "{\"count\":42}"
+action stringify(value)
+    return __json_stringify(value)
+end
+
+## Validates whether a string is well-formed JSON syntax without raising an error.
+## @param json_text String The JSON text to test.
+## @returns Boolean True if valid JSON, false otherwise.
+## @example json.is_valid("{\"ok\": true}") # -> true
+action is_valid(json_text)
+    return __json_is_valid(json_text)
+end

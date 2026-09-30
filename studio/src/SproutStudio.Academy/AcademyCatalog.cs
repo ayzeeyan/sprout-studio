@@ -69,6 +69,50 @@ public sealed class AcademyCatalog
             ? achievement
             : throw new KeyNotFoundException($"Unknown Academy achievement `{id}`.");
 
+    public IReadOnlyList<ModuleDefinition> GetModules(string trackId)
+    {
+        TrackDefinition track = GetTrack(trackId);
+        return track.Modules ?? [];
+    }
+
+    public CourseModel ToCourseModel(string trackId)
+    {
+        TrackDefinition track = GetTrack(trackId);
+        var modules = (track.Modules ?? []).Select(m => new ModuleModel(m.Id, m.Title, m.Summary, m.LessonIds, m.Checkpoint)).ToArray();
+        var allLessons = track.Lessons.Select(l => new LessonModel(
+            l.Id,
+            l.Title,
+            l.Summary,
+            l.Content,
+            l.Xp,
+            l.ConceptIds,
+            l.Exercise is not null ? new ExerciseModel(
+                l.Exercise.StarterCode,
+                l.Exercise.SolutionCode,
+                l.Exercise.ExpectedOutput,
+                l.Exercise.Hints,
+                l.Exercise.Assertions,
+                l.Exercise.Title,
+                l.Exercise.Objective,
+                l.Exercise.Questions,
+                l.Exercise.VerifyExpectedOutput,
+                l.Exercise.EntryPoint,
+                l.Exercise.TestHarness) : null,
+            l.ModuleId,
+            l.TaskType,
+            l.EstimatedMinutes)).ToArray();
+
+        return new CourseModel(
+            track.Id,
+            track.Title,
+            track.Summary,
+            track.Level ?? "Beginner to Advanced",
+            track.Category ?? "Programming",
+            track.RequiredToolchainId,
+            modules,
+            allLessons);
+    }
+
     public IReadOnlyList<ConceptDefinition> SearchConcepts(string? query)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -128,6 +172,41 @@ public sealed class AcademyCatalog
                 {
                     throw new InvalidDataException($"Academy lesson `{lesson.Id}` is incomplete.");
                 }
+                ValidateExercise(track, lesson);
+            }
+
+            if (track.Modules is { Length: > 0 } modules)
+            {
+                Dictionary<string, ModuleDefinition> moduleIds = UniqueById(modules, module => module.Id, "module");
+                var assignedLessons = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var checkpointIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (ModuleDefinition module in modules)
+                {
+                    if (string.IsNullOrWhiteSpace(module.Title)
+                        || string.IsNullOrWhiteSpace(module.Summary)
+                        || module.LessonIds.Length == 0
+                        || module.LessonIds.Any(id => !track.Lessons.Any(lesson => string.Equals(lesson.Id, id, StringComparison.OrdinalIgnoreCase)))
+                        || module.LessonIds.Any(id => !assignedLessons.Add(id)))
+                    {
+                        throw new InvalidDataException($"Academy module `{module.Id}` in `{track.Id}` is incomplete or has duplicate lessons.");
+                    }
+                    if (module.Checkpoint is { } checkpoint)
+                    {
+                        if (!checkpointIds.Add(checkpoint.Id)
+                            || !string.Equals(checkpoint.ModuleId, module.Id, StringComparison.OrdinalIgnoreCase)
+                            || string.IsNullOrWhiteSpace(checkpoint.Title)
+                            || checkpoint.Questions.Length == 0)
+                        {
+                            throw new InvalidDataException($"Academy checkpoint `{checkpoint.Id}` is incomplete.");
+                        }
+                        ValidateQuestions(checkpoint.Id, checkpoint.Questions);
+                    }
+                }
+                if (track.Lessons.Any(lesson => !assignedLessons.Contains(lesson.Id)
+                    || !moduleIds.ContainsKey(lesson.ModuleId ?? string.Empty)))
+                {
+                    throw new InvalidDataException($"Every lesson in modular track `{track.Id}` must belong to exactly one valid module.");
+                }
             }
         }
         foreach (ConceptDefinition concept in Concepts)
@@ -138,6 +217,50 @@ public sealed class AcademyCatalog
                 || concept.RelatedConceptIds.Any(id => !_concepts.ContainsKey(id)))
             {
                 throw new InvalidDataException($"Academy concept `{concept.Id}` is incomplete.");
+            }
+        }
+    }
+
+    private static void ValidateExercise(TrackDefinition track, LessonDefinition lesson)
+    {
+        if (lesson.Exercise is not { } exercise)
+        {
+            return;
+        }
+        if (exercise.Assertions.Any(string.IsNullOrWhiteSpace)
+            || exercise.Hints.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new InvalidDataException($"Academy exercise `{lesson.Id}` contains blank requirements or hints.");
+        }
+        if (exercise.Questions is { Length: > 0 } questions)
+        {
+            ValidateQuestions(lesson.Id, questions);
+        }
+        if (string.Equals(track.Id, "java-oop-zero-to-hero", StringComparison.OrdinalIgnoreCase)
+            && (exercise.Hints.Length != 4
+                || string.Equals(exercise.StarterCode, exercise.SolutionCode, StringComparison.Ordinal)
+                || exercise.Assertions.Length == 0
+                || string.IsNullOrWhiteSpace(exercise.TestHarness)))
+        {
+            throw new InvalidDataException(
+                $"Java Zero-to-Hero exercise `{lesson.Id}` must have incomplete starter code, source requirements, behavioral tests, and four progressive hints.");
+        }
+    }
+
+    private static void ValidateQuestions(string ownerId, QuizQuestion[] questions)
+    {
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (QuizQuestion question in questions)
+        {
+            if (!ids.Add(question.Id)
+                || string.IsNullOrWhiteSpace(question.Question)
+                || string.IsNullOrWhiteSpace(question.Explanation)
+                || question.CorrectAnswers.Length == 0
+                || question.CorrectAnswers.Any(string.IsNullOrWhiteSpace)
+                || (question.Options.Length > 0
+                    && question.CorrectAnswers.Any(answer => !question.Options.Contains(answer, StringComparer.OrdinalIgnoreCase))))
+            {
+                throw new InvalidDataException($"Academy quiz question `{question.Id}` in `{ownerId}` is incomplete.");
             }
         }
     }

@@ -1,0 +1,31 @@
+# Medium benchmark sample: Classes, bound methods, math stdlib, branching
+import math
+
+class Particle
+    action update()
+        has speed = 5
+        has angle = 45.0
+        has rad = math.deg_to_rad(angle)
+        if speed > 0
+            return speed * 2
+        else
+            return speed
+        end
+    end
+
+    action energy(mass, velocity)
+        return 0.5 * mass * math.pow(velocity, 2)
+    end
+end
+
+has p = Particle()
+has sum_energy = 0.0
+has i = 0
+
+while i < 200
+    has v = p.update()
+    sum_energy = sum_energy + p.energy(2.0, v)
+    i = i + 1
+end
+
+print(sum_energy)

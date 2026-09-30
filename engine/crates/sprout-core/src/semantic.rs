@@ -86,11 +86,14 @@ pub fn analyze(program: &Program) -> AnalysisResult {
     Analyzer::new().analyze(program)
 }
 
+use crate::parser::SyntaxProfile;
+
 struct Analyzer {
     scopes: Vec<Scope>,
     classes: HashMap<String, ClassInfo>,
     diagnostics: Vec<Diagnostic>,
     return_types: Vec<Vec<Type>>,
+    profile_stack: Vec<SyntaxProfile>,
 }
 
 impl Analyzer {
@@ -101,13 +104,30 @@ impl Analyzer {
             ("canvas_clear", Some(1)),
             ("canvas_rect", Some(5)),
             ("canvas_circle", Some(4)),
+            ("__str_len", Some(1)),
+            ("__str_slice", Some(3)),
+            ("__str_upper", Some(1)),
+            ("__str_lower", Some(1)),
+            ("__str_contains", Some(2)),
+            ("__str_index_of", Some(2)),
+            ("__str_trim", Some(1)),
+            ("__str_trim_start", Some(1)),
+            ("__str_trim_end", Some(1)),
+            ("__str_replace", Some(3)),
+            ("__file_read", Some(1)),
+            ("__file_write", Some(2)),
+            ("__file_append", Some(2)),
+            ("__file_exists", Some(1)),
+            ("__json_parse", Some(1)),
+            ("__json_stringify", Some(1)),
+            ("__json_is_valid", Some(1)),
         ] {
             global.symbols.insert(
                 name.into(),
                 Symbol {
                     kind: SymbolKind::Function(FunctionType {
                         arity,
-                        return_type: Box::new(Type::Nil),
+                        return_type: Box::new(Type::Dynamic),
                     }),
                     declared_at: SourceSpan::new("<builtin>", 0, 0, 1, 1, 1, 1),
                 },
@@ -118,7 +138,12 @@ impl Analyzer {
             classes: HashMap::new(),
             diagnostics: Vec::new(),
             return_types: Vec::new(),
+            profile_stack: vec![SyntaxProfile::Guided],
         }
+    }
+
+    fn current_profile(&self) -> SyntaxProfile {
+        *self.profile_stack.last().unwrap_or(&SyntaxProfile::Guided)
     }
 
     fn analyze(mut self, program: &Program) -> AnalysisResult {
@@ -136,6 +161,9 @@ impl Analyzer {
 
     fn statement(&mut self, statement: &Statement) {
         match &statement.kind {
+            StatementKind::Import { module: _, alias } => {
+                self.declare(alias, SymbolKind::Variable(Type::Dynamic), &statement.span);
+            }
             StatementKind::ImportPython { module, alias } => {
                 if !is_valid_python_module_name(module) {
                     self.diagnostics.push(Diagnostic::error(
@@ -216,6 +244,11 @@ impl Analyzer {
                 if let Some(returns) = self.return_types.last_mut() {
                     returns.push(ty);
                 }
+            }
+            StatementKind::ProfileBlock { profile, body } => {
+                self.profile_stack.push(*profile);
+                self.statements(body);
+                self.profile_stack.pop();
             }
         }
     }
@@ -624,7 +657,20 @@ impl Analyzer {
     }
 
     fn require_compatible(&mut self, expected: &Type, actual: &Type, span: &SourceSpan) {
-        if !compatible(expected, actual) {
+        if self.current_profile() == SyntaxProfile::Advanced {
+            if !compatible(expected, actual) {
+                self.diagnostics.push(Diagnostic::error(
+                    "SPT211",
+                    "Type mismatch",
+                    format!(
+                        "Cannot assign a `{}` value to a `{}` variable in strict Advanced profile.",
+                        actual.name(),
+                        expected.name()
+                    ),
+                    span.clone(),
+                ));
+            }
+        } else if !compatible(expected, actual) {
             self.diagnostics.push(Diagnostic::error(
                 "SPT211",
                 "Type mismatch",

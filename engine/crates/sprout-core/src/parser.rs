@@ -35,7 +35,12 @@ pub fn parse_profile(source: &SourceFile, profile: SyntaxProfile) -> ParseResult
             diagnostics: lexed.diagnostics,
         };
     }
-    let tokens = if profile == SyntaxProfile::Advanced {
+    let needs_indentation = profile == SyntaxProfile::Advanced
+        || lexed.tokens.iter().enumerate().any(|(i, t)| {
+            matches!(&t.kind, TokenKind::Identifier(name) if name == "advanced")
+                && lexed.tokens.get(i + 1).is_some_and(|next| matches!(next.kind, TokenKind::LeftBrace | TokenKind::Newline))
+        });
+    let tokens = if needs_indentation {
         match add_indentation(lexed.tokens) {
             Ok(tokens) => tokens,
             Err(diagnostic) => {
@@ -55,7 +60,7 @@ struct Parser {
     tokens: Vec<Token>,
     current: usize,
     diagnostics: Vec<Diagnostic>,
-    profile: SyntaxProfile,
+    profile_stack: Vec<SyntaxProfile>,
 }
 
 impl Parser {
@@ -64,8 +69,12 @@ impl Parser {
             tokens,
             current: 0,
             diagnostics: Vec::new(),
-            profile,
+            profile_stack: vec![profile],
         }
+    }
+
+    fn current_profile(&self) -> SyntaxProfile {
+        *self.profile_stack.last().unwrap_or(&SyntaxProfile::Guided)
     }
 
     fn parse(mut self) -> ParseResult {
@@ -84,6 +93,7 @@ impl Parser {
 
     fn block_until(&mut self, terminators: &[TokenKind]) -> Vec<Statement> {
         let mut statements = Vec::new();
+        self.skip_whitespace_for_terminators(terminators);
         while !self.at_end() && !terminators.iter().any(|kind| self.check(kind)) {
             match self.statement() {
                 Ok(statement) => statements.push(statement),
@@ -92,28 +102,132 @@ impl Parser {
                     self.synchronize();
                 }
             }
-            self.skip_newlines();
+            self.skip_whitespace_for_terminators(terminators);
         }
         statements
     }
 
+    fn skip_whitespace_for_terminators(&mut self, terminators: &[TokenKind]) {
+        let allow_dedent = terminators.iter().any(|t| same_kind(t, &TokenKind::Dedent));
+        while self.take(&TokenKind::Newline).is_some()
+            || self.take(&TokenKind::Indent).is_some()
+            || (!allow_dedent && self.take(&TokenKind::Dedent).is_some())
+        {}
+    }
+
+    fn match_profile_block_keyword(&self) -> Option<SyntaxProfile> {
+        let profile = match &self.peek().kind {
+            TokenKind::Identifier(name) => match name.as_str() {
+                "guided" => SyntaxProfile::Guided,
+                "structured" => SyntaxProfile::Structured,
+                "advanced" => SyntaxProfile::Advanced,
+                _ => return None,
+            },
+            _ => return None,
+        };
+
+        let mut idx = self.current + 1;
+        while idx < self.tokens.len() && same_kind(&self.tokens[idx].kind, &TokenKind::Newline) {
+            idx += 1;
+        }
+        if idx < self.tokens.len() && same_kind(&self.tokens[idx].kind, &TokenKind::LeftBrace) {
+            Some(profile)
+        } else {
+            None
+        }
+    }
+
+    fn profile_block_statement(&mut self, target_profile: SyntaxProfile) -> Result<Statement, Diagnostic> {
+        let start = self.advance().span.clone();
+        self.skip_newlines();
+        self.expect(
+            &TokenKind::LeftBrace,
+            "Expected `{` after the profile block keyword.",
+        )?;
+        self.skip_newlines();
+        self.profile_stack.push(target_profile);
+        let body = self.block_until(&[TokenKind::RightBrace]);
+        let end = self.expect(
+            &TokenKind::RightBrace,
+            "Expected `}` after the profile block body.",
+        )?;
+        self.profile_stack.pop();
+        self.skip_newlines();
+        Ok(Node::new(
+            StatementKind::ProfileBlock {
+                profile: target_profile,
+                body,
+            },
+            start.merge(&end.span),
+        ))
+    }
+
     fn statement(&mut self) -> Result<Statement, Diagnostic> {
         if self.take(&TokenKind::Import).is_some() {
-            return self.python_import_statement();
+            return self.import_statement();
         }
-        match self.profile {
+        if let Some(target_profile) = self.match_profile_block_keyword() {
+            return self.profile_block_statement(target_profile);
+        }
+        match self.current_profile() {
             SyntaxProfile::Guided => self.guided_statement(),
             SyntaxProfile::Structured => self.structured_statement(),
             SyntaxProfile::Advanced => self.advanced_statement(),
         }
     }
 
-    fn python_import_statement(&mut self) -> Result<Statement, Diagnostic> {
+    fn import_statement(&mut self) -> Result<Statement, Diagnostic> {
         let start = self.previous().span.clone();
-        self.expect(
-            &TokenKind::Python,
-            "Expected `python` after `import` for explicit Python interoperability.",
-        )?;
+        if self.take(&TokenKind::Python).is_some() {
+            return self.python_import_after_keyword(start);
+        }
+
+        let (module, module_span) = if let TokenKind::Identifier(name) = &self.peek().kind {
+            let name = name.clone();
+            let token = self.advance().clone();
+            (name, token.span)
+        } else if let TokenKind::String(name) = &self.peek().kind {
+            let name = name.clone();
+            let token = self.advance().clone();
+            (name, token.span)
+        } else {
+            let token = self.peek().clone();
+            return Err(Diagnostic::error(
+                "SPT100",
+                "Unexpected syntax",
+                "Expected a module name or `python` after `import`.",
+                token.span,
+            ));
+        };
+
+        let (alias, alias_span) = if self.take(&TokenKind::As).is_some() {
+            self.expect_identifier("Expected an import alias after `as`.")?
+        } else {
+            let default_alias = module
+                .rsplit('/')
+                .next()
+                .unwrap_or(&module)
+                .rsplit('\\')
+                .next()
+                .unwrap_or(&module)
+                .trim_end_matches(".spr")
+                .to_string();
+            (default_alias, module_span.clone())
+        };
+
+        match self.current_profile() {
+            SyntaxProfile::Structured => self.finish_structured_statement()?,
+            SyntaxProfile::Guided => self.finish_simple_statement()?,
+            SyntaxProfile::Advanced => self.finish_advanced_statement()?,
+        }
+
+        Ok(Node::new(
+            StatementKind::Import { module, alias },
+            start.merge(&alias_span),
+        ))
+    }
+
+    fn python_import_after_keyword(&mut self, start: SourceSpan) -> Result<Statement, Diagnostic> {
         let module_token = self.advance().clone();
         let TokenKind::String(module) = module_token.kind else {
             return Err(Diagnostic::error(
@@ -128,7 +242,7 @@ impl Parser {
             "Expected `as` after the Python module name.",
         )?;
         let (alias, alias_span) = self.expect_identifier("Expected an import alias after `as`.")?;
-        match self.profile {
+        match self.current_profile() {
             SyntaxProfile::Structured => self.finish_structured_statement()?,
             SyntaxProfile::Guided => self.finish_simple_statement()?,
             SyntaxProfile::Advanced => self.finish_advanced_statement()?,
@@ -577,6 +691,16 @@ impl Parser {
             &TokenKind::Arrow,
             &format!("Expected `=>` before the {description} body."),
         )?;
+        if self.take(&TokenKind::LeftBrace).is_some() {
+            self.skip_newlines();
+            let body = self.block_until(&[TokenKind::RightBrace]);
+            let end = self.expect(
+                &TokenKind::RightBrace,
+                &format!("Expected `}}` after the {description} body."),
+            )?;
+            self.skip_newlines();
+            return Ok((body, end.span));
+        }
         self.require_line_break(&format!(
             "Expected a new line before the {description} body."
         ))?;
@@ -597,6 +721,7 @@ impl Parser {
     fn finish_advanced_statement(&mut self) -> Result<(), Diagnostic> {
         if self.check(&TokenKind::Newline)
             || self.check(&TokenKind::Dedent)
+            || self.check(&TokenKind::RightBrace)
             || self.check(&TokenKind::Eof)
         {
             self.skip_newlines();
@@ -956,7 +1081,10 @@ impl Parser {
     }
 
     fn finish_simple_statement(&mut self) -> Result<(), Diagnostic> {
-        if self.check(&TokenKind::Newline) || self.check(&TokenKind::Eof) {
+        if self.check(&TokenKind::Newline)
+            || self.check(&TokenKind::RightBrace)
+            || self.check(&TokenKind::Eof)
+        {
             self.skip_newlines();
             Ok(())
         } else {
@@ -1000,7 +1128,10 @@ impl Parser {
     }
 
     fn skip_newlines(&mut self) {
-        while self.take(&TokenKind::Newline).is_some() {}
+        while self.take(&TokenKind::Newline).is_some()
+            || (self.current_profile() != SyntaxProfile::Advanced
+                && (self.take(&TokenKind::Indent).is_some() || self.take(&TokenKind::Dedent).is_some()))
+        {}
     }
 
     fn take(&mut self, kind: &TokenKind) -> Option<&Token> {

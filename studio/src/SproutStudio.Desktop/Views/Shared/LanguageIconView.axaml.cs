@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using SproutStudio.Editor;
+using ShapePath = Avalonia.Controls.Shapes.Path;
 
 namespace SproutStudio.Views.Shared;
 
@@ -39,19 +40,47 @@ public sealed partial class LanguageIconView : UserControl
 
     private void UpdateIcon()
     {
-        LanguageDescriptor language = LanguageRegistry.TryGet(LanguageKey, out LanguageDescriptor? found)
+        string languageKey = string.IsNullOrWhiteSpace(LanguageKey) ? "sprout" : LanguageKey;
+        LanguageDescriptor language = LanguageRegistry.TryGet(languageKey, out LanguageDescriptor? found)
             ? found!
             : LanguageRegistry.Get(DocumentLanguage.PlainText);
         Border? surface = this.FindControl<Border>("IconSurface");
         TextBlock? glyph = this.FindControl<TextBlock>("IconGlyph");
-        if (surface is null || glyph is null)
+        ShapePath? path = this.FindControl<ShapePath>("IconPath");
+        if (surface is null || glyph is null || path is null)
         {
             return;
         }
-        surface.Background = AccentBrushes[language.Key];
-        glyph.Text = language.IconGlyph;
-        glyph.FontSize = 12 * language.IconScale;
-        glyph.Foreground = Brushes.White;
+
+        surface.Background = AccentBrushes.TryGetValue(language.Key, out IBrush? brush) ? brush : Brushes.DimGray;
+        if (!string.IsNullOrEmpty(language.IconPathData))
+        {
+            try
+            {
+                path.Data = Geometry.Parse(language.IconPathData);
+                path.Fill = Brushes.White;
+                path.Margin = new Thickness(1);
+                path.Stretch = Stretch.Uniform;
+                path.IsVisible = true;
+                glyph.IsVisible = false;
+            }
+            catch
+            {
+                path.IsVisible = false;
+                glyph.IsVisible = true;
+                glyph.Text = language.IconGlyph;
+                glyph.FontSize = 12 * language.IconScale;
+                glyph.Foreground = Brushes.White;
+            }
+        }
+        else
+        {
+            path.IsVisible = false;
+            glyph.IsVisible = true;
+            glyph.Text = language.IconGlyph;
+            glyph.FontSize = 12 * language.IconScale;
+            glyph.Foreground = Brushes.White;
+        }
         ToolTip.SetTip(this, language.DisplayName);
     }
 }

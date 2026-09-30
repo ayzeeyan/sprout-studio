@@ -1,0 +1,329 @@
+<UserControl
+    x:Class="SproutStudio.Views.Editor.AcademyDocumentView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    xmlns:shared="using:SproutStudio.Views.Shared"
+    xmlns:acad="using:SproutStudio.Academy"
+    x:DataType="vm:AcademyDocumentTabViewModel"
+    x:CompileBindings="False"
+    ClipToBounds="True">
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" ClipToBounds="True">
+    <StackPanel Name="LessonContent" Margin="20,16,20,32" Spacing="16" MaxWidth="400" HorizontalAlignment="Stretch">
+
+      <!-- Breadcrumbs: Java OOP › Module 2 › Encapsulation -->
+      <Grid ColumnDefinitions="*,Auto,*,Auto,*" ColumnSpacing="7" VerticalAlignment="Center">
+        <TextBlock Text="{Binding Track.Title}" Foreground="{DynamicResource StudioTextSecondaryBrush}" FontSize="12"
+                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Track.Title}" />
+        <TextBlock Grid.Column="1" Text="›" Foreground="{DynamicResource StudioTextMutedBrush}" FontSize="12" />
+        <TextBlock Grid.Column="2" Text="{Binding ModuleTitle}" Foreground="{DynamicResource StudioTextSecondaryBrush}" FontSize="12"
+                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ModuleTitle}" />
+        <TextBlock Grid.Column="3" Text="›" Foreground="{DynamicResource StudioTextMutedBrush}" FontSize="12" />
+        <TextBlock Grid.Column="4" Text="{Binding Lesson.Title}" Foreground="{DynamicResource StudioTextPrimaryBrush}"
+                   FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Lesson.Title}" />
+      </Grid>
+
+      <!-- Main Header with Language Icon & Title -->
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+          <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="28" Height="28" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="{Binding Lesson.Title}" FontSize="20" FontWeight="Bold"
+                     Foreground="{DynamicResource StudioTextPrimaryBrush}" VerticalAlignment="Center"
+                     TextWrapping="Wrap" MaxLines="3" />
+        </Grid>
+        <TextBlock Text="{Binding Lesson.Summary}" FontSize="13" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" LineHeight="19" />
+      </StackPanel>
+
+      <Border Classes="dialog-card" Padding="16,14">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Lesson" Classes="panel-header" />
+          <ContentControl Name="LessonContentHost" />
+          <Border IsVisible="{Binding HasExerciseObjective}" Background="{DynamicResource StudioRaisedBrush}"
+                  CornerRadius="6" Padding="12,9">
+            <StackPanel Spacing="3">
+              <TextBlock Text="Objective" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource StudioAccentBrush}" />
+              <TextBlock Text="{Binding ExerciseObjective}" FontSize="12" TextWrapping="Wrap"
+                         Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+
+      <!-- Quiz Questions (if active activity is a Quiz) -->
+      <StackPanel IsVisible="{Binding HasKnowledgeQuestions}" Spacing="14" Margin="0,4,0,0">
+        <TextBlock Text="{Binding KnowledgeCheckTitle}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource StudioTextPrimaryBrush}" />
+        <ItemsControl ItemsSource="{Binding QuizQuestions}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:QuizQuestionTabViewModel">
+              <Border Classes="dialog-card" Padding="14,12" Margin="0,4">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="{Binding Question.Question}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource StudioTextPrimaryBrush}" TextWrapping="Wrap" />
+                  
+                  <!-- Multiple Choice / Select Options -->
+                  <ItemsControl ItemsSource="{Binding Options}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="vm:QuizOptionViewModel">
+                        <Grid>
+                          <RadioButton IsVisible="{Binding IsSingle}" Content="{Binding Text}" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                     GroupName="{Binding $parent[Border].DataContext.Question.Id}"
+                                     Command="{Binding SelectCommand}" Margin="0,3" />
+                          <CheckBox IsVisible="{Binding IsMultiple}" Content="{Binding Text}" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                    Command="{Binding SelectCommand}" Margin="0,3" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <!-- Short Answer / Text Answer Input -->
+                  <TextBox IsVisible="{Binding HasNoOptions}" Text="{Binding TextAnswer, Mode=TwoWay}"
+                           PlaceholderText="Type your answer here..." Height="32" Margin="0,4" />
+
+                  <!-- Feedback Notice -->
+                  <Border IsVisible="{Binding HasFeedback}" Background="{DynamicResource StudioRaisedBrush}"
+                          BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10,6">
+                    <TextBlock Text="{Binding Feedback}" FontSize="12" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+                  </Border>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+
+      <!-- Requirements Checklist (if active activity is an Exercise) -->
+      <Border IsVisible="{Binding HasCodingRequirements}" Classes="dialog-card" Padding="14,12" Margin="0,4,0,0">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Requirements" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource StudioTextPrimaryBrush}" />
+              <TextBlock Text="{Binding RequirementsSummaryText}" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="icon-button" Command="{Binding ToggleRequirementsCommand}"
+                    ToolTip.Tip="Toggle requirements">
+              <TextBlock Classes="icon academy" Text="{Binding RequirementsToggleGlyph}" />
+            </Button>
+          </Grid>
+
+          <ItemsControl IsVisible="{Binding IsRequirementsExpanded}" ItemsSource="{Binding Requirements}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:RequirementItemViewModel">
+                <Border Margin="0,3" Padding="0,4" BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="0,0,0,1">
+                  <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="22,*,Auto">
+                      <TextBlock Classes="icon academy" Text="{Binding StatusIcon}"
+                                 Foreground="{Binding StatusColor}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding Description}" FontSize="12.5"
+                                 Foreground="{DynamicResource StudioTextPrimaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                      <Button Grid.Column="2" IsVisible="{Binding IsFailed}" Classes="toolbar" Command="{Binding OpenRelevantCodeCommand}"
+                              Padding="6,2" Height="24" ToolTip.Tip="Open relevant source file">
+                        <TextBlock Text="Open Code" FontSize="11" />
+                      </Button>
+                    </Grid>
+
+                    <!-- Detailed Failure Diagnostic / Explanation -->
+                    <Border IsVisible="{Binding HasFeedback}" Background="#15E5534B" BorderBrush="#30E5534B" BorderThickness="1"
+                            CornerRadius="4" Padding="10,6" Margin="22,2,0,2">
+                      <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding Feedback}" FontSize="11.5" Foreground="{DynamicResource StudioTextPrimaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Expected, StringFormat='Expected: {0}'}" IsVisible="{Binding HasDetails}"
+                                   FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Observed, StringFormat='Observed: {0}'}" IsVisible="{Binding HasDetails}"
+                                   FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Hints Card with Daily Allowance & Progressive Disclosure -->
+      <Border IsVisible="{Binding HasHints}" Classes="dialog-card" Padding="14,12" Margin="0,4,0,0">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+            <TextBlock Classes="icon academy accent" Text="&#xEA80;" />
+            <TextBlock Grid.Column="1" Text="Hints" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding HintsRemainingText}" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+            <Button Grid.Column="3" Classes="icon-button" Command="{Binding ToggleHintsCommand}"
+                    ToolTip.Tip="Toggle hints">
+              <TextBlock Classes="icon academy" Text="{Binding HintsToggleGlyph}" />
+            </Button>
+          </Grid>
+
+          <StackPanel IsVisible="{Binding IsHintsExpanded}" Spacing="8">
+            <!-- List of Revealed Hints -->
+            <ItemsControl ItemsSource="{Binding RevealedHints}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="acad:HintItem">
+                  <Border Background="{DynamicResource StudioRaisedBrush}" BorderBrush="{DynamicResource StudioBorderBrush}"
+                          BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,3">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding LevelName}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource StudioAccentBrush}" />
+                      <TextBlock Text="{Binding Content}" FontSize="12" Foreground="{DynamicResource StudioTextPrimaryBrush}" TextWrapping="Wrap" LineHeight="18" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Request Next Hint Button -->
+            <Button IsVisible="{Binding CanRequestHint}" Command="{Binding RequestHintCommand}" Classes="toolbar"
+                    Height="30" HorizontalAlignment="Left" Margin="0,2">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="icon academy" Text="&#xEA80;" />
+                <TextBlock Text="Reveal Next Hint" FontSize="11.5" />
+              </StackPanel>
+            </Button>
+
+            <!-- Hint limit reached helpful notice -->
+            <Border IsVisible="{Binding IsHintLimitReached}" Background="{DynamicResource StudioRaisedBrush}"
+                    BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8">
+              <StackPanel Spacing="4">
+                <TextBlock Text="Daily hint allowance reached for today." FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource StudioTextPrimaryBrush}" />
+                <TextBlock Text="You can still run tests freely, review revealed hints, check documentation, and retry the exercise."
+                           FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Actions Bar: [</> Open Code] [▷ Run Tests] [⬆ Submit Exercise] -->
+      <StackPanel Spacing="8" Margin="0,4,0,0">
+        <TextBlock Text="Actions" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource StudioTextPrimaryBrush}" />
+
+        <Grid ColumnDefinitions="*,*,1.3*" ColumnSpacing="8">
+          <Button IsVisible="{Binding HasLinkedCompanion}" Command="{Binding OpenLinkedCodeCommand}" Classes="toolbar" Height="34" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="Open companion source file in editor">
+            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+              <TextBlock Classes="icon academy" Text="&#xE943;" />
+              <TextBlock Text="Open Code" FontSize="12" />
+            </StackPanel>
+          </Button>
+
+          <Button Grid.Column="1" IsVisible="{Binding HasLinkedCompanion}" Command="{Binding CheckRequirementsCommand}" IsEnabled="{Binding !IsSubmitting}" Classes="toolbar" Height="34" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="Run assertions against your code buffer without logging an attempt">
+            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+              <TextBlock Classes="icon academy" Text="&#xE768;" />
+              <TextBlock Text="Run Tests" FontSize="12" />
+            </StackPanel>
+          </Button>
+
+          <Button Grid.Column="2" IsVisible="{Binding CanSubmit}" Command="{Binding SubmitExerciseCommand}" IsEnabled="{Binding !IsSubmitting}" Classes="accent" Height="34" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="Submit solution and record official attempt">
+            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+              <TextBlock Classes="icon academy" Text="&#xE898;" />
+              <TextBlock Text="{Binding SubmitButtonText}" FontSize="12" FontWeight="SemiBold" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </StackPanel>
+
+      <!-- Submission Results & History Card -->
+      <Border Classes="dialog-card" Padding="14,12" Margin="0,4,0,0">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+            <TextBlock Classes="icon academy accent" Text="&#xF0E3;" />
+            <TextBlock Grid.Column="1" Text="Submission Results" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="icon-button" Command="{Binding ToggleResultsCommand}"
+                    ToolTip.Tip="Toggle submission results">
+              <TextBlock Classes="icon academy" Text="{Binding ResultsToggleGlyph}" />
+            </Button>
+          </Grid>
+
+          <StackPanel IsVisible="{Binding IsResultsExpanded}" Spacing="8">
+            <!-- Default Idle State Message -->
+            <StackPanel IsVisible="{Binding !HasResultBanner}" Spacing="4" Margin="0,4">
+              <TextBlock Text="Submit your solution to record results and track progress." FontSize="11.5"
+                         Foreground="{DynamicResource StudioTextSecondaryBrush}" TextAlignment="Center" />
+              <TextBlock Text="Automated tests will grade your code and provide feedback." FontSize="11"
+                         Foreground="{DynamicResource StudioTextMutedBrush}" TextAlignment="Center" />
+            </StackPanel>
+
+            <!-- Passed State Celebration Banner -->
+            <Border IsVisible="{Binding IsPassed}" Background="#1549C979" BorderBrush="#49C979" BorderThickness="1"
+                    CornerRadius="6" Padding="14,10">
+              <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <TextBlock Classes="icon academy" Text="&#xE73E;" Foreground="{DynamicResource StudioSuccessBrush}" />
+                      <TextBlock Text="Exercise Passed" FontWeight="SemiBold" FontSize="13.5"
+                                 Foreground="{DynamicResource StudioSuccessBrush}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding FeedbackMessage}" FontSize="12" Foreground="{DynamicResource StudioTextPrimaryBrush}" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Background="#2049C979" CornerRadius="4" Padding="8,4">
+                    <TextBlock Text="{Binding XpEarned, StringFormat='+{0} XP'}" FontSize="12" FontWeight="Bold" Foreground="#49C979" />
+                  </Border>
+                </Grid>
+
+                <Button Command="{Binding ContinueToNextLessonCommand}" Classes="accent" Height="30" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Continue to Next Lesson" FontSize="11.5" FontWeight="SemiBold" />
+                    <TextBlock Classes="icon academy" Text="&#xE76C;" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Border>
+
+            <Border IsVisible="{Binding IsTestsPassed}" Background="#1549C979" BorderBrush="#49C979" BorderThickness="1"
+                    CornerRadius="6" Padding="14,10">
+              <StackPanel Spacing="5">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <TextBlock Classes="icon academy" Text="&#xE73E;" Foreground="{DynamicResource StudioSuccessBrush}" />
+                  <TextBlock Text="Sandbox Tests Passed" FontWeight="SemiBold" FontSize="13.5"
+                             Foreground="{DynamicResource StudioSuccessBrush}" />
+                </StackPanel>
+                <TextBlock Text="{Binding FeedbackMessage}" FontSize="12" Foreground="{DynamicResource StudioTextPrimaryBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="No attempt or XP was recorded. Submit when you are ready."
+                           FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+              </StackPanel>
+            </Border>
+
+            <!-- Needs Revision Banner -->
+            <Border IsVisible="{Binding IsNeedsRevision}" Background="#15E5534B" BorderBrush="#E5534B" BorderThickness="1"
+                    CornerRadius="6" Padding="14,10">
+              <StackPanel Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <TextBlock Classes="icon academy" Text="&#xE711;" Foreground="{DynamicResource StudioErrorBrush}" />
+                  <TextBlock Text="Needs Revision" FontWeight="SemiBold" FontSize="13.5"
+                             Foreground="{DynamicResource StudioErrorBrush}" />
+                </StackPanel>
+                <TextBlock Text="{Binding FeedbackMessage}" FontSize="12" Foreground="{DynamicResource StudioTextPrimaryBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding RevisionAttemptText}"
+                           FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+              </StackPanel>
+            </Border>
+
+            <!-- Prior Attempt History Drawer -->
+            <StackPanel IsVisible="{Binding HasAttemptHistory}" Spacing="6" Margin="0,6,0,0">
+              <Button Classes="hyperlink" Command="{Binding ToggleAttemptHistoryCommand}" Padding="0">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="Attempt History" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource StudioAccentBrush}" />
+                  <TextBlock Text="{Binding AttemptHistory.Count, StringFormat='({0})'}" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                </StackPanel>
+              </Button>
+
+              <ItemsControl IsVisible="{Binding IsAttemptHistoryExpanded}" ItemsSource="{Binding AttemptHistory}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:AttemptHistoryItemViewModel">
+                    <Grid ColumnDefinitions="16,*,Auto" ColumnSpacing="8" Margin="0,3">
+                      <TextBlock Classes="icon academy" Text="{Binding StatusIcon}" Foreground="{Binding StatusColor}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                      <TextBlock Grid.Column="2" Text="{Binding RelativeTime}" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

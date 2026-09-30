@@ -28,7 +28,7 @@
           <ListBox.ItemTemplate>
             <DataTemplate DataType="local:AcademySectionItem">
               <Grid ColumnDefinitions="28,*" Margin="8,7">
-                <TextBlock Text="{Binding Glyph}" Classes="icon" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                <TextBlock Text="{Binding Glyph}" Classes="icon academy-nav-icon" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
                 <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center" />
               </Grid>
             </DataTemplate>
@@ -39,28 +39,137 @@
       <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
 
       <Grid Grid.Column="2">
-        <ScrollViewer Name="HomePanel" Padding="24,18,30,42"
+        <ScrollViewer Name="HomePanel"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       SizeChanged="ConstrainedScroll_SizeChanged">
-          <StackPanel MaxWidth="900" Spacing="14">
+          <StackPanel MaxWidth="900" Spacing="16" Margin="24,18,30,42">
             <StackPanel>
               <TextBlock Name="WelcomeTitle" Text="Continue learning" FontSize="23" FontWeight="SemiBold" />
               <TextBlock Text="Your Academy progress is stored locally on this device."
                          Foreground="{DynamicResource StudioTextSecondaryBrush}" />
             </StackPanel>
+
+            <!-- 1. CONTINUE LEARNING -->
             <Border Classes="academy-feature">
               <Grid ColumnDefinitions="Auto,*,Auto" Margin="18" ColumnSpacing="14">
                 <shared:LanguageIconView Name="ContinueLanguageIcon" Width="42" Height="42" />
                 <StackPanel Grid.Column="1" Spacing="5">
+                  <TextBlock Text="CONTINUE LEARNING" Classes="panel-header" FontSize="11" />
                   <TextBlock Name="ContinueTrackTitle" FontSize="17" FontWeight="SemiBold" />
                   <TextBlock Name="ContinueLessonTitle" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
                   <ProgressBar Name="ContinueProgress" Height="5" Maximum="100" />
                   <TextBlock Name="ContinueProgressText" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
                 </StackPanel>
-                <Button Grid.Column="2" Name="ContinueButton" Classes="accent" Content="Continue" Click="Continue_Click" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Name="ContinueButton" Classes="accent" Content="Continue Lesson" Click="Continue_Click" VerticalAlignment="Center" />
               </Grid>
             </Border>
-            <TextBlock Text="RECOMMENDED NEXT" Classes="panel-header" Margin="0,8,0,0" />
+
+            <!-- 2. TO DO SYSTEM -->
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="TO DO" Classes="panel-header" VerticalAlignment="Center" />
+                <TextBlock Name="TodoCountText" Grid.Column="1" Text="3 tasks" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+              </Grid>
+              <TextBlock Name="TodoEmptyText" Text="All caught up! Select a track below to start your next lesson."
+                         Classes="empty-state" IsVisible="False" Margin="0,4" />
+              <ItemsControl Name="HomeTodoList">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="local:AcademyTaskRow">
+                    <Border Classes="academy-row" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,10" ColumnSpacing="12">
+                        <TextBlock Text="{Binding StatusGlyph}" Classes="icon academy" Foreground="{Binding StatusBrush}" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                            <Border Classes="badge" Background="{DynamicResource StudioPanelBrush}" CornerRadius="3" Padding="6,1">
+                              <TextBlock Text="{Binding TypeLabel}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                            </Border>
+                          </StackPanel>
+                          <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                          <TextBlock Text="{Binding RequirementText}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Content="{Binding ActionLabel}" Tag="{Binding}" Click="OpenTask_Click" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- 3. YOUR COURSES -->
+            <StackPanel Spacing="8">
+              <TextBlock Text="YOUR COURSES" Classes="panel-header" />
+              <ItemsControl Name="HomeCoursesList">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="local:AcademyTrackRow">
+                    <Border Classes="academy-row" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="Auto,*,120,Auto" Margin="12,9" ColumnSpacing="12">
+                        <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="30" Height="30" />
+                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding NextLessonLabel}" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                          <ProgressBar Maximum="100" Value="{Binding CompletionPercent}" Height="4" />
+                          <TextBlock Text="{Binding ProgressLabel}" FontSize="10" HorizontalAlignment="Right" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                        </StackPanel>
+                        <Button Grid.Column="3" Content="Open" Tag="{Binding Id}" Click="ViewTrack_Click" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- 4. HINTS & LEARNING ASSISTANCE WIDGET -->
+            <Border Classes="academy-row">
+              <Grid ColumnDefinitions="Auto,*,Auto" Margin="14,12" ColumnSpacing="14">
+                <Border Width="34" Height="34" CornerRadius="6" Background="{DynamicResource StudioRaisedBrush}">
+                  <TextBlock Classes="icon accent" Text="&#xEA80;" FontSize="20"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="3">
+                  <TextBlock Text="LEARNING ASSISTANCE &amp; HINTS" Classes="panel-header" FontSize="11" />
+                  <TextBlock Name="HomeHintsRemainingText" Text="5 of 5 hints remaining today" FontWeight="SemiBold" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Name="HomeHintsDots" Text="● ● ● ● ●" Foreground="{DynamicResource StudioAccentBrush}" FontSize="13" />
+                    <TextBlock Name="HomeHintsResetText" Text="Resets tomorrow · Local calendar day" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="2" Content="Hint Settings" Click="HintSettings_Click" VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+
+            <!-- 5. RECENT SUBMISSIONS -->
+            <StackPanel Spacing="8">
+              <TextBlock Text="RECENT SUBMISSIONS" Classes="panel-header" />
+              <TextBlock Name="SubmissionsEmptyText" Text="No submissions yet. Submit code or quiz answers in your lessons to track attempts."
+                         Classes="empty-state" IsVisible="False" Margin="0,4" />
+              <ItemsControl Name="HomeRecentSubmissions">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="local:AcademySubmissionRow">
+                    <Border Classes="academy-row" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="12,10" ColumnSpacing="12">
+                        <TextBlock Text="{Binding StatusGlyph}" Classes="icon academy" Foreground="{Binding StatusBrush}" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                          <TextBlock Text="{Binding ExerciseTitle}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Subtitle}" FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                          <TextBlock Text="{Binding FeedbackSummary}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2">
+                          <TextBlock Text="{Binding StatusLabel}" FontWeight="SemiBold" Foreground="{Binding StatusBrush}" FontSize="11" HorizontalAlignment="Right" />
+                          <TextBlock Text="{Binding DateLabel}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" HorizontalAlignment="Right" />
+                        </StackPanel>
+                        <Button Grid.Column="3" Content="Review" Tag="{Binding}" Click="ReviewSubmission_Click" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- 6. RECOMMENDED NEXT -->
+            <TextBlock Text="EXPLORE MORE TRACKS" Classes="panel-header" Margin="0,4,0,0" />
             <ItemsControl Name="HomeRecommendations">
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="local:AcademyRecommendationRow">
@@ -135,10 +244,10 @@
             </ListBox>
           </Grid>
           <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
-          <ScrollViewer Name="TrackDetailScroll" Grid.Column="2" Padding="22,18,28,42"
+          <ScrollViewer Name="TrackDetailScroll" Grid.Column="2"
                         HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                         SizeChanged="ConstrainedScroll_SizeChanged">
-            <StackPanel Spacing="12" MaxWidth="760" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="12" MaxWidth="760" HorizontalAlignment="Stretch" Margin="22,18,28,42">
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <shared:LanguageIconView Name="TrackLanguageIcon" Width="44" Height="44" />
                 <StackPanel>
@@ -162,28 +271,70 @@
                   <Button Grid.Column="1" Content="Open Toolchains" Click="OpenToolchains_Click" VerticalAlignment="Center" />
                 </Grid>
               </Border>
-              <TextBlock Text="MODULE 1 · CORE LESSONS" Classes="panel-header" Margin="0,8,0,0" />
-              <ItemsControl Name="LessonList">
+              <ItemsControl Name="ModuleList" Margin="0,8,0,0">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate DataType="local:AcademyLessonRow">
-                    <Border Classes="lesson-row" Margin="0,0,0,8">
-                      <Grid ColumnDefinitions="*,Auto" Margin="13" ColumnSpacing="12">
-                        <StackPanel Spacing="5">
-                          <StackPanel Orientation="Horizontal" Spacing="7">
-                            <TextBlock Text="{Binding StateGlyph}" Foreground="{DynamicResource StudioAccentBrush}" />
-                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                          </StackPanel>
-                          <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
-                          <TextBlock Text="{Binding Content}" TextWrapping="Wrap" MaxHeight="64" Foreground="{DynamicResource StudioTextMutedBrush}" />
-                          <TextBlock Text="{Binding ConceptsLabel}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  <DataTemplate DataType="local:AcademyModuleRow">
+                    <StackPanel Spacing="9" Margin="0,0,0,18">
+                      <Grid ColumnDefinitions="*,120" ColumnSpacing="16">
+                        <StackPanel Spacing="3">
+                          <TextBlock Text="{Binding ModuleLabel}" Classes="panel-header" />
+                          <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                          <TextBlock Text="{Binding Summary}" TextWrapping="Wrap"
+                                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Spacing="6">
-                          <TextBlock Text="{Binding XpLabel}" HorizontalAlignment="Right" Foreground="{DynamicResource StudioAccentBrush}" />
-                          <Button Content="{Binding CompletionLabel}" IsEnabled="{Binding CanComplete}" Click="CompleteLesson_Click" />
-                          <Button Content="Practice in Workspace" IsVisible="{Binding CanPractice}" Click="Practice_Click" />
+                        <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Bottom">
+                          <TextBlock Text="{Binding ProgressLabel}" HorizontalAlignment="Right" FontSize="10"
+                                     Foreground="{DynamicResource StudioTextMutedBrush}" />
+                          <ProgressBar Maximum="100" Value="{Binding CompletionPercent}" Height="4" />
                         </StackPanel>
                       </Grid>
-                    </Border>
+
+                      <ItemsControl ItemsSource="{Binding Lessons}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate DataType="local:AcademyLessonRow">
+                            <Border Classes="lesson-row" Margin="0,0,0,8">
+                              <Grid ColumnDefinitions="*,Auto" Margin="13" ColumnSpacing="12">
+                                <StackPanel Spacing="5">
+                                  <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <TextBlock Text="{Binding StateGlyph}" Classes="icon academy" Foreground="{DynamicResource StudioAccentBrush}" />
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                  </StackPanel>
+                                  <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                                  <TextBlock Text="{Binding Content}" TextWrapping="Wrap" MaxHeight="64" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                                  <TextBlock Text="{Binding ConceptsLabel}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="6">
+                                  <TextBlock Text="{Binding XpLabel}" HorizontalAlignment="Right" Foreground="{DynamicResource StudioAccentBrush}" />
+                                  <Button Content="{Binding CompletionLabel}" IsVisible="{Binding ShowCompleteAction}" IsEnabled="{Binding CanComplete}" Click="CompleteLesson_Click" />
+                                  <Button Content="{Binding WorkspaceActionLabel}" IsVisible="{Binding CanPractice}" Click="Practice_Click" />
+                                </StackPanel>
+                              </Grid>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <Border Classes="academy-row" IsVisible="{Binding HasCheckpoint}">
+                        <Grid DataContext="{Binding Checkpoint}" ColumnDefinitions="Auto,*,Auto" Margin="13,11" ColumnSpacing="11">
+                          <TextBlock Text="{Binding StateGlyph}" Classes="icon academy"
+                                     Foreground="{DynamicResource StudioAccentBrush}" />
+                          <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="MODULE CHECKPOINT" Classes="panel-header" FontSize="10" />
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <TextBlock Text="{Binding QuestionLabel}" FontSize="10"
+                                         Foreground="{DynamicResource StudioTextMutedBrush}" />
+                              <TextBlock Text="{Binding StatusLabel}" FontSize="10"
+                                         Foreground="{DynamicResource StudioAccentBrush}" />
+                            </StackPanel>
+                          </StackPanel>
+                          <Button Grid.Column="2" Content="{Binding ActionLabel}" IsEnabled="{Binding CanOpen}"
+                                  Click="OpenCheckpoint_Click" VerticalAlignment="Center" />
+                        </Grid>
+                      </Border>
+                    </StackPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
@@ -198,10 +349,10 @@
             <ListBox Name="ConceptList" Grid.Row="2" Margin="0,8,0,0" SelectionChanged="ConceptList_SelectionChanged" DisplayMemberBinding="{Binding Title}" />
           </Grid>
           <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
-          <ScrollViewer Name="ConceptDetailScroll" Grid.Column="2" Padding="22,18,28,42"
+          <ScrollViewer Name="ConceptDetailScroll" Grid.Column="2"
                         HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                         SizeChanged="ConstrainedScroll_SizeChanged">
-            <StackPanel Spacing="10" MaxWidth="760">
+            <StackPanel Spacing="10" MaxWidth="760" Margin="22,18,28,42">
               <TextBlock Name="ConceptTitle" FontSize="22" FontWeight="SemiBold" />
               <TextBlock Name="ConceptSummary" TextWrapping="Wrap" FontSize="13.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
               <TextBlock Name="RelatedConceptsText" TextWrapping="Wrap" Foreground="{DynamicResource StudioAccentBrush}" />
@@ -228,10 +379,84 @@
           </ScrollViewer>
         </Grid>
 
-        <ScrollViewer Name="ProfilePanel" IsVisible="False" Padding="24,18,30,42"
+        <ScrollViewer Name="ChallengesPanel" IsVisible="False"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       SizeChanged="ConstrainedScroll_SizeChanged">
-          <Grid ColumnDefinitions="*,1,*" MaxWidth="900" ColumnSpacing="24">
+          <StackPanel MaxWidth="900" Spacing="14" Margin="24,18,30,42">
+            <StackPanel Spacing="3">
+              <TextBlock Text="Challenges" FontSize="23" FontWeight="SemiBold" />
+              <TextBlock Text="Continue graded exercises, revisions, and unlocked checkpoints across your enrolled tracks."
+                         TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </StackPanel>
+            <TextBlock Name="ChallengesEmptyText" Text="No active challenges. Enroll in a track or review a completed activity."
+                       Classes="empty-state" IsVisible="False" Margin="0,12" />
+            <ItemsControl Name="ChallengeList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="local:AcademyTaskRow">
+                  <Border Classes="academy-row" Margin="0,0,0,7">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="13,11" ColumnSpacing="12">
+                      <TextBlock Text="{Binding StatusGlyph}" Classes="icon academy" Foreground="{Binding StatusBrush}" />
+                      <StackPanel Grid.Column="1" Spacing="3">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                          <Border Classes="badge" Padding="6,1">
+                            <TextBlock Text="{Binding TypeLabel}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                          </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                        <TextBlock Text="{Binding RequirementText}" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource StudioTextMutedBrush}" />
+                      </StackPanel>
+                      <Button Grid.Column="2" Content="{Binding ActionLabel}" Tag="{Binding}" Click="OpenTask_Click" VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer Name="SubmissionsPanel" IsVisible="False"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      SizeChanged="ConstrainedScroll_SizeChanged">
+          <StackPanel MaxWidth="900" Spacing="14" Margin="24,18,30,42">
+            <StackPanel Spacing="3">
+              <TextBlock Text="Submissions" FontSize="23" FontWeight="SemiBold" />
+              <TextBlock Text="Official attempts are recorded here. Sandbox test runs never appear in this history."
+                         TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </StackPanel>
+            <TextBlock Name="SubmissionListEmptyText" Text="No official submissions yet. Open an exercise and choose Submit when you are ready."
+                       Classes="empty-state" IsVisible="False" Margin="0,12" />
+            <ItemsControl Name="SubmissionList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="local:AcademySubmissionRow">
+                  <Border Classes="academy-row" Margin="0,0,0,7">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="13,11" ColumnSpacing="12">
+                      <TextBlock Text="{Binding StatusGlyph}" Classes="icon academy" Foreground="{Binding StatusBrush}" />
+                      <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock Text="{Binding ExerciseTitle}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Subtitle}" FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                        <TextBlock Text="{Binding FeedbackSummary}" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource StudioTextMutedBrush}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding StatusLabel}" FontWeight="SemiBold" Foreground="{Binding StatusBrush}" />
+                        <TextBlock Text="{Binding DateLabel}" FontSize="10" HorizontalAlignment="Right"
+                                   Foreground="{DynamicResource StudioTextMutedBrush}" />
+                      </StackPanel>
+                      <Button Grid.Column="3" Content="Review" Tag="{Binding}" Click="ReviewSubmission_Click" VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer Name="ProfilePanel" IsVisible="False"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      SizeChanged="ConstrainedScroll_SizeChanged">
+          <Grid ColumnDefinitions="*,1,*" MaxWidth="900" ColumnSpacing="24" Margin="24,18,30,42">
             <StackPanel Spacing="9">
               <TextBlock Text="Learner Profile" FontSize="23" FontWeight="SemiBold" />
               <TextBlock Text="Used only for transparent local recommendations."

@@ -31,8 +31,6 @@ public interface IStudioDialogService
         IReadOnlyList<CommandPaletteItem> commands,
         CancellationToken cancellationToken = default);
 
-    Task ShowAcademyAsync(CancellationToken cancellationToken = default);
-
     Task ShowToolchainsAsync(CancellationToken cancellationToken = default);
 
     Task ShowDocumentationAsync(CancellationToken cancellationToken = default);
@@ -47,5 +45,10 @@ public interface IStudioDialogService
 
     Task ShowAboutAsync(
         AboutSystemInfo systemInfo,
+        CancellationToken cancellationToken = default);
+
+    Task ShowUpdateDialogAsync(
+        UpdateInfo updateInfo,
+        IUpdateService updateService,
         CancellationToken cancellationToken = default);
 }

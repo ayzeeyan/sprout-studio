@@ -151,6 +151,8 @@ try {
         Invoke-Checked 'cargo' @('fmt', '--all', '--check')
         Invoke-Checked 'cargo' @('clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings')
         Invoke-Checked 'cargo' @('test', '--workspace', '--release', '--locked')
+        # Performance release gate: verify engine benchmark suite
+        Invoke-Checked 'cargo' @('bench', '--bench', 'engine_benches', '--', '--test')
     }
 
     Invoke-Checked 'dotnet' @('build', $solution, '-c', 'Release', '-p:Platform=x64', '--no-restore')
@@ -166,7 +168,7 @@ try {
 
     $requiredPayload = @(
         'SproutStudio.exe', 'sprout_ffi.dll', 'sprout.exe',
-        'python313.dll', 'Content\Docs\studio.md')
+        'python313.dll', 'Content\Docs\studio.md', 'Content\Docs\stdlib.md')
     foreach ($relativePath in $requiredPayload) {
         $payloadPath = Join-Path $publishDirectory $relativePath
         if (-not (Test-Path -LiteralPath $payloadPath -PathType Leaf)) {
@@ -197,6 +199,8 @@ try {
         throw 'NSIS completed without producing SproutStudio-Setup-x64.exe.'
     }
     Invoke-CodeSign $setup
+    $setupAlias = Join-Path $releaseDirectory 'SproutStudio-Setup.exe'
+    Copy-Item -LiteralPath $setup -Destination $setupAlias -Force
 
     $checksumPath = Join-Path $releaseDirectory 'SHA256SUMS.txt'
     $checksumLines = Get-ChildItem -LiteralPath $releaseDirectory -File |

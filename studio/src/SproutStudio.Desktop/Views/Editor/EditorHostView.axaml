@@ -4,11 +4,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
     xmlns:shared="using:SproutStudio.Views.Shared"
+    xmlns:local="using:SproutStudio.Views.Editor"
     xmlns:vm="using:SproutStudio.ViewModels"
     x:DataType="vm:MainWindowViewModel"
     x:CompileBindings="False">
   <Grid Background="{DynamicResource StudioEditorBrush}">
-    <Grid IsVisible="{Binding HasDocuments}" RowDefinitions="38,28,*">
+    <Grid IsVisible="{Binding HasDocuments}" RowDefinitions="38,Auto,*">
       <Border Classes="document-tab-surface">
         <ListBox Classes="document-tabs"
                  ItemsSource="{Binding Documents}"
@@ -20,7 +21,7 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate DataType="vm:DocumentTabViewModel">
-              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7" MinWidth="128" MaxWidth="220">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7" MinWidth="128" MaxWidth="240">
                 <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="18" Height="18" />
                 <TextBlock Grid.Column="1" Text="{Binding TabTitle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                 <Button Grid.Column="2" Classes="tab-close" Command="{Binding CloseCommand}" ToolTip.Tip="Close (Ctrl+W)">
@@ -32,49 +33,103 @@
         </ListBox>
       </Border>
 
-      <Border Grid.Row="1" Classes="breadcrumb-surface">
-        <StackPanel Orientation="Horizontal" Spacing="7" Margin="12,0" VerticalAlignment="Center">
+      <Border Grid.Row="1" Classes="breadcrumb-surface" Height="28" IsVisible="{Binding SelectedDocument.IsSource}">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="7" Margin="12,0" VerticalAlignment="Center">
           <shared:LanguageIconView LanguageKey="{Binding SelectedDocument.LanguageKey}" Width="16" Height="16" />
-          <TextBlock Text="{Binding SelectedDocument.Breadcrumb}" Foreground="{DynamicResource StudioTextSecondaryBrush}" FontSize="11" />
-        </StackPanel>
+          <TextBlock Grid.Column="1" Text="{Binding SelectedDocument.Breadcrumb}" Foreground="{DynamicResource StudioTextSecondaryBrush}"
+                     FontSize="11" TextTrimming="CharacterEllipsis" />
+        </Grid>
       </Border>
 
       <Grid Grid.Row="2">
-        <ae:TextEditor Name="CodeEditor"
-                       ShowLineNumbers="True"
-                       FontFamily="Cascadia Mono, CaskaydiaCove Nerd Font Mono, Consolas"
-                       FontSize="{Binding EditorFontSize}"
-                       WordWrap="{Binding EditorWordWrap}"
-                       Background="{DynamicResource StudioEditorBrush}"
-                       Foreground="{DynamicResource StudioTextPrimaryBrush}"
-                       HorizontalScrollBarVisibility="Auto"
-                       VerticalScrollBarVisibility="Auto"
-                       Padding="10,8"
-                       KeyDown="CodeEditor_KeyDown" />
+        <!-- Side-by-Side Split Workspace Mode for Academy Exercise & Companion Code -->
+        <Grid IsVisible="{Binding SelectedDocument.IsAcademyCoding}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="360" MinWidth="300" MaxWidth="420" />
+            <ColumnDefinition Width="4" />
+            <ColumnDefinition Width="*" MinWidth="320" />
+          </Grid.ColumnDefinitions>
 
-        <Border Name="FindPanel" Classes="find-panel" IsVisible="False" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,18,0">
-          <StackPanel Spacing="6">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <TextBox Name="FindTextBox" Width="220" PlaceholderText="Find" KeyDown="FindTextBox_KeyDown" />
-              <Button Classes="icon-button" Click="FindPrevious_Click" ToolTip.Tip="Previous match"><TextBlock Classes="icon" Text="&#xE70E;" /></Button>
-              <Button Classes="icon-button" Click="FindNext_Click" ToolTip.Tip="Next match"><TextBlock Classes="icon" Text="&#xE70D;" /></Button>
-              <Button Classes="icon-button" Click="CloseFind_Click" ToolTip.Tip="Close"><TextBlock Classes="icon" Text="&#xE711;" /></Button>
-            </StackPanel>
-            <StackPanel Name="ReplaceRow" Orientation="Horizontal" Spacing="6" IsVisible="False">
-              <TextBox Name="ReplaceTextBox" Width="220" PlaceholderText="Replace" KeyDown="ReplaceTextBox_KeyDown" />
-              <Button Content="Replace" Classes="toolbar compact" Click="Replace_Click" />
-              <Button Content="All" Classes="toolbar compact" Click="ReplaceAll_Click" />
-            </StackPanel>
-          </StackPanel>
-        </Border>
+          <!-- Left Side: Interactive Exercise Guide -->
+          <Border Grid.Column="0" ClipToBounds="True">
+            <local:AcademyDocumentView DataContext="{Binding SelectedDocument.AcademyTab}" />
+          </Border>
 
-        <Border Name="HoverPanel" Classes="editor-hover" IsVisible="False" IsHitTestVisible="False"
-                HorizontalAlignment="Left" VerticalAlignment="Top" MaxWidth="420">
-          <StackPanel Spacing="4">
-            <TextBlock Name="HoverTitle" FontFamily="Cascadia Mono, Consolas" FontWeight="SemiBold" />
-            <TextBlock Name="HoverContents" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
-          </StackPanel>
-        </Border>
+          <GridSplitter Grid.Column="1" Classes="pane-splitter" ResizeDirection="Columns" />
+
+          <!-- Right Side: Real Code Editor for Companion File -->
+          <Grid Grid.Column="2" RowDefinitions="28,*">
+            <Border Classes="breadcrumb-surface">
+              <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="6" Margin="12,0" VerticalAlignment="Center">
+                <TextBlock Text="Academy workspace" Foreground="{DynamicResource StudioTextMutedBrush}" FontSize="11" />
+                <TextBlock Grid.Column="1" Text="›" Foreground="{DynamicResource StudioTextMutedBrush}" FontSize="11" />
+                <shared:LanguageIconView Grid.Column="2" LanguageKey="{Binding SelectedDocument.LanguageKey}" Width="15" Height="15" />
+                <TextBlock Grid.Column="3" Text="{Binding SelectedDocument.AcademyTab.LinkedCompanionName}" FontWeight="SemiBold"
+                           Foreground="{DynamicResource StudioTextPrimaryBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </Border>
+
+            <ae:TextEditor Grid.Row="1"
+                           Name="AcademyCompanionEditor"
+                           ShowLineNumbers="True"
+                           FontFamily="Cascadia Mono, CaskaydiaCove Nerd Font Mono, Consolas"
+                           FontSize="{Binding EditorFontSize}"
+                           WordWrap="{Binding EditorWordWrap}"
+                           Background="{DynamicResource StudioEditorBrush}"
+                           Foreground="{DynamicResource StudioTextPrimaryBrush}"
+                           LineNumbersForeground="{DynamicResource StudioTextMutedBrush}"
+                          
+                           HorizontalScrollBarVisibility="Auto"
+                           VerticalScrollBarVisibility="Auto"
+                           Padding="10,8"
+                           KeyDown="CodeEditor_KeyDown" />
+          </Grid>
+        </Grid>
+
+        <Grid IsVisible="{Binding SelectedDocument.IsAcademySolo}">
+          <local:AcademyDocumentView DataContext="{Binding SelectedDocument.AcademyTab}" />
+        </Grid>
+
+        <!-- Standard Single Source Code Editor Mode -->
+        <Grid IsVisible="{Binding SelectedDocument.IsSource}">
+          <ae:TextEditor Name="CodeEditor"
+                         ShowLineNumbers="True"
+                         FontFamily="Cascadia Mono, CaskaydiaCove Nerd Font Mono, Consolas"
+                         FontSize="{Binding EditorFontSize}"
+                         WordWrap="{Binding EditorWordWrap}"
+                         Background="{DynamicResource StudioEditorBrush}"
+                         Foreground="{DynamicResource StudioTextPrimaryBrush}"
+                         LineNumbersForeground="{DynamicResource StudioTextMutedBrush}"
+                        
+                         HorizontalScrollBarVisibility="Auto"
+                         VerticalScrollBarVisibility="Auto"
+                         Padding="10,8"
+                         KeyDown="CodeEditor_KeyDown" />
+
+          <Border Name="FindPanel" Classes="find-panel" IsVisible="False" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,18,0">
+            <StackPanel Spacing="6">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBox Name="FindTextBox" Width="220" PlaceholderText="Find" KeyDown="FindTextBox_KeyDown" />
+                <Button Classes="icon-button" Click="FindPrevious_Click" ToolTip.Tip="Previous match"><TextBlock Classes="icon" Text="&#xE70E;" /></Button>
+                <Button Classes="icon-button" Click="FindNext_Click" ToolTip.Tip="Next match"><TextBlock Classes="icon" Text="&#xE70D;" /></Button>
+                <Button Classes="icon-button" Click="CloseFind_Click" ToolTip.Tip="Close"><TextBlock Classes="icon" Text="&#xE711;" /></Button>
+              </StackPanel>
+              <StackPanel Name="ReplaceRow" Orientation="Horizontal" Spacing="6" IsVisible="False">
+                <TextBox Name="ReplaceTextBox" Width="220" PlaceholderText="Replace" KeyDown="ReplaceTextBox_KeyDown" />
+                <Button Content="Replace" Classes="toolbar compact" Click="Replace_Click" />
+                <Button Content="All" Classes="toolbar compact" Click="ReplaceAll_Click" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Name="HoverPanel" Classes="editor-hover" IsVisible="False" IsHitTestVisible="False"
+                  HorizontalAlignment="Left" VerticalAlignment="Top" MaxWidth="420">
+            <StackPanel Spacing="4">
+              <TextBlock Name="HoverTitle" FontFamily="Cascadia Mono, Consolas" FontWeight="SemiBold" />
+              <TextBlock Name="HoverContents" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </StackPanel>
+          </Border>
+        </Grid>
       </Grid>
     </Grid>
 
@@ -83,13 +138,19 @@
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="560">
         <Path Width="42" Height="48" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
               Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
-        <TextBlock Text="Start growing something" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Text="Start growing something" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,6,0,0" />
         <TextBlock Text="Create a Sprout project or open an existing one. The editor, diagnostics, runtime, and debugger will appear here."
                    TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
-        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,4,0,0">
-          <Button Classes="accent" Command="{Binding NewProjectCommand}" Content="New Project" />
-          <Button Command="{Binding OpenProjectCommand}" Content="Open Project" />
-          <Button Command="{Binding NewDocumentCommand}" Content="New File" />
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,10,0,0">
+          <Button Classes="accent" Command="{Binding NewProjectCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon small" Text="&#xE8F1;" /><TextBlock Text="New Project" FontWeight="SemiBold" /></StackPanel>
+          </Button>
+          <Button Command="{Binding OpenProjectCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon small" Text="&#xE8E5;" /><TextBlock Text="Open Project" /></StackPanel>
+          </Button>
+          <Button Command="{Binding NewDocumentCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon small" Text="&#xE710;" /><TextBlock Text="New File" /></StackPanel>
+          </Button>
         </StackPanel>
         <Border IsVisible="{Binding HasRecentProjects}" Classes="dialog-card" Width="500" MaxWidth="500" Margin="0,6,0,0">
           <Grid RowDefinitions="34,*" Margin="10,4,10,8">
@@ -121,7 +182,22 @@
             </ScrollViewer>
           </Grid>
         </Border>
-        <TextBlock Text="Ctrl+Shift+P opens the command palette" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" HorizontalAlignment="Center" />
+        <TextBlock IsVisible="{Binding !HasRecentProjects}" Text="Recent projects will appear here once you open them."
+                   FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" HorizontalAlignment="Center" />
+        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,14,0,0">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Border Classes="kbd"><TextBlock Text="Ctrl+Shift+P" /></Border>
+            <TextBlock Text="Command palette" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Border Classes="kbd"><TextBlock Text="F5" /></Border>
+            <TextBlock Text="Run" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Border Classes="kbd"><TextBlock Text="Ctrl+B" /></Border>
+            <TextBlock Text="Explorer" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+        </StackPanel>
       </StackPanel>
     </ScrollViewer>
   </Grid>

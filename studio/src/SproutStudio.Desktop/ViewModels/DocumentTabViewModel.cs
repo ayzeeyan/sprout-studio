@@ -10,6 +10,7 @@ public sealed class DocumentTabViewModel : ObservableObject
     private int _caretColumn = 1;
     private int _caretOffset;
     private long _analysisVersion;
+    private AcademyDocumentTabViewModel? _academyTab;
 
     public DocumentTabViewModel(EditorDocument document)
     {
@@ -41,6 +42,43 @@ public sealed class DocumentTabViewModel : ObservableObject
     public string LanguageKey => Model.Language.Key;
 
     public string? FilePath => Model.FilePath;
+
+    public DocumentKind Kind => Model.Kind;
+
+    public bool IsSource => Model.IsSource;
+
+    public bool IsAcademy => Model.IsAcademy;
+
+    public bool IsAcademyCoding => Model.Kind == DocumentKind.AcademyExercise
+        && AcademyTab?.HasLinkedCompanion == true;
+
+    public bool IsAcademySolo => IsAcademy && !IsAcademyCoding;
+
+    public bool IsDocumentation => Model.IsDocumentation;
+
+    public bool IsSubmitCapable => IsAcademy && AcademyTab?.CanSubmit == true;
+
+    public string ContextualSubmitLabel => AcademyTab?.SubmitButtonText ?? "Submit";
+
+    public bool IsSubmitting => AcademyTab?.IsSubmitting == true;
+
+    public AcademyDocumentTabViewModel? AcademyTab
+    {
+        get => _academyTab;
+        internal set
+        {
+            if (!SetProperty(ref _academyTab, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(IsAcademyCoding));
+            OnPropertyChanged(nameof(IsAcademySolo));
+            OnPropertyChanged(nameof(IsSubmitCapable));
+            OnPropertyChanged(nameof(ContextualSubmitLabel));
+            OnPropertyChanged(nameof(IsSubmitting));
+        }
+    }
 
     public bool IsDirty => Model.IsDirty;
 

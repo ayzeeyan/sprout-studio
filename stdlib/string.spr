@@ -1,0 +1,183 @@
+# Sprout Standard Library: String Module
+# String manipulation helper functions written in native Sprout syntax.
+
+## Returns the number of characters in a string.
+## @param text String The input string.
+## @returns Number The character length.
+## @example string.len("hello") # -> 5
+action len(text)
+    return __str_len(text)
+end
+
+## Checks if a string has a length of 0.
+## @param text String The string to inspect.
+## @returns Boolean True if empty.
+## @example string.is_empty("") # -> true
+action is_empty(text)
+    return len(text) == 0
+end
+
+## Returns the character at zero-based index in the string.
+## @param text String The string.
+## @param index Number Character index.
+## @returns String Single character.
+## @example string.char_at("Sprout", 0) # -> "S"
+action char_at(text, index)
+    return text[index]
+end
+
+## Extracts a substring from start_idx up to (exclusive) end_idx.
+## @param text String The input string.
+## @param start_idx Number Beginning index.
+## @param end_idx Number Ending index (exclusive).
+## @returns String Extracted substring.
+## @example string.slice("Sprout", 0, 3) # -> "Spr"
+action slice(text, start_idx, end_idx)
+    return __str_slice(text, start_idx, end_idx)
+end
+
+## Converts all ASCII lowercase characters to uppercase.
+## @param text String Input string.
+## @returns String Uppercase transformed string.
+## @example string.to_upper("hello") # -> "HELLO"
+action to_upper(text)
+    return __str_upper(text)
+end
+
+## Converts all ASCII uppercase characters to lowercase.
+## @param text String Input string.
+## @returns String Lowercase transformed string.
+## @example string.to_lower("WORLD") # -> "world"
+action to_lower(text)
+    return __str_lower(text)
+end
+
+## Determines whether a string starts with the specified prefix.
+## @param text String The input string.
+## @param prefix String The prefix to look for.
+## @returns Boolean True if prefix matches.
+## @example string.starts_with("filename.spr", "file") # -> true
+action starts_with(text, prefix)
+    has p_len = len(prefix)
+    has t_len = len(text)
+    if p_len > t_len
+        return false
+    end
+    has sub = slice(text, 0, p_len)
+    return sub == prefix
+end
+
+## Determines whether a string ends with the specified suffix.
+## @param text String The input string.
+## @param suffix String The suffix to look for.
+## @returns Boolean True if suffix matches.
+## @example string.ends_with("main.spr", ".spr") # -> true
+action ends_with(text, suffix)
+    has s_len = len(suffix)
+    has t_len = len(text)
+    if s_len > t_len
+        return false
+    end
+    has sub = slice(text, t_len - s_len, t_len)
+    return sub == suffix
+end
+
+## Returns true if the string contains the specified search substring.
+## @param text String The string to search within.
+## @param search String The substring to find.
+## @returns Boolean True if found.
+## @example string.contains("apple pie", "pie") # -> true
+action contains(text, search)
+    return __str_contains(text, search)
+end
+
+## Returns the index of the first occurrence of search, or -1 if not found.
+## @param text String The string to search.
+## @param search String The target substring.
+## @returns Number Zero-based index or -1.
+## @example string.index_of("banana", "na") # -> 2
+action index_of(text, search)
+    return __str_index_of(text, search)
+end
+
+## Strips leading whitespace from the string.
+## @param text String Input string.
+## @returns String Trimmed string.
+## @example string.trim_start("  hello") # -> "hello"
+action trim_start(text)
+    return __str_trim_start(text)
+end
+
+## Strips trailing whitespace from the string.
+## @param text String Input string.
+## @returns String Trimmed string.
+## @example string.trim_end("hello  ") # -> "hello"
+action trim_end(text)
+    return __str_trim_end(text)
+end
+
+## Strips both leading and trailing whitespace from the string.
+## @param text String Input string.
+## @returns String Trimmed string.
+## @example string.trim("  sprout  ") # -> "sprout"
+action trim(text)
+    return __str_trim(text)
+end
+
+## Repeats the given string count times.
+## @param text String The string to duplicate.
+## @param count Number Number of repetitions.
+## @returns String Concatenated repeated string.
+## @example string.repeat_str("ab", 3) # -> "ababab"
+action repeat_str(text, count)
+    if count <= 0
+        return ""
+    end
+    has result = ""
+    repeat count times
+        result = result + text
+    end
+    return result
+end
+
+## Replaces all occurrences of old_str with new_str.
+## @param text String Input string.
+## @param old_str String Substring to replace.
+## @param new_str String Replacement substring.
+## @returns String Modified string.
+## @example string.replace("cat and cat", "cat", "dog") # -> "dog and dog"
+action replace(text, old_str, new_str)
+    return __str_replace(text, old_str, new_str)
+end
+
+## Pads the start of the string with pad_char until it reaches target_len.
+## @param text String Input string.
+## @param target_len Number Minimum output length.
+## @param pad_char String Character used for padding.
+## @returns String Padded string.
+## @example string.pad_start("42", 5, "0") # -> "00042"
+action pad_start(text, target_len, pad_char)
+    has current_len = len(text)
+    if current_len >= target_len
+        return text
+    end
+    has diff = target_len - current_len
+    has padding = repeat_str(pad_char, diff)
+    return padding + text
+end
+
+## Pads the end of the string with pad_char until it reaches target_len.
+## @param text String Input string.
+## @param target_len Number Minimum output length.
+## @param pad_char String Character used for padding.
+## @returns String Padded string.
+## @example string.pad_end("42", 5, "0") # -> "42000"
+action pad_end(text, target_len, pad_char)
+    has current_len = len(text)
+    if current_len >= target_len
+        return text
+    end
+    has diff = target_len - current_len
+    has padding = repeat_str(pad_char, diff)
+    return text + padding
+end

@@ -1,11 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using SproutStudio.Academy;
 using SproutStudio.Core;
 using SproutStudio.Interop;
 using SproutStudio.Models;
 using SproutStudio.Toolchains;
-using SproutStudio.Views.Academy;
 using SproutStudio.Views.Dialogs;
 using SproutStudio.Views.Documentation;
 using SproutStudio.Views.Packages;
@@ -19,15 +17,11 @@ public sealed class AvaloniaStudioDialogService : IStudioDialogService
 {
     private readonly Window _owner;
     private readonly ToolchainManager _toolchains;
-    private readonly AcademyService _academy;
 
     public AvaloniaStudioDialogService(Window owner)
     {
         _owner = owner ?? throw new ArgumentNullException(nameof(owner));
         _toolchains = ToolchainManager.CreateDefault();
-        _academy = AcademyService.CreateDefault(
-            _toolchains,
-            Environment.GetEnvironmentVariable("SPROUT_STUDIO_TEST_ACADEMY_STATE"));
     }
 
     public async Task<string?> PickDocumentToOpenAsync(
@@ -128,12 +122,6 @@ public sealed class AvaloniaStudioDialogService : IStudioDialogService
         return new CommandPaletteDialog(commands).ShowDialog<string?>(_owner);
     }
 
-    public async Task ShowAcademyAsync(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        await new AcademyWindow(_academy).ShowDialog(_owner);
-    }
-
     public async Task ShowToolchainsAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -171,5 +159,17 @@ public sealed class AvaloniaStudioDialogService : IStudioDialogService
         ArgumentNullException.ThrowIfNull(systemInfo);
         cancellationToken.ThrowIfCancellationRequested();
         await new AboutWindow(systemInfo).ShowDialog(_owner);
+    }
+
+    public async Task ShowUpdateDialogAsync(
+        UpdateInfo updateInfo,
+        IUpdateService updateService,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(updateInfo);
+        ArgumentNullException.ThrowIfNull(updateService);
+        cancellationToken.ThrowIfCancellationRequested();
+        var dialog = new UpdateDialog(updateInfo, updateService);
+        await dialog.ShowDialog(_owner);
     }
 }

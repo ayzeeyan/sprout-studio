@@ -5,11 +5,16 @@
     Width="28"
     Height="28"
     Focusable="False">
-  <Border Name="IconSurface" CornerRadius="6">
-    <TextBlock Name="IconGlyph"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"
-               FontFamily="Segoe UI Variable Text, Segoe UI"
-               FontWeight="SemiBold" />
+  <Border Name="IconSurface" CornerRadius="6" Padding="3">
+    <Grid>
+      <Path Name="IconPath"
+            Stretch="Uniform"
+            IsVisible="False" />
+      <TextBlock Name="IconGlyph"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 FontFamily="Segoe UI Variable Text, Segoe UI"
+                 FontWeight="SemiBold" />
+    </Grid>
   </Border>
 </UserControl>

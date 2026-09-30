@@ -8,6 +8,7 @@ using SproutStudio.Toolchains;
 using SproutStudio.ViewModels;
 using SproutStudio.Views.Modes;
 using SproutStudio.Views.Shared;
+using TaskStatus = SproutStudio.Academy.TaskStatus;
 
 namespace SproutStudio.Views.Academy;
 
@@ -20,26 +21,29 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
     private MainWindowViewModel? _workspace;
     private AcademyTrackRow? _selectedTrack;
     private string? _continueTrackId;
+    private string? _continueActivityId;
     private bool _profileInitialized;
 
     public AcademyModeView()
-        : this(ToolchainManager.CreateDefault())
+        : this(ToolchainManager.CreateDefault(), null)
     {
     }
 
-    internal AcademyModeView(ToolchainManager toolchains)
+    internal AcademyModeView(ToolchainManager toolchains, AcademyService? academy = null)
     {
         _toolchains = toolchains ?? throw new ArgumentNullException(nameof(toolchains));
-        _academy = AcademyService.CreateDefault(
+        _academy = academy ?? AcademyService.CreateDefault(
             _toolchains,
             Environment.GetEnvironmentVariable("SPROUT_STUDIO_TEST_ACADEMY_STATE"));
         InitializeComponent();
         this.FindControl<ListBox>("AcademyNavigation")!.ItemsSource = new AcademySectionItem[]
         {
             new("Home", "\uE80F"),
-            new("My Learning", "\uE8F1"),
-            new("Learning Tracks", "\uE82D"),
-            new("Concept Browser", "\uE8A5"),
+            new("My Learning", "\uE7BE"),
+            new("Learning Tracks", "\uE8F1"),
+            new("Concept Browser", "\uEA80"),
+            new("Challenges", "\uE7C1"),
+            new("Submissions", "\uF0E3"),
             new("Profile & Progress", "\uE77B"),
         };
         this.FindControl<ListBox>("AcademyNavigation")!.SelectedIndex = 0;
@@ -92,6 +96,24 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
         await RefreshAsync(_selectedTrack?.Id, detectToolchains: _toolchainState is null, cancellationToken);
     }
 
+    public void SelectSection(string section)
+    {
+        int index = section.Trim().ToLowerInvariant() switch
+        {
+            "home" => 0,
+            "my-learning" or "learning" => 1,
+            "tracks" => 2,
+            "concepts" => 3,
+            "challenges" => 4,
+            "submissions" => 5,
+            "profile" => 6,
+            _ => 0,
+        };
+        this.FindControl<ListBox>("AcademyNavigation")!.SelectedIndex = index;
+    }
+
+    public void SelectTrack(string trackId) => ShowTrack(trackId);
+
     private async void Refresh_Click(object? sender, RoutedEventArgs args) =>
         await RefreshAsync(_selectedTrack?.Id, detectToolchains: true);
 
@@ -130,6 +152,8 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
             learning.IsVisible = enrolled.Length > 0;
             this.FindControl<TextBlock>("MyLearningEmpty")!.IsVisible = enrolled.Length == 0;
             RenderHome(dashboard, tracks);
+            RenderChallenges(dashboard);
+            RenderSubmissions(dashboard);
             RenderProgress(dashboard, enrolled.Length);
             RenderToolchains();
             RenderAchievements(dashboard);
@@ -139,6 +163,10 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
                 RenderProfile(_state.Profile);
                 _profileInitialized = true;
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception exception)
         {
@@ -155,8 +183,7 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
             : _toolchainState?.GetValueOrDefault(progress.Track.RequiredToolchainId) is { } toolchain
                 ? $"{toolchain.DisplayName}: {StatusLabel(toolchain.Status)}"
                 : $"Requires {progress.Track.RequiredToolchainId}";
-        LessonDefinition? next = progress.Track.Lessons.FirstOrDefault(lesson =>
-            !_state.CompletedLessonIds.Contains(lesson.Id, StringComparer.OrdinalIgnoreCase));
+        LessonDefinition? next = FindNextActivity(progress.Track);
         return new AcademyTrackRow(
             progress,
             language.Key,
@@ -166,24 +193,81 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
 
     private void RenderHome(AcademyDashboard dashboard, AcademyTrackRow[] tracks)
     {
-        AcademyTrackRow featured = tracks.FirstOrDefault(track => track.Enrolled && track.CompletionPercent < 100)
+        // Student Greeting
+        int hour = DateTime.Now.Hour;
+        string timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+        string studentName = _state.Profile?.DisplayName is { Length: > 0 } name ? name : "Student";
+        this.FindControl<TextBlock>("WelcomeTitle")!.Text = $"{timeGreeting}, {studentName}";
+
+        // 1. Continue Learning Card. Resolve against the ordered module sequence so an
+        // unlocked checkpoint is not skipped in favor of a lesson from the next module.
+        AcademyTrackRow featured = (dashboard.ContinueTask is { } continueTask
+                ? tracks.FirstOrDefault(track => string.Equals(track.Id, continueTask.TrackId, StringComparison.OrdinalIgnoreCase))
+                : null)
+            ?? tracks.FirstOrDefault(track => track.Enrolled && track.CompletionPercent < 100)
             ?? tracks.FirstOrDefault(track => track.Id == "sprout-fundamentals")
             ?? tracks[0];
+        LessonDefinition? nextActivity = FindNextActivity(featured.Definition);
+        ModuleDefinition? nextModule = nextActivity?.ModuleId is { } moduleId
+            ? featured.Definition.Modules?.FirstOrDefault(module =>
+                string.Equals(module.Id, moduleId, StringComparison.OrdinalIgnoreCase))
+            : null;
+
         _continueTrackId = featured.Id;
+        _continueActivityId = featured.Enrolled ? nextActivity?.Id : null;
         this.FindControl<LanguageIconView>("ContinueLanguageIcon")!.LanguageKey = featured.LanguageKey;
         this.FindControl<TextBlock>("ContinueTrackTitle")!.Text = featured.Title;
-        this.FindControl<TextBlock>("ContinueLessonTitle")!.Text = featured.NextLessonLabel;
+        this.FindControl<TextBlock>("ContinueLessonTitle")!.Text = nextActivity is null
+            ? "All course activities complete"
+            : $"{nextModule?.Title ?? "Core lessons"} · {nextActivity.Title}";
         this.FindControl<ProgressBar>("ContinueProgress")!.Value = featured.CompletionPercent;
         this.FindControl<TextBlock>("ContinueProgressText")!.Text = featured.ProgressLabel;
-        this.FindControl<Button>("ContinueButton")!.Content = featured.Enrolled ? "Continue" : "View Track";
-        this.FindControl<TextBlock>("WelcomeTitle")!.Text = _state.Profile?.DisplayName is { Length: > 0 } name
-            ? $"Welcome back, {name}"
-            : "Continue learning";
+        this.FindControl<Button>("ContinueButton")!.Content = !featured.Enrolled
+            ? "View Track"
+            : nextActivity?.TaskType == TaskType.Checkpoint
+                ? "Open Checkpoint"
+                : nextActivity is null
+                    ? "Review Track"
+                    : "Continue Lesson";
 
+        // 2. To-Do Tasks
+        AcademyTaskRow[] todoRows = dashboard.PrioritizedTasks.Select(t => new AcademyTaskRow(t)).ToArray();
+        this.FindControl<ItemsControl>("HomeTodoList")!.ItemsSource = todoRows;
+        this.FindControl<TextBlock>("TodoCountText")!.Text = $"{todoRows.Length} task{(todoRows.Length == 1 ? string.Empty : "s")}";
+        this.FindControl<TextBlock>("TodoEmptyText")!.IsVisible = todoRows.Length == 0;
+
+        // 3. Your Courses
+        AcademyTrackRow[] enrolledCourses = tracks.Where(t => t.Enrolled).ToArray();
+        this.FindControl<ItemsControl>("HomeCoursesList")!.ItemsSource = enrolledCourses;
+
+        // 4. Hints & Learning Assistance
+        HintUsageState hints = dashboard.HintUsage;
+        if (hints.Mode == HintAssistanceMode.Unlimited)
+        {
+            this.FindControl<TextBlock>("HomeHintsRemainingText")!.Text = "Unlimited hints enabled (Accessibility Mode)";
+            this.FindControl<TextBlock>("HomeHintsDots")!.Text = "∞  ∞  ∞  ∞  ∞";
+        }
+        else
+        {
+            int remaining = hints.RemainingHintsToday;
+            int total = hints.DailyAllowance;
+            this.FindControl<TextBlock>("HomeHintsRemainingText")!.Text = $"{remaining} of {total} hints remaining today";
+
+            int filled = Math.Min(total, remaining);
+            int empty = Math.Max(0, total - filled);
+            string dots = string.Join(" ", Enumerable.Repeat("●", filled).Concat(Enumerable.Repeat("○", empty)));
+            this.FindControl<TextBlock>("HomeHintsDots")!.Text = dots;
+        }
+
+        // 5. Recent Submissions
+        AcademySubmissionRow[] submissionRows = dashboard.RecentSubmissions.Select(s => new AcademySubmissionRow(s)).ToArray();
+        this.FindControl<ItemsControl>("HomeRecentSubmissions")!.ItemsSource = submissionRows;
+        this.FindControl<TextBlock>("SubmissionsEmptyText")!.IsVisible = submissionRows.Length == 0;
+
+        // 6. Recommendations
         AcademyProfile recommendationProfile = _state.Profile ?? DefaultProfile();
         this.FindControl<ItemsControl>("HomeRecommendations")!.ItemsSource = _academy.Recommendations
             .Recommend(recommendationProfile)
-            .Where(recommendation => recommendation.Track.Id != featured.Id)
             .Take(3)
             .Select(recommendation => new AcademyRecommendationRow(
                 recommendation.Track.Id,
@@ -191,6 +275,102 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
                 recommendation.Explanation,
                 LanguageRegistry.ForAcademyTrack(recommendation.Track.Id).Key))
             .ToArray();
+    }
+
+    private void RenderChallenges(AcademyDashboard dashboard)
+    {
+        var tasks = new List<AcademyTask>(dashboard.PrioritizedTasks);
+        foreach (TrackDefinition track in _academy.Catalog.Tracks.Where(track =>
+                     _state.EnrolledTrackIds.Contains(track.Id, StringComparer.OrdinalIgnoreCase)))
+        {
+            foreach (LessonDefinition lesson in track.Lessons.Where(lesson =>
+                         lesson.Exercise is not null
+                         && !_state.CompletedLessonIds.Contains(lesson.Id, StringComparer.OrdinalIgnoreCase)))
+            {
+                if (tasks.Any(task => string.Equals(
+                    task.LessonId,
+                    lesson.Id,
+                    StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                SubmissionRecord? latest = _state.Submissions
+                    .Where(submission => string.Equals(
+                        submission.LessonId,
+                        lesson.Id,
+                        StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(submission => submission.SubmittedAt)
+                    .FirstOrDefault();
+                ModuleDefinition? module = track.Modules?.FirstOrDefault(candidate =>
+                    string.Equals(candidate.Id, lesson.ModuleId, StringComparison.OrdinalIgnoreCase));
+                tasks.Add(new AcademyTask(
+                    $"challenge-{lesson.Id}",
+                    lesson.Title,
+                    track.Id,
+                    track.Title,
+                    module?.Id,
+                    module?.Title,
+                    lesson.Id,
+                    lesson.TaskType is TaskType.CapstoneStep
+                        ? TaskType.CapstoneStep
+                        : TaskType.CodingExercise,
+                    latest is { Passed: false }
+                        ? TaskStatus.NeedsRevision
+                        : TaskStatus.NotStarted,
+                    lesson.EstimatedMinutes,
+                    latest is { Passed: false } ? 2 : 5,
+                    latest is { Passed: false }
+                        ? "Review feedback and submit a corrected solution"
+                        : "Pass the coding requirements and knowledge check",
+                    0));
+            }
+        }
+
+        AcademyTaskRow[] rows = tasks
+            .GroupBy(task => $"{task.TrackId}:{task.LessonId}", StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderBy(task => task.Priority).First())
+            .OrderBy(task => task.Priority)
+            .ThenBy(task => task.TrackTitle, StringComparer.OrdinalIgnoreCase)
+            .Select(task => new AcademyTaskRow(task))
+            .ToArray();
+        this.FindControl<ItemsControl>("ChallengeList")!.ItemsSource = rows;
+        this.FindControl<TextBlock>("ChallengesEmptyText")!.IsVisible = rows.Length == 0;
+    }
+
+    private void RenderSubmissions(AcademyDashboard dashboard)
+    {
+        AcademySubmissionRow[] rows = dashboard.RecentSubmissions
+            .Select(submission => new AcademySubmissionRow(submission))
+            .ToArray();
+        this.FindControl<ItemsControl>("SubmissionList")!.ItemsSource = rows;
+        this.FindControl<TextBlock>("SubmissionListEmptyText")!.IsVisible = rows.Length == 0;
+    }
+
+    private LessonDefinition? FindNextActivity(TrackDefinition track)
+    {
+        var assignedLessonIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (ModuleDefinition module in track.Modules ?? [])
+        {
+            foreach (string lessonId in module.LessonIds)
+            {
+                assignedLessonIds.Add(lessonId);
+                if (!_state.CompletedLessonIds.Contains(lessonId, StringComparer.OrdinalIgnoreCase))
+                {
+                    return _academy.GetActivity(track.Id, lessonId);
+                }
+            }
+
+            if (module.Checkpoint is { } checkpoint
+                && !_state.CompletedLessonIds.Contains(checkpoint.Id, StringComparer.OrdinalIgnoreCase))
+            {
+                return _academy.GetActivity(track.Id, checkpoint.Id);
+            }
+        }
+
+        return track.Lessons.FirstOrDefault(lesson =>
+            !assignedLessonIds.Contains(lesson.Id)
+            && !_state.CompletedLessonIds.Contains(lesson.Id, StringComparer.OrdinalIgnoreCase));
     }
 
     private void RenderProgress(AcademyDashboard dashboard, int enrolledCount)
@@ -239,7 +419,9 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
         this.FindControl<Grid>("MyLearningPanel")!.IsVisible = selected == 1;
         this.FindControl<Grid>("TracksPanel")!.IsVisible = selected == 2;
         this.FindControl<Grid>("ConceptsPanel")!.IsVisible = selected == 3;
-        this.FindControl<ScrollViewer>("ProfilePanel")!.IsVisible = selected == 4;
+        this.FindControl<ScrollViewer>("ChallengesPanel")!.IsVisible = selected == 4;
+        this.FindControl<ScrollViewer>("SubmissionsPanel")!.IsVisible = selected == 5;
+        this.FindControl<ScrollViewer>("ProfilePanel")!.IsVisible = selected == 6;
     }
 
     private void TrackList_SelectionChanged(object? sender, SelectionChangedEventArgs args)
@@ -263,16 +445,81 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
         this.FindControl<TextBlock>("PrerequisiteText")!.Text = hasPrerequisite
             ? track.ToolchainLabel
             : string.Empty;
-        this.FindControl<ItemsControl>("LessonList")!.ItemsSource = track.Definition.Lessons
-            .Select(lesson => new AcademyLessonRow(
-                track.Id,
-                track.LanguageKey,
-                lesson,
-                track.Enrolled,
-                _state.CompletedLessonIds.Contains(lesson.Id, StringComparer.OrdinalIgnoreCase),
-                "Concepts: " + string.Join(", ", lesson.ConceptIds.Select(id => _academy.Catalog.GetConcept(id).Title))))
-            .ToArray();
+        this.FindControl<ItemsControl>("ModuleList")!.ItemsSource = CreateModuleRows(track);
     }
+
+    private AcademyModuleRow[] CreateModuleRows(AcademyTrackRow track)
+    {
+        var lessonLookup = track.Definition.Lessons.ToDictionary(
+            lesson => lesson.Id,
+            StringComparer.OrdinalIgnoreCase);
+        var assignedLessonIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var rows = new List<AcademyModuleRow>();
+
+        foreach (ModuleDefinition module in track.Definition.Modules ?? [])
+        {
+            AcademyLessonRow[] lessons = module.LessonIds
+                .Select(lessonId =>
+                {
+                    assignedLessonIds.Add(lessonId);
+                    return lessonLookup.GetValueOrDefault(lessonId);
+                })
+                .Where(lesson => lesson is not null)
+                .Select(lesson => CreateLessonRow(track, lesson!))
+                .ToArray();
+            bool checkpointCompleted = module.Checkpoint is { } checkpoint
+                && _state.CompletedLessonIds.Contains(checkpoint.Id, StringComparer.OrdinalIgnoreCase);
+            bool checkpointUnlocked = module.LessonIds.All(lessonId =>
+                _state.CompletedLessonIds.Contains(lessonId, StringComparer.OrdinalIgnoreCase));
+            AcademyCheckpointRow? checkpointRow = module.Checkpoint is null
+                ? null
+                : new AcademyCheckpointRow(
+                    track.Id,
+                    module.Checkpoint,
+                    track.Enrolled,
+                    checkpointCompleted,
+                    checkpointUnlocked);
+            int completedActivities = lessons.Count(lesson => lesson.Completed) + (checkpointCompleted ? 1 : 0);
+            int totalActivities = lessons.Length + (checkpointRow is null ? 0 : 1);
+            rows.Add(new AcademyModuleRow(
+                rows.Count + 1,
+                module.Title,
+                module.Summary,
+                lessons,
+                checkpointRow,
+                completedActivities,
+                totalActivities));
+        }
+
+        AcademyLessonRow[] ungroupedLessons = track.Definition.Lessons
+            .Where(lesson => !assignedLessonIds.Contains(lesson.Id))
+            .Select(lesson => CreateLessonRow(track, lesson))
+            .ToArray();
+        if (ungroupedLessons.Length > 0)
+        {
+            rows.Add(new AcademyModuleRow(
+                rows.Count + 1,
+                rows.Count == 0 ? "Core Lessons" : "Additional Lessons",
+                rows.Count == 0
+                    ? track.Definition.Summary
+                    : "Continue with the remaining activities in this track.",
+                ungroupedLessons,
+                null,
+                ungroupedLessons.Count(lesson => lesson.Completed),
+                ungroupedLessons.Length));
+        }
+
+        return rows.ToArray();
+    }
+
+    private AcademyLessonRow CreateLessonRow(AcademyTrackRow track, LessonDefinition lesson) =>
+        new(
+            track.Id,
+            track.LanguageKey,
+            lesson,
+            track.Enrolled,
+            _state.CompletedLessonIds.Contains(lesson.Id, StringComparer.OrdinalIgnoreCase),
+            "Concepts: " + string.Join(", ", lesson.ConceptIds.Select(id => _academy.Catalog.GetConcept(id).Title)));
 
     private async void Enroll_Click(object? sender, RoutedEventArgs args)
     {
@@ -289,6 +536,10 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
                     result.Toolchain?.Message ?? "This track requires a validated external toolchain.";
             }
             await RefreshAsync(_selectedTrack.Id, detectToolchains: result.Status == EnrollmentStatus.ToolchainRequired);
+            if (_workspace is not null)
+            {
+                await _workspace.RefreshAcademyDashboardAsync();
+            }
         }
         catch (Exception exception)
         {
@@ -307,6 +558,10 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
         {
             await _academy.CompleteLessonAsync(lesson.TrackId, lesson.Id);
             await RefreshAsync(lesson.TrackId);
+            if (_workspace is not null)
+            {
+                await _workspace.RefreshAcademyDashboardAsync();
+            }
         }
         catch (Exception exception)
         {
@@ -325,9 +580,49 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
         }
     }
 
-    private void Continue_Click(object? sender, RoutedEventArgs args)
+    private async void OpenCheckpoint_Click(object? sender, RoutedEventArgs args)
     {
-        if (_continueTrackId is not null)
+        if (sender is not Button { DataContext: AcademyCheckpointRow checkpoint }
+            || !checkpoint.CanOpen
+            || _workspace is null)
+        {
+            return;
+        }
+
+        try
+        {
+            TrackDefinition track = _academy.Catalog.GetTrack(checkpoint.TrackId);
+            await _workspace.OpenAcademyPracticeAsync(
+                track,
+                _academy.GetActivity(track.Id, checkpoint.Id));
+        }
+        catch (ArgumentException exception)
+        {
+            StudioLog.Warning($"Could not open Academy checkpoint {checkpoint.Id}: {exception.Message}");
+            ShowTrack(checkpoint.TrackId);
+        }
+    }
+
+    private async void Continue_Click(object? sender, RoutedEventArgs args)
+    {
+        if (_continueTrackId is not null
+            && _continueActivityId is not null
+            && _workspace is not null)
+        {
+            try
+            {
+                TrackDefinition track = _academy.Catalog.GetTrack(_continueTrackId);
+                await _workspace.OpenAcademyPracticeAsync(
+                    track,
+                    _academy.GetActivity(track.Id, _continueActivityId));
+            }
+            catch (ArgumentException exception)
+            {
+                StudioLog.Warning($"Could not open Academy activity {_continueActivityId}: {exception.Message}");
+                ShowTrack(_continueTrackId);
+            }
+        }
+        else if (_continueTrackId is not null)
         {
             ShowTrack(_continueTrackId);
         }
@@ -444,6 +739,57 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
         this.FindControl<CheckBox>("GamificationBox")!.IsChecked = profile.ShowGamification;
     }
 
+    private async void OpenTask_Click(object? sender, RoutedEventArgs args)
+    {
+        if (sender is Button { Tag: AcademyTaskRow row } && _workspace is not null)
+        {
+            TrackDefinition track = _academy.Catalog.GetTrack(row.Task.TrackId);
+            try
+            {
+                await _workspace.OpenAcademyPracticeAsync(
+                    track,
+                    _academy.GetActivity(track.Id, row.Task.LessonId));
+            }
+            catch (ArgumentException exception)
+            {
+                StudioLog.Warning($"Could not open Academy activity {row.Task.LessonId}: {exception.Message}");
+                ShowTrack(track.Id);
+            }
+        }
+    }
+
+    private void ReviewSubmission_Click(object? sender, RoutedEventArgs args)
+    {
+        if (sender is Button { Tag: AcademySubmissionRow row } && _workspace is not null)
+        {
+            _workspace.StatusText = $"{row.ExerciseTitle}: {row.StatusLabel} — {row.FeedbackSummary}";
+        }
+    }
+
+    private async void HintSettings_Click(object? sender, RoutedEventArgs args)
+    {
+        HintUsageState current = _state.HintUsage ?? HintUsageState.Default;
+        HintAssistanceMode nextMode = current.Mode switch
+        {
+            HintAssistanceMode.Standard => HintAssistanceMode.Reduced,
+            HintAssistanceMode.Reduced => HintAssistanceMode.Unlimited,
+            _ => HintAssistanceMode.Standard,
+        };
+        int allowance = nextMode switch
+        {
+            HintAssistanceMode.Reduced => 10,
+            HintAssistanceMode.Unlimited => 999,
+            _ => 5,
+        };
+
+        _state = await _academy.ConfigureHintSettingsAsync(nextMode, allowance);
+        if (_workspace is not null)
+        {
+            _workspace.StatusText = $"Hint assistance mode set to: {nextMode} ({allowance} hints/day)";
+        }
+        await RefreshAsync(_selectedTrack?.Id);
+    }
+
     private void OpenDocs_Click(object? sender, RoutedEventArgs args) =>
         _workspace?.RequestDocumentation("academy");
 
@@ -487,6 +833,49 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
 
 public sealed record AcademySectionItem(string Title, string Glyph);
 
+public sealed record AcademyTaskRow(AcademyTask Task)
+{
+    public string Title => Task.Title;
+    public string Subtitle => $"{Task.TrackTitle} · {Task.ModuleTitle}";
+    public string TypeLabel => Task.Type.ToString();
+    public string RequirementText => Task.CompletionRequirement;
+    public string StatusGlyph => Task.Status switch
+    {
+        TaskStatus.Completed => "\uE73E",
+        TaskStatus.NeedsRevision => "\uE711",
+        TaskStatus.ReadyToSubmit => "\uE768",
+        _ => "\uE739",
+    };
+    public string StatusBrush => Task.Status switch
+    {
+        TaskStatus.Completed => "#22c55e",
+        TaskStatus.NeedsRevision => "#f59e0b",
+        TaskStatus.ReadyToSubmit => "#3b82f6",
+        _ => "#888888",
+    };
+    public string ActionLabel => Task.Status switch
+    {
+        TaskStatus.NeedsRevision => "Revise",
+        TaskStatus.ReadyToSubmit => "Submit",
+        TaskStatus.Completed => "Review",
+        _ => "Start",
+    };
+}
+
+public sealed record AcademySubmissionRow(SubmissionRecord Record)
+{
+    public string ExerciseTitle => Record.ExerciseTitle;
+    public string Subtitle => $"Attempt {Record.AttemptNumber} · {Record.Type}";
+    public string StatusGlyph => Record.Passed ? "\uE73E" : "\uE711";
+    public string ScoreLabel => Record.Type is SubmissionType.Quiz or SubmissionType.MultipleChoice or SubmissionType.MultipleSelect
+        ? $"{Record.Score}%"
+        : $"{Record.Score}/10";
+    public string StatusLabel => Record.Passed ? $"Passed ({ScoreLabel})" : $"Needs Revision ({ScoreLabel})";
+    public string DateLabel => Record.SubmittedAt.LocalDateTime.ToString("MMM d, h:mm tt");
+    public string FeedbackSummary => Record.Feedback;
+    public string StatusBrush => Record.Passed ? "#22c55e" : "#f59e0b";
+}
+
 public sealed record AcademyTrackRow(
     TrackProgress Progress,
     string LanguageKey,
@@ -502,6 +891,45 @@ public sealed record AcademyTrackRow(
     public string StatusLabel => CompletionPercent == 100 ? "Track complete" : Enrolled ? "Enrolled" : "Available";
 }
 
+public sealed record AcademyModuleRow(
+    int Number,
+    string Title,
+    string Summary,
+    AcademyLessonRow[] Lessons,
+    AcademyCheckpointRow? Checkpoint,
+    int CompletedActivities,
+    int TotalActivities)
+{
+    public string ModuleLabel => $"MODULE {Number}";
+    public bool HasCheckpoint => Checkpoint is not null;
+    public int CompletionPercent => TotalActivities == 0 ? 0 : CompletedActivities * 100 / TotalActivities;
+    public string ProgressLabel => $"{CompletedActivities}/{TotalActivities} activities";
+}
+
+public sealed record AcademyCheckpointRow(
+    string TrackId,
+    CheckpointDefinition Definition,
+    bool TrackEnrolled,
+    bool Completed,
+    bool Unlocked)
+{
+    public string Id => Definition.Id;
+    public string Title => Definition.Title;
+    public string Summary => Definition.Summary;
+    public string StateGlyph => Completed ? "\uE73E" : Unlocked ? "\uE785" : "\uE72E";
+    public string QuestionLabel =>
+        $"{Definition.Questions.Length} review question{(Definition.Questions.Length == 1 ? string.Empty : "s")}";
+    public string StatusLabel => Completed
+        ? "Completed"
+        : !TrackEnrolled
+            ? "Enroll to start"
+            : Unlocked
+                ? "Ready"
+                : "Complete the module lessons to unlock";
+    public string ActionLabel => Completed ? "Review Checkpoint" : Unlocked ? "Open Checkpoint" : "Locked";
+    public bool CanOpen => TrackEnrolled && (Completed || Unlocked);
+}
+
 public sealed record AcademyLessonRow(
     string TrackId,
     string LanguageKey,
@@ -515,10 +943,14 @@ public sealed record AcademyLessonRow(
     public string Summary => Definition.Summary;
     public string Content => Definition.Content;
     public string XpLabel => $"{Definition.Xp} XP";
-    public string StateGlyph => Completed ? "✓" : "○";
+    public string StateGlyph => Completed ? "\uE73E" : "\uE739";
+    public bool RequiresSubmission => Definition.Exercise is { } exercise
+        && (exercise.Assertions.Length > 0 || (exercise.Questions?.Length ?? 0) > 0);
     public string CompletionLabel => Completed ? "Completed" : "Complete Lesson";
-    public bool CanComplete => TrackEnrolled && !Completed;
-    public bool CanPractice => TrackEnrolled && string.Equals(LanguageKey, "sprout", StringComparison.OrdinalIgnoreCase);
+    public bool CanComplete => TrackEnrolled && !Completed && !RequiresSubmission;
+    public bool ShowCompleteAction => Completed || !RequiresSubmission;
+    public bool CanPractice => TrackEnrolled;
+    public string WorkspaceActionLabel => RequiresSubmission ? "Open Activity" : "Practice in Workspace";
 }
 
 public sealed record AcademyRecommendationRow(

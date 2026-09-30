@@ -18,6 +18,7 @@ using AvaloniaEdit.Rendering;
 using SproutStudio.Core;
 using SproutStudio.Editor;
 using SproutStudio.Models;
+using SproutStudio.Services;
 using SproutStudio.ViewModels;
 
 namespace SproutStudio.Views.Editor;
@@ -28,6 +29,7 @@ public sealed partial class EditorHostView : UserControl
         LoadSproutHighlighting,
         LazyThreadSafetyMode.ExecutionAndPublication);
     private TextEditor? _editor;
+    private TextEditor? _companionEditor;
     private MainWindowViewModel? _viewModel;
     private FoldingManager? _foldingManager;
     private CompletionWindow? _completionWindow;
@@ -62,9 +64,23 @@ public sealed partial class EditorHostView : UserControl
             _editor.TextArea.Options.EnableRectangularSelection = true;
             _editor.TextArea.Options.ShowTabs = false;
             _editor.TextArea.Options.ShowSpaces = false;
+            _editor.TextArea.TextView.Margin = new Thickness(8, 0, 0, 0);
             _editor.TextArea.TextView.CurrentLineBackground = new SolidColorBrush(
                 Color.FromArgb(38, 255, 255, 255));
         }
+
+        _companionEditor = this.FindControl<TextEditor>("AcademyCompanionEditor");
+        if (_companionEditor is not null)
+        {
+            _companionEditor.TextChanged += CompanionEditor_TextChanged;
+            _companionEditor.TextArea.Options.ConvertTabsToSpaces = true;
+            _companionEditor.TextArea.Options.IndentationSize = 4;
+            _companionEditor.TextArea.Options.EnableRectangularSelection = true;
+            _companionEditor.TextArea.TextView.Margin = new Thickness(8, 0, 0, 0);
+            _companionEditor.TextArea.TextView.CurrentLineBackground = new SolidColorBrush(
+                Color.FromArgb(38, 255, 255, 255));
+        }
+
         AttachViewModel(DataContext as MainWindowViewModel);
         ApplyEditorSettings();
     }
@@ -152,25 +168,58 @@ public sealed partial class EditorHostView : UserControl
         }
         string source = _viewModel?.SelectedDocument?.Source ?? string.Empty;
         ApplyHighlighting(_viewModel?.SelectedDocument);
+        if (!string.Equals(_editor.Text, source, StringComparison.Ordinal))
+        {
+            _synchronizingText = true;
+            try
+            {
+                _editor.Text = source;
+                int offset = Math.Clamp(
+                    _viewModel?.SelectedDocument?.CaretOffset ?? 0,
+                    0,
+                    _editor.Document.TextLength);
+                _editor.TextArea.Caret.Offset = offset;
+            }
+            finally
+            {
+                _synchronizingText = false;
+            }
+        }
         UpdateFoldings(source);
         UpdateDiagnosticDecorations();
-        if (string.Equals(_editor.Text, source, StringComparison.Ordinal))
+
+        if (_companionEditor is not null && _viewModel?.SelectedDocument?.IsAcademy == true)
+        {
+            string companionPath = _viewModel.SelectedDocument.AcademyTab?.LinkedCompanionPath ?? string.Empty;
+            DocumentTabViewModel? companionDoc = _viewModel.Documents.FirstOrDefault(d =>
+                string.Equals(d.FilePath, companionPath, StringComparison.OrdinalIgnoreCase));
+            string companionSource = companionDoc?.Source ?? _viewModel.SelectedDocument.AcademyTab?.Lesson.Exercise?.StarterCode ?? string.Empty;
+
+            string extension = Path.GetExtension(companionPath);
+            _companionEditor.SyntaxHighlighting = string.IsNullOrEmpty(extension)
+                ? null
+                : HighlightingManager.Instance.GetDefinitionByExtension(extension);
+
+            if (!string.Equals(_companionEditor.Text, companionSource, StringComparison.Ordinal))
+            {
+                _companionEditor.Text = companionSource;
+            }
+        }
+    }
+
+    private void CompanionEditor_TextChanged(object? sender, EventArgs args)
+    {
+        if (_companionEditor is null || _viewModel?.SelectedDocument?.IsAcademy != true)
         {
             return;
         }
-        _synchronizingText = true;
-        try
+
+        string companionPath = _viewModel.SelectedDocument.AcademyTab?.LinkedCompanionPath ?? string.Empty;
+        DocumentTabViewModel? companionDoc = _viewModel.Documents.FirstOrDefault(d =>
+            string.Equals(d.FilePath, companionPath, StringComparison.OrdinalIgnoreCase));
+        if (companionDoc is not null && !string.Equals(companionDoc.Source, _companionEditor.Text, StringComparison.Ordinal))
         {
-            _editor.Text = source;
-            int offset = Math.Clamp(
-                _viewModel?.SelectedDocument?.CaretOffset ?? 0,
-                0,
-                _editor.Document.TextLength);
-            _editor.TextArea.Caret.Offset = offset;
-        }
-        finally
-        {
-            _synchronizingText = false;
+            companionDoc.Source = _companionEditor.Text;
         }
     }
 
@@ -265,11 +314,22 @@ public sealed partial class EditorHostView : UserControl
 
     private void UpdateFoldings(string source)
     {
-        if (_foldingManager is null || source.Length > 1_000_000)
+        if (_foldingManager is null || _editor?.Document is null || source.Length > 1_000_000)
         {
             return;
         }
-        _foldingManager.UpdateFoldings(BraceFoldingStrategy.CreateFoldings(source), -1);
+        try
+        {
+            int docLength = _editor.Document.TextLength;
+            var foldings = BraceFoldingStrategy.CreateFoldings(source)
+                .Where(f => f.StartOffset >= 0 && f.EndOffset <= docLength && f.StartOffset < f.EndOffset)
+                .ToArray();
+            _foldingManager.UpdateFoldings(foldings, -1);
+        }
+        catch (Exception exception)
+        {
+            StudioLog.Warning($"Folding update skipped: {exception.Message}");
+        }
     }
 
     private void TextArea_TextEntered(object? sender, TextInputEventArgs args)
@@ -345,10 +405,14 @@ public sealed partial class EditorHostView : UserControl
             }
             args.Handled = true;
         }
-        else if (args.Key == Key.F3)
+        else if (args.KeyModifiers.HasFlag(KeyModifiers.Control) && args.Key == Key.Enter)
         {
-            FindNext(args.KeyModifiers.HasFlag(KeyModifiers.Shift));
-            args.Handled = true;
+            if (_viewModel?.SubmitCommand.CanExecute(null) == true
+                && _viewModel.IsContextualSubmitVisible)
+            {
+                _viewModel.SubmitCommand.Execute(null);
+                args.Handled = true;
+            }
         }
         else if (args.Key == Key.Escape && this.FindControl<Border>("FindPanel")?.IsVisible == true)
         {

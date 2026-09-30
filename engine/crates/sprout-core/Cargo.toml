@@ -5,6 +5,13 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "engine_benches"
+harness = false
+path = "../../../benches/engine_benches.rs"
+
 [lints]
 workspace = true
-

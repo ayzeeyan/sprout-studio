@@ -1,0 +1,76 @@
+# Large benchmark sample: Multi-construct Sprout source file
+import math
+import string
+import json
+
+class Statistics
+    action mean(a, b, c, d)
+        return (a + b + c + d) / 4.0
+    end
+
+    action variance(a, b, c, d, avg)
+        has d1 = math.pow(a - avg, 2)
+        has d2 = math.pow(b - avg, 2)
+        has d3 = math.pow(c - avg, 2)
+        has d4 = math.pow(d - avg, 2)
+        return (d1 + d2 + d3 + d4) / 4.0
+    end
+
+    action std_dev(variance_val)
+        return math.sqrt(variance_val)
+    end
+end
+
+class ReportBuilder
+    action format_entry(name, score, rank)
+        has pad_name = string.pad_end(name, 12, " ")
+        has pad_rank = string.pad_start(rank, 3, "0")
+        return pad_rank + " | " + pad_name + " | " + score
+    end
+
+    action header()
+        return "RANK | NAME         | SCORE"
+    end
+end
+
+action process_dataset(json_raw)
+    if not json.is_valid(json_raw)
+        return "invalid"
+    end
+    has payload = json.parse(json_raw)
+    return payload["dataset"]
+end
+
+has stats = Statistics()
+has builder = ReportBuilder()
+
+has v1 = 12.0
+has v2 = 24.0
+has v3 = 36.0
+has v4 = 48.0
+
+has avg = stats.mean(v1, v2, v3, v4)
+has var_val = stats.variance(v1, v2, v3, v4, avg)
+has std = stats.std_dev(var_val)
+
+has line1 = builder.format_entry("Alpha", "95", "1")
+has line2 = builder.format_entry("Beta", "88", "2")
+has line3 = builder.format_entry("Gamma", "74", "3")
+
+has raw_json = "{\"dataset\": \"benchmark_v1\", \"count\": 3}"
+has name = process_dataset(raw_json)
+
+has iter = 0
+has accumulator = 0
+while iter < 100
+    accumulator = accumulator + math.clamp(iter, 10, 50)
+    iter = iter + 1
+end
+
+print(builder.header())
+print(line1)
+print(line2)
+print(line3)
+print(avg)
+print(std)
+print(accumulator)

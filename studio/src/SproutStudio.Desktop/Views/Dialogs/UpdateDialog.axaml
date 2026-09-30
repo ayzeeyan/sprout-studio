@@ -1,0 +1,52 @@
+<Window
+    x:Class="SproutStudio.Views.Dialogs.UpdateDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:CompileBindings="False"
+    Title="Sprout Studio Update"
+    Width="560"
+    Height="440"
+    CanResize="False"
+    WindowStartupLocation="CenterOwner"
+    ShowInTaskbar="False">
+  <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="22">
+    <!-- Header -->
+    <StackPanel Spacing="4">
+      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <Border Classes="status-badge" VerticalAlignment="Center">
+          <TextBlock Text="NEW VERSION" FontSize="9" FontWeight="Bold" />
+        </Border>
+        <TextBlock Name="VersionHeading" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+      </StackPanel>
+      <TextBlock Name="Subheading" FontSize="12" Foreground="{DynamicResource StudioTextSecondaryBrush}" Margin="0,4,0,0" />
+    </StackPanel>
+
+    <!-- Release Notes Area -->
+    <Border Grid.Row="1" Classes="dialog-card" Margin="0,14,0,14" Padding="12">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Text="Release Notes" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource StudioTextMutedBrush}" Margin="0,0,0,8" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+          <TextBlock Name="ReleaseNotesText" TextWrapping="Wrap" FontSize="12" LineHeight="18" Foreground="{DynamicResource StudioTextPrimaryBrush}" />
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <!-- Progress Section -->
+    <StackPanel Name="ProgressPanel" Grid.Row="2" Margin="0,0,0,16" IsVisible="False" Spacing="6">
+      <ProgressBar Name="DownloadProgressBar" Minimum="0" Maximum="100" Height="6" CornerRadius="3" />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Name="ProgressStatus" FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        <TextBlock Name="ProgressPercentage" Grid.Column="1" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource StudioAccentBrush}" />
+      </Grid>
+    </StackPanel>
+
+    <!-- Actions -->
+    <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto">
+      <TextBlock Name="FileSizeText" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+        <Button Name="CancelButton" Content="Remind Me Later" Click="Cancel_Click" MinWidth="110" />
+        <Button Name="ActionButton" Content="Download &amp; Install" Classes="accent" Click="ActionButton_Click" MinWidth="140" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

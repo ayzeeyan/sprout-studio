@@ -1,0 +1,23 @@
+# CPU heavy recursion benchmark: Fibonacci and recursive binary tree traversal
+
+action fib(n)
+    if n <= 1
+        return n
+    end
+    return fib(n - 1) + fib(n - 2)
+end
+
+action tree_sum(depth, value)
+    if depth <= 0
+        return value
+    end
+    has left = tree_sum(depth - 1, value + 1)
+    has right = tree_sum(depth - 1, value + 2)
+    return left + right
+end
+
+has f = fib(18)
+has t = tree_sum(10, 1)
+
+print(f)
+print(t)

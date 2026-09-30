@@ -1,0 +1,19 @@
+# CPU heavy strings benchmark
+import string
+
+has base = "  The Quick Brown Fox Jumps Over The Lazy Dog  "
+has count = 0
+has aggregated = ""
+
+while count < 80
+    has cleaned = string.trim(base)
+    has upper = string.to_upper(cleaned)
+    has lower = string.to_lower(upper)
+    has sub = string.slice(lower, 4, 15)
+    has replaced = string.replace(sub, "brown", "green")
+    has padded = string.pad_start(replaced, 20, "*")
+    aggregated = aggregated + string.slice(padded, 0, 5)
+    count = count + 1
+end
+
+print(string.len(aggregated))

@@ -38,6 +38,20 @@ public sealed class EditorDocument
 
     public string? ProjectRoot { get; internal set; }
 
+    public DocumentKind Kind { get; internal set; } = DocumentKind.Source;
+
+    public string? AcademyTrackId { get; internal set; }
+
+    public string? AcademyLessonId { get; internal set; }
+
+    public string? LinkedCompanionPath { get; internal set; }
+
+    public bool IsSource => Kind == DocumentKind.Source;
+
+    public bool IsAcademy => Kind is DocumentKind.AcademyLesson or DocumentKind.AcademyExercise or DocumentKind.AcademyQuiz;
+
+    public bool IsDocumentation => Kind == DocumentKind.Documentation;
+
     public bool IsDirty => !string.Equals(Source, SavedSource, StringComparison.Ordinal);
 
     public string TabTitle => IsDirty ? $"{DisplayName} ●" : DisplayName;
@@ -71,6 +85,66 @@ public sealed class EditorWorkspace
             null);
         _documents.Add(document);
         return document;
+    }
+
+    public EditorDocument CreateDocument(string fileName, string source)
+    {
+        var lang = LanguageRegistry.ForPath(fileName);
+        var document = new EditorDocument(
+            fileName,
+            null,
+            source,
+            lang,
+            SyntaxProfile.Guided,
+            null);
+        _documents.Add(document);
+        return document;
+    }
+
+    public EditorDocument OpenOrCreateAcademyDocument(
+        string trackId,
+        string lessonId,
+        string title,
+        LanguageDescriptor language,
+        bool isExercise,
+        bool isQuiz = false,
+        string? linkedCompanionPath = null)
+    {
+        string academyUri = $"academy://tracks/{trackId}/lessons/{lessonId}";
+        EditorDocument? existing = _documents.FirstOrDefault(document => string.Equals(
+            document.FilePath,
+            academyUri,
+            StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        DocumentKind kind = isQuiz
+            ? DocumentKind.AcademyQuiz
+            : isExercise
+                ? DocumentKind.AcademyExercise
+                : DocumentKind.AcademyLesson;
+        string displayName = isQuiz
+            ? $"{title} · Quiz"
+            : isExercise
+                ? $"{title} · Exercise"
+                : $"{title} · Lesson";
+        var doc = new EditorDocument(
+            displayName,
+            academyUri,
+            string.Empty,
+            language,
+            SyntaxProfile.Guided,
+            null)
+        {
+            Kind = kind,
+            AcademyTrackId = trackId,
+            AcademyLessonId = lessonId,
+            LinkedCompanionPath = linkedCompanionPath,
+        };
+        _documents.Add(doc);
+        return doc;
     }
 
     public async Task<EditorDocument> OpenAsync(

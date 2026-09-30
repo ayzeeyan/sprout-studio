@@ -19,10 +19,17 @@ pub enum Value {
     Function(Rc<Function>),
     Class(Rc<Class>),
     Instance(Rc<Instance>),
+    Module(Rc<Module>),
     List(Vec<Value>),
     Map(BTreeMap<String, Value>),
     Foreign(Rc<dyn ForeignObject>),
     Native(NativeAction),
+}
+
+#[derive(Clone, Debug)]
+pub struct Module {
+    pub name: String,
+    pub exports: HashMap<String, Value>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -31,6 +38,23 @@ pub enum NativeAction {
     CanvasClear,
     CanvasRect,
     CanvasCircle,
+    StrLen,
+    StrSlice,
+    StrUpper,
+    StrLower,
+    StrContains,
+    StrIndexOf,
+    StrTrim,
+    StrTrimStart,
+    StrTrimEnd,
+    StrReplace,
+    FileRead,
+    FileWrite,
+    FileAppend,
+    FileExists,
+    JsonParse,
+    JsonStringify,
+    JsonIsValid,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -92,6 +116,7 @@ impl fmt::Display for Value {
             Self::Function(function) => write!(formatter, "<action {}>", function.name),
             Self::Class(class) => write!(formatter, "<class {}>", class.name),
             Self::Instance(instance) => write!(formatter, "<{} instance>", instance.class.name),
+            Self::Module(module) => write!(formatter, "<module {}>", module.name),
             Self::List(values) => write!(
                 formatter,
                 "[{}]",
@@ -278,6 +303,8 @@ struct Interpreter<'a> {
     snapshots: Vec<DebugSnapshot>,
     record_snapshots: bool,
     call_stack: Vec<DebugStackFrame>,
+    modules: HashMap<String, Value>,
+    loading_modules: std::collections::HashSet<String>,
 }
 
 enum Flow {
@@ -295,6 +322,23 @@ impl<'a> Interpreter<'a> {
             ("canvas_clear", NativeAction::CanvasClear),
             ("canvas_rect", NativeAction::CanvasRect),
             ("canvas_circle", NativeAction::CanvasCircle),
+            ("__str_len", NativeAction::StrLen),
+            ("__str_slice", NativeAction::StrSlice),
+            ("__str_upper", NativeAction::StrUpper),
+            ("__str_lower", NativeAction::StrLower),
+            ("__str_contains", NativeAction::StrContains),
+            ("__str_index_of", NativeAction::StrIndexOf),
+            ("__str_trim", NativeAction::StrTrim),
+            ("__str_trim_start", NativeAction::StrTrimStart),
+            ("__str_trim_end", NativeAction::StrTrimEnd),
+            ("__str_replace", NativeAction::StrReplace),
+            ("__file_read", NativeAction::FileRead),
+            ("__file_write", NativeAction::FileWrite),
+            ("__file_append", NativeAction::FileAppend),
+            ("__file_exists", NativeAction::FileExists),
+            ("__json_parse", NativeAction::JsonParse),
+            ("__json_stringify", NativeAction::JsonStringify),
+            ("__json_is_valid", NativeAction::JsonIsValid),
         ] {
             globals.define(name.into(), Value::Native(action));
         }
@@ -307,6 +351,8 @@ impl<'a> Interpreter<'a> {
             snapshots: Vec::new(),
             record_snapshots,
             call_stack: Vec::new(),
+            modules: HashMap::new(),
+            loading_modules: std::collections::HashSet::new(),
         }
     }
 
@@ -334,8 +380,120 @@ impl<'a> Interpreter<'a> {
         result
     }
 
+    fn load_module(&mut self, module_name: &str, span: &SourceSpan) -> RuntimeResult<Value> {
+        if let Some(cached) = self.modules.get(module_name) {
+            return Ok(cached.clone());
+        }
+
+        if self.loading_modules.contains(module_name) {
+            return Err(error(
+                "SPT201",
+                "Circular import detected",
+                format!("Circular import of module `{module_name}`."),
+                span,
+            ));
+        }
+
+        let source_content = self.resolve_module_source(module_name, span)?;
+        let source_file = crate::source::SourceFile::new(
+            format!("<module:{module_name}>"),
+            source_content,
+        );
+
+        let parsed = crate::parser::parse(&source_file);
+        if let Some(first_error) = parsed.diagnostics.into_iter().next() {
+            return Err(first_error);
+        }
+        let Some(program) = parsed.program else {
+            return Err(error(
+                "SPT100",
+                "Module parse failed",
+                format!("Could not parse module `{module_name}`."),
+                span,
+            ));
+        };
+
+        let analyzed = crate::semantic::analyze(&program);
+        if let Some(first_error) = analyzed.diagnostics.into_iter().next() {
+            return Err(first_error);
+        }
+
+        self.loading_modules.insert(module_name.to_string());
+
+        let module_env = Environment::new(Some(self.globals.clone()));
+        let prev_env = std::mem::replace(&mut self.environment, module_env);
+
+        let exec_result = (|| -> RuntimeResult<()> {
+            for stmt in &program.statements {
+                if let Flow::Return(v) = self.execute(stmt)? {
+                    let _ = v;
+                }
+            }
+            Ok(())
+        })();
+
+        let executed_env = std::mem::replace(&mut self.environment, prev_env);
+        self.loading_modules.remove(module_name);
+
+        exec_result?;
+
+        let mut exports = HashMap::new();
+        for (name, val) in executed_env.0.borrow().values.iter() {
+            exports.insert(name.clone(), val.clone());
+        }
+
+        let module_val = Value::Module(Rc::new(Module {
+            name: module_name.to_string(),
+            exports,
+        }));
+
+        self.modules.insert(module_name.to_string(), module_val.clone());
+        Ok(module_val)
+    }
+
+    fn resolve_module_source(&self, module_name: &str, span: &SourceSpan) -> RuntimeResult<String> {
+        let file_path = std::path::Path::new(&*span.file);
+        let mut candidates = Vec::new();
+
+        if let Some(parent) = file_path.parent() {
+            candidates.push(parent.join(format!("{module_name}.spr")));
+            candidates.push(parent.join("src").join(format!("{module_name}.spr")));
+            candidates.push(parent.join(module_name));
+        }
+
+        if let Ok(cwd) = std::env::current_dir() {
+            candidates.push(cwd.join(format!("{module_name}.spr")));
+            candidates.push(cwd.join("src").join(format!("{module_name}.spr")));
+            candidates.push(cwd.join("stdlib").join(format!("{module_name}.spr")));
+            candidates.push(cwd.join(module_name));
+        }
+
+        for candidate in candidates {
+            if candidate.is_file() {
+                if let Ok(content) = std::fs::read_to_string(&candidate) {
+                    return Ok(content);
+                }
+            }
+        }
+
+        if let Some(embedded) = crate::stdlib::get_embedded_module(module_name) {
+            return Ok(embedded.to_string());
+        }
+
+        Err(error(
+            "SPT201",
+            "Module not found",
+            format!("Could not resolve module `{module_name}`."),
+            span,
+        ))
+    }
+
     fn execute_statement(&mut self, statement: &Statement) -> RuntimeResult<Flow> {
         match &statement.kind {
+            StatementKind::Import { module, alias } => {
+                let value = self.load_module(module, &statement.span)?;
+                self.environment.define(alias.clone(), value);
+            }
             StatementKind::ImportPython { module, alias } => {
                 let python = self.python.as_deref_mut().ok_or_else(|| {
                     error(
@@ -471,6 +629,13 @@ impl<'a> Interpreter<'a> {
                     .unwrap_or(Value::Nil);
                 return Ok(Flow::Return(value));
             }
+            StatementKind::ProfileBlock { profile: _, body } => {
+                for statement in body {
+                    if let Flow::Return(value) = self.execute_statement(statement)? {
+                        return Ok(Flow::Return(value));
+                    }
+                }
+            }
         }
         Ok(Flow::Continue)
     }
@@ -586,6 +751,22 @@ impl<'a> Interpreter<'a> {
                     bound.bound_self = Some(Value::Instance(instance));
                     Ok(Value::Function(Rc::new(bound)))
                 }
+                Value::Module(module) => module.exports.get(name).cloned().ok_or_else(|| {
+                    error(
+                        "SPT204",
+                        "Unknown member",
+                        format!("Module `{}` has no member named `{name}`.", module.name),
+                        member_span,
+                    )
+                }),
+                Value::Map(map) => map.get(name).cloned().ok_or_else(|| {
+                    error(
+                        "SPT204",
+                        "Unknown member",
+                        format!("Map has no key named `{name}`."),
+                        member_span,
+                    )
+                }),
                 Value::Foreign(object) => object
                     .get_member(name)
                     .map(Value::from_foreign)
@@ -593,7 +774,7 @@ impl<'a> Interpreter<'a> {
                 _ => Err(error(
                     "SPT204",
                     "Unknown member",
-                    "Only class instances and Python objects expose members.",
+                    "Only modules, class instances, maps, and Python objects expose members.",
                     member_span,
                 )),
             },
@@ -724,12 +905,14 @@ impl<'a> Interpreter<'a> {
                     .collect::<RuntimeResult<Vec<_>>>()?
                     .join(" ");
                 self.output.push(line);
+                Ok(Value::Nil)
             }
             NativeAction::CanvasClear => {
                 require_arity(action, arguments, 1, span)?;
                 self.canvas_commands.push(CanvasCommand::Clear {
                     color: canvas_color(&arguments[0], span)?,
                 });
+                Ok(Value::Nil)
             }
             NativeAction::CanvasRect => {
                 require_arity(action, arguments, 5, span)?;
@@ -748,6 +931,7 @@ impl<'a> Interpreter<'a> {
                     height,
                     color: canvas_color(&arguments[4], span)?,
                 });
+                Ok(Value::Nil)
             }
             NativeAction::CanvasCircle => {
                 require_arity(action, arguments, 4, span)?;
@@ -761,9 +945,162 @@ impl<'a> Interpreter<'a> {
                     radius,
                     color: canvas_color(&arguments[3], span)?,
                 });
+                Ok(Value::Nil)
+            }
+            NativeAction::StrLen => {
+                require_arity(action, arguments, 1, span)?;
+                let text = arguments[0].render(span)?;
+                Ok(Value::Int(text.chars().count() as i64))
+            }
+            NativeAction::StrSlice => {
+                require_arity(action, arguments, 3, span)?;
+                let text = arguments[0].render(span)?;
+                let start = match &arguments[1] {
+                    Value::Int(n) => *n,
+                    Value::Float(f) => *f as i64,
+                    _ => 0,
+                };
+                let end = match &arguments[2] {
+                    Value::Int(n) => *n,
+                    Value::Float(f) => *f as i64,
+                    _ => text.chars().count() as i64,
+                };
+                let chars: Vec<char> = text.chars().collect();
+                let len = chars.len() as i64;
+                let start_idx = start.max(0).min(len) as usize;
+                let end_idx = end.max(0).min(len) as usize;
+                if start_idx <= end_idx {
+                    Ok(Value::String(chars[start_idx..end_idx].iter().collect()))
+                } else {
+                    Ok(Value::String(String::new()))
+                }
+            }
+            NativeAction::StrUpper => {
+                require_arity(action, arguments, 1, span)?;
+                let text = arguments[0].render(span)?;
+                Ok(Value::String(text.to_uppercase()))
+            }
+            NativeAction::StrLower => {
+                require_arity(action, arguments, 1, span)?;
+                let text = arguments[0].render(span)?;
+                Ok(Value::String(text.to_lowercase()))
+            }
+            NativeAction::StrContains => {
+                require_arity(action, arguments, 2, span)?;
+                let text = arguments[0].render(span)?;
+                let search = arguments[1].render(span)?;
+                Ok(Value::Bool(text.contains(&search)))
+            }
+            NativeAction::StrIndexOf => {
+                require_arity(action, arguments, 2, span)?;
+                let text = arguments[0].render(span)?;
+                let search = arguments[1].render(span)?;
+                if let Some(byte_idx) = text.find(&search) {
+                    let char_idx = text[..byte_idx].chars().count() as i64;
+                    Ok(Value::Int(char_idx))
+                } else {
+                    Ok(Value::Int(-1))
+                }
+            }
+            NativeAction::StrTrim => {
+                require_arity(action, arguments, 1, span)?;
+                let text = arguments[0].render(span)?;
+                Ok(Value::String(text.trim().to_string()))
+            }
+            NativeAction::StrTrimStart => {
+                require_arity(action, arguments, 1, span)?;
+                let text = arguments[0].render(span)?;
+                Ok(Value::String(text.trim_start().to_string()))
+            }
+            NativeAction::StrTrimEnd => {
+                require_arity(action, arguments, 1, span)?;
+                let text = arguments[0].render(span)?;
+                Ok(Value::String(text.trim_end().to_string()))
+            }
+            NativeAction::StrReplace => {
+                require_arity(action, arguments, 3, span)?;
+                let text = arguments[0].render(span)?;
+                let old_str = arguments[1].render(span)?;
+                let new_str = arguments[2].render(span)?;
+                Ok(Value::String(text.replace(&old_str, &new_str)))
+            }
+            NativeAction::FileRead => {
+                require_arity(action, arguments, 1, span)?;
+                let path = arguments[0].render(span)?;
+                match std::fs::read_to_string(&path) {
+                    Ok(content) => Ok(Value::String(content)),
+                    Err(err) => Err(error(
+                        "SPT201",
+                        "File read error",
+                        format!("Could not read file `{path}`: {err}"),
+                        span,
+                    )),
+                }
+            }
+            NativeAction::FileWrite => {
+                require_arity(action, arguments, 2, span)?;
+                let path = arguments[0].render(span)?;
+                let content = arguments[1].render(span)?;
+                match std::fs::write(&path, content) {
+                    Ok(()) => Ok(Value::Bool(true)),
+                    Err(err) => Err(error(
+                        "SPT201",
+                        "File write error",
+                        format!("Could not write to file `{path}`: {err}"),
+                        span,
+                    )),
+                }
+            }
+            NativeAction::FileAppend => {
+                require_arity(action, arguments, 2, span)?;
+                let path = arguments[0].render(span)?;
+                let content = arguments[1].render(span)?;
+                use std::io::Write;
+                match std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+                    Ok(mut file) => match file.write_all(content.as_bytes()) {
+                        Ok(()) => Ok(Value::Bool(true)),
+                        Err(err) => Err(error(
+                            "SPT201",
+                            "File append error",
+                            format!("Could not append to file `{path}`: {err}"),
+                            span,
+                        )),
+                    },
+                    Err(err) => Err(error(
+                        "SPT201",
+                        "File open error",
+                        format!("Could not open file `{path}`: {err}"),
+                        span,
+                    )),
+                }
+            }
+            NativeAction::FileExists => {
+                require_arity(action, arguments, 1, span)?;
+                let path = arguments[0].render(span)?;
+                Ok(Value::Bool(std::path::Path::new(&path).exists()))
+            }
+            NativeAction::JsonParse => {
+                require_arity(action, arguments, 1, span)?;
+                let json_text = arguments[0].render(span)?;
+                crate::json::parse(&json_text).map_err(|err| {
+                    error(
+                        "SPT201",
+                        "JSON parse error",
+                        format!("Failed to parse JSON: {err}"),
+                        span,
+                    )
+                })
+            }
+            NativeAction::JsonStringify => {
+                require_arity(action, arguments, 1, span)?;
+                Ok(Value::String(crate::json::stringify(&arguments[0])))
+            }
+            NativeAction::JsonIsValid => {
+                require_arity(action, arguments, 1, span)?;
+                let json_text = arguments[0].render(span)?;
+                Ok(Value::Bool(crate::json::is_valid(&json_text)))
             }
         }
-        Ok(Value::Nil)
     }
 
     fn binary(
@@ -902,8 +1239,8 @@ impl Value {
                 .collect::<Result<BTreeMap<_, _>, _>>()
                 .map(ForeignValue::Map),
             Self::Foreign(object) => Ok(ForeignValue::Object(object.clone())),
-            Self::Function(_) | Self::Class(_) | Self::Instance(_) | Self::Native(_) => Err(
-                "Sprout actions, classes, instances, and native actions cannot be passed to Python yet."
+            Self::Function(_) | Self::Class(_) | Self::Instance(_) | Self::Native(_) | Self::Module(_) => Err(
+                "Sprout actions, classes, instances, native actions, and modules cannot be passed to Python yet."
                     .to_owned(),
             ),
         }
@@ -943,7 +1280,7 @@ impl Value {
                 format!("Python {}", object.type_name()),
                 format!("<python {}>", object.type_name()),
             )),
-            Self::Function(_) | Self::Class(_) | Self::Native(_) => None,
+            Self::Function(_) | Self::Class(_) | Self::Native(_) | Self::Module(_) => None,
         }
     }
 }
@@ -955,6 +1292,23 @@ impl NativeAction {
             Self::CanvasClear => "canvas_clear",
             Self::CanvasRect => "canvas_rect",
             Self::CanvasCircle => "canvas_circle",
+            Self::StrLen => "__str_len",
+            Self::StrSlice => "__str_slice",
+            Self::StrUpper => "__str_upper",
+            Self::StrLower => "__str_lower",
+            Self::StrContains => "__str_contains",
+            Self::StrIndexOf => "__str_index_of",
+            Self::StrTrim => "__str_trim",
+            Self::StrTrimStart => "__str_trim_start",
+            Self::StrTrimEnd => "__str_trim_end",
+            Self::StrReplace => "__str_replace",
+            Self::FileRead => "__file_read",
+            Self::FileWrite => "__file_write",
+            Self::FileAppend => "__file_append",
+            Self::FileExists => "__file_exists",
+            Self::JsonParse => "__json_parse",
+            Self::JsonStringify => "__json_stringify",
+            Self::JsonIsValid => "__json_is_valid",
         }
     }
 }

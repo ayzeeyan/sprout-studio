@@ -28,20 +28,271 @@ public sealed record AcademyProfile(
     ProgrammingGoal[] Goals,
     bool ShowGamification);
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum SubmissionType
+{
+    MultipleChoice,
+    MultipleSelect,
+    ShortAnswer,
+    FillInBlank,
+    CodeExercise,
+    ProjectExercise,
+    Quiz,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum TaskType
+{
+    Lesson,
+    Reading,
+    Quiz,
+    Exercise,
+    CodingExercise,
+    Checkpoint,
+    CapstoneStep,
+    Revision,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum TaskStatus
+{
+    NotStarted,
+    InProgress,
+    ReadyToSubmit,
+    Submitted,
+    Passed,
+    NeedsRevision,
+    Completed,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum HintAssistanceMode
+{
+    Standard,   // 5 hints / day default
+    Reduced,    // 10 hints / day
+    Unlimited,  // Unlimited hints for accessibility
+}
+
+public sealed record HintItem(
+    string Id,
+    int Level,
+    string LevelName,
+    string Content,
+    bool IsRevealed);
+
+public sealed record HintUsageState(
+    string LastUsageDate,
+    int UsedCountToday,
+    int DailyAllowance,
+    HintAssistanceMode Mode,
+    string[] RevealedHintIds)
+{
+    public const int DefaultDailyAllowance = 5;
+
+    public static HintUsageState Default { get; } = new(
+        DateTime.Now.ToString("yyyy-MM-dd"),
+        0,
+        DefaultDailyAllowance,
+        HintAssistanceMode.Standard,
+        []);
+
+    public int RemainingHintsToday => Mode == HintAssistanceMode.Unlimited
+        ? int.MaxValue
+        : Math.Max(0, DailyAllowance - UsedCountToday);
+
+    public bool CanRevealNewHint => Mode == HintAssistanceMode.Unlimited || RemainingHintsToday > 0;
+}
+
+public sealed record SubmissionRecord(
+    string Id,
+    string TrackId,
+    string LessonId,
+    string? ModuleId,
+    string ExerciseTitle,
+    int AttemptNumber,
+    DateTimeOffset SubmittedAt,
+    SubmissionType Type,
+    string Answer,
+    bool Passed,
+    int Score,
+    string Feedback,
+    string[] PassedRequirements,
+    string[] FailedRequirements,
+    string[] CompilerDiagnostics);
+
+public sealed record AcademyTask(
+    string Id,
+    string Title,
+    string TrackId,
+    string TrackTitle,
+    string? ModuleId,
+    string? ModuleTitle,
+    string LessonId,
+    TaskType Type,
+    TaskStatus Status,
+    int EstimatedMinutes,
+    int Priority,
+    string CompletionRequirement,
+    int ProgressPercent);
+
+public sealed record QuizQuestion(
+    string Id,
+    string Question,
+    SubmissionType Type,
+    string[] Options,
+    string[] CorrectAnswers,
+    string Explanation,
+    string? ConceptId = null);
+
+public sealed record QuizDefinition(
+    string Title,
+    string Summary,
+    QuizQuestion[] Questions,
+    int PassingScorePercent = 70);
+
+public sealed record CheckpointDefinition(
+    string Id,
+    string ModuleId,
+    string Title,
+    string Summary,
+    QuizQuestion[] Questions,
+    ExerciseDefinition? CodingExercise = null);
+
+public sealed record ExerciseDefinition(
+    string StarterCode,
+    string SolutionCode,
+    string ExpectedOutput,
+    string[] Hints,
+    string[] Assertions,
+    string? Title = null,
+    string? Objective = null,
+    QuizQuestion[]? Questions = null,
+    bool VerifyExpectedOutput = false,
+    string? EntryPoint = null,
+    string? TestHarness = null);
+
+public sealed record ModuleDefinition(
+    string Id,
+    string Title,
+    string Summary,
+    string[] LessonIds,
+    CheckpointDefinition? Checkpoint = null);
+
 public sealed record LessonDefinition(
     string Id,
     string Title,
     string Summary,
     string Content,
     int Xp,
-    string[] ConceptIds);
+    string[] ConceptIds,
+    string? ModuleId = null,
+    ExerciseDefinition? Exercise = null,
+    TaskType TaskType = TaskType.Lesson,
+    int EstimatedMinutes = 10);
 
 public sealed record TrackDefinition(
     string Id,
     string Title,
     string Summary,
     string? RequiredToolchainId,
-    LessonDefinition[] Lessons);
+    LessonDefinition[] Lessons,
+    string? Level = null,
+    string? Category = null,
+    ModuleDefinition[]? Modules = null);
+
+public sealed record ExerciseModel(
+    string StarterCode,
+    string SolutionCode,
+    string ExpectedOutput,
+    string[] Hints,
+    string[] Assertions,
+    string? Title = null,
+    string? Objective = null,
+    QuizQuestion[]? Questions = null,
+    bool VerifyExpectedOutput = false,
+    string? EntryPoint = null,
+    string? TestHarness = null);
+
+public sealed record LessonModel(
+    string Id,
+    string Title,
+    string Summary,
+    string Content,
+    int Xp,
+    string[] ConceptIds,
+    ExerciseModel? Exercise = null,
+    string? ModuleId = null,
+    TaskType TaskType = TaskType.Lesson,
+    int EstimatedMinutes = 10);
+
+public sealed record ModuleModel(
+    string Id,
+    string Title,
+    string Summary,
+    string[] LessonIds,
+    CheckpointDefinition? Checkpoint = null);
+
+public sealed record CourseModel(
+    string Id,
+    string Title,
+    string Summary,
+    string Level,
+    string Category,
+    string? RequiredToolchainId,
+    ModuleModel[] Modules,
+    LessonModel[] Lessons);
+
+public sealed record ExerciseValidationResult(
+    bool Success,
+    string Output,
+    string[] PassedAssertions,
+    string[] FailedAssertions,
+    string? Feedback,
+    RequirementEvaluation[] RequirementResults);
+
+public sealed record RequirementEvaluation(
+    string Id,
+    string Title,
+    bool Passed,
+    string Expected,
+    string Observed,
+    string Message,
+    string? SourceSearchTerm = null,
+    int? SourceLine = null,
+    int? SourceColumn = null);
+
+public sealed record ExerciseRuntimeResult(
+    bool Success,
+    string Output,
+    string[] Diagnostics,
+    TimeSpan Duration,
+    string Summary,
+    bool RanProgram,
+    RuntimeTestResult[]? TestResults = null,
+    int? ErrorLine = null,
+    int? ErrorColumn = null);
+
+public sealed record RuntimeTestResult(
+    string Id,
+    string Title,
+    bool Passed,
+    string Expected,
+    string Observed,
+    string Message,
+    string? SourceSearchTerm = null);
+
+public sealed record ExerciseExecutionResult(
+    bool Success,
+    string? ExpectedOutput,
+    string? ActualOutput,
+    string[] CompilerDiagnostics,
+    string[] PassedAssertions,
+    string[] FailedAssertions,
+    string Feedback,
+    bool ExecutedWithRealToolchain,
+    RequirementEvaluation[] RequirementResults,
+    TimeSpan Duration,
+    string ExecutionSummary);
 
 public sealed record LanguageExample(string Language, string Code);
 
@@ -64,16 +315,24 @@ public sealed record AcademyState(
     AcademyProfile? Profile,
     string[] EnrolledTrackIds,
     string[] CompletedLessonIds,
-    AchievementAward[] AchievementAwards)
+    AchievementAward[] AchievementAwards,
+    SubmissionRecord[] Submissions,
+    HintUsageState HintUsage,
+    string? ActiveTrackId = null,
+    string? ActiveLessonId = null)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public static AcademyState Empty { get; } = new(
         CurrentSchemaVersion,
         null,
         [],
         [],
-        []);
+        [],
+        [],
+        HintUsageState.Default,
+        null,
+        null);
 }
 
 public sealed record TrackRecommendation(
@@ -91,10 +350,16 @@ public sealed record TrackProgress(
 public sealed record AcademyDashboard(
     AcademyState State,
     TrackProgress[] Tracks,
+    AcademyTask? ContinueTask,
+    AcademyTask[] PrioritizedTasks,
+    HintUsageState HintUsage,
+    SubmissionRecord[] RecentSubmissions,
     int TotalXp,
     int Level,
     int XpTowardNextLevel,
-    AchievementDefinition[] EarnedAchievements);
+    AchievementDefinition[] EarnedAchievements,
+    int CompletedLessonsToday = 0,
+    int XpEarnedToday = 0);
 
 public enum EnrollmentStatus
 {

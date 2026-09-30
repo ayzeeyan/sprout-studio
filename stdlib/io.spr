@@ -1,0 +1,44 @@
+# Sprout Standard Library: IO Module
+# File system and I/O helper functions written in native Sprout syntax.
+
+## Reads the entire contents of a file at path as a string.
+## @param path String The file path to read from.
+## @returns String The UTF-8 file contents.
+## @example io.read_file("data.txt")
+action read_file(path)
+    return __file_read(path)
+end
+
+## Writes the string content to a file at path, overwriting existing files.
+## @param path String Target destination file path.
+## @param content String Text content to write.
+## @returns Boolean True on success.
+## @example io.write_file("output.txt", "Hello World")
+action write_file(path, content)
+    return __file_write(path, content)
+end
+
+## Appends text content to the end of a file at path.
+## @param path String Target destination file path.
+## @param content String Text content to append.
+## @returns Boolean True on success.
+## @example io.append_file("log.txt", "New entry\n")
+action append_file(path, content)
+    return __file_append(path, content)
+end
+
+## Checks whether a file or directory exists at the given path.
+## @param path String File system path to check.
+## @returns Boolean True if the path exists.
+## @example io.file_exists("config.json")
+action file_exists(path)
+    return __file_exists(path)
+end
+
+## Prints a message followed by a newline to standard output.
+## @param message Any The value or message to print.
+## @returns Null
+## @example io.print_line("Calculation complete")
+action print_line(message)
+    print(message)
+end

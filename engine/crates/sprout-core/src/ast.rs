@@ -30,6 +30,10 @@ pub type Expression = Node<ExpressionKind>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum StatementKind {
+    Import {
+        module: String,
+        alias: String,
+    },
     ImportPython {
         module: String,
         alias: String,
@@ -66,6 +70,10 @@ pub enum StatementKind {
         methods: Vec<Statement>,
     },
     Return(Option<Expression>),
+    ProfileBlock {
+        profile: crate::parser::SyntaxProfile,
+        body: Vec<Statement>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -133,6 +141,16 @@ fn equivalent_statements(left: &[Statement], right: &[Statement]) -> bool {
 
 fn equivalent_statement(left: &StatementKind, right: &StatementKind) -> bool {
     match (left, right) {
+        (
+            StatementKind::Import {
+                module: left_module,
+                alias: left_alias,
+            },
+            StatementKind::Import {
+                module: right_module,
+                alias: right_alias,
+            },
+        ) => left_module == right_module && left_alias == right_alias,
         (
             StatementKind::ImportPython {
                 module: left_module,
@@ -239,6 +257,16 @@ fn equivalent_statement(left: &StatementKind, right: &StatementKind) -> bool {
             (None, None) => true,
             _ => false,
         },
+        (
+            StatementKind::ProfileBlock {
+                profile: left_profile,
+                body: left_body,
+            },
+            StatementKind::ProfileBlock {
+                profile: right_profile,
+                body: right_body,
+            },
+        ) => left_profile == right_profile && equivalent_statements(left_body, right_body),
         _ => false,
     }
 }

@@ -1,0 +1,116 @@
+<UserControl
+    x:Class="SproutStudio.Views.Academy.AcademySidebarView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    xmlns:shared="using:SproutStudio.Views.Shared"
+    x:DataType="vm:MainWindowViewModel"
+    x:CompileBindings="False">
+
+  <Border Classes="pane-surface" Background="{DynamicResource StudioPanelBrush}">
+    <Grid RowDefinitions="38,Auto,Auto,*,Auto">
+
+      <!-- Header: ACADEMY with collapse button -->
+      <Grid ColumnDefinitions="*,Auto" Margin="14,0,8,0" VerticalAlignment="Center">
+        <TextBlock Classes="panel-header" Text="ACADEMY" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+        <Button Grid.Column="1" Classes="icon-button" Command="{Binding ShowExplorerCommand}" ToolTip.Tip="Collapse / Show Explorer">
+          <TextBlock Classes="icon academy" Text="&#xE76B;" />
+        </Button>
+      </Grid>
+
+      <!-- Main Navigation Links -->
+      <StackPanel Grid.Row="1" Margin="6,4,6,8" Spacing="2">
+        <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyHomeSection}" Command="{Binding ShowAcademyHomeCommand}">
+          <Grid ColumnDefinitions="24,*" Margin="6,4">
+            <TextBlock Classes="icon academy-nav-icon" Text="&#xE80F;" />
+            <TextBlock Grid.Column="1" Text="Home" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyMyLearningSection}" Command="{Binding ShowAcademyMyLearningCommand}">
+          <Grid ColumnDefinitions="24,*" Margin="6,4">
+            <TextBlock Classes="icon academy-nav-icon" Text="&#xE7BE;" />
+            <TextBlock Grid.Column="1" Text="My Learning" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyTracksSection}" Command="{Binding ShowAcademyTracksCommand}">
+          <Grid ColumnDefinitions="24,*" Margin="6,4">
+            <TextBlock Classes="icon academy-nav-icon" Text="&#xE8F1;" />
+            <TextBlock Grid.Column="1" Text="Tracks" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyConceptsSection}" Command="{Binding ShowAcademyConceptsCommand}">
+          <Grid ColumnDefinitions="24,*" Margin="6,4">
+            <TextBlock Classes="icon academy-nav-icon" Text="&#xEA80;" />
+            <TextBlock Grid.Column="1" Text="Concepts" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyChallengesSection}" Command="{Binding ShowAcademyChallengesCommand}">
+          <Grid ColumnDefinitions="24,*" Margin="6,4">
+            <TextBlock Classes="icon academy-nav-icon" Text="&#xE7C1;" />
+            <TextBlock Grid.Column="1" Text="Challenges" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademySubmissionsSection}" Command="{Binding ShowAcademySubmissionsCommand}">
+          <Grid ColumnDefinitions="24,*" Margin="6,4">
+            <TextBlock Classes="icon academy-nav-icon" Text="&#xF0E3;" />
+            <TextBlock Grid.Column="1" Text="Submissions" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+      </StackPanel>
+
+      <!-- LANGUAGES Section Header -->
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="14,12,8,4">
+        <TextBlock Classes="panel-header" Text="LANGUAGES" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+        <Button Grid.Column="1" Classes="icon-button small" ToolTip.Tip="Add track">
+          <TextBlock Classes="icon academy" Text="&#xE710;" />
+        </Button>
+      </Grid>
+
+      <!-- Languages List -->
+      <ScrollViewer Grid.Row="3" Margin="6,2,6,8" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="2">
+          <!-- Java (Selected) -->
+          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyJavaTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="java">
+            <Grid ColumnDefinitions="28,*" Margin="6,5">
+              <shared:LanguageIconView LanguageKey="java" Width="20" Height="20" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Java" VerticalAlignment="Center" Margin="6,0,0,0" />
+            </Grid>
+          </Button>
+
+          <!-- Sprout -->
+          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademySproutTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="sprout">
+            <Grid ColumnDefinitions="28,*" Margin="6,5">
+              <shared:LanguageIconView LanguageKey="sprout" Width="20" Height="20" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Sprout" VerticalAlignment="Center" Margin="6,0,0,0" />
+            </Grid>
+          </Button>
+
+          <!-- Rust -->
+          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyRustTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="rust">
+            <Grid ColumnDefinitions="28,*" Margin="6,5">
+              <shared:LanguageIconView LanguageKey="rust" Width="20" Height="20" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Rust" VerticalAlignment="Center" Margin="6,0,0,0" />
+            </Grid>
+          </Button>
+
+          <!-- Python -->
+          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyPythonTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="python">
+            <Grid ColumnDefinitions="28,*" Margin="6,5">
+              <shared:LanguageIconView LanguageKey="python" Width="20" Height="20" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Python" VerticalAlignment="Center" Margin="6,0,0,0" />
+            </Grid>
+          </Button>
+
+          <!-- Go -->
+          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyGoTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="go">
+            <Grid ColumnDefinitions="28,*" Margin="6,5">
+              <shared:LanguageIconView LanguageKey="go" Width="20" Height="20" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Go" VerticalAlignment="Center" Margin="6,0,0,0" />
+            </Grid>
+          </Button>
+        </StackPanel>
+      </ScrollViewer>
+
+    </Grid>
+  </Border>
+</UserControl>

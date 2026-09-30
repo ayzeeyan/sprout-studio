@@ -97,6 +97,22 @@ public sealed record EngineInfo(
     string Architecture,
     string BuildConfiguration);
 
+public sealed record AstNode(
+    string Kind,
+    string Label,
+    string Detail,
+    SourceSpan Span,
+    IReadOnlyList<AstNode> Children);
+
+public sealed record AstResponse(
+    AstNode? Program,
+    IReadOnlyList<StudioDiagnostic> Diagnostics);
+
+public interface IEngineAstClient
+{
+    Task<string> GetAstJsonAsync(string source, CancellationToken cancellationToken = default);
+}
+
 public interface IEngineInformationClient
 {
     Task<EngineInfo> GetInfoAsync(CancellationToken cancellationToken = default);

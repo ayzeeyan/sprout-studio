@@ -58,7 +58,7 @@ pub fn inspect(source: &SourceFile, profile: SyntaxProfile, cursor: usize) -> In
     let parsed = parse_profile(source, profile);
     let mut entries = builtin_entries(source);
     let mut symbols = Vec::new();
-    if let Some(program) = &parsed.program {
+    let active_profile = if let Some(program) = &parsed.program {
         collect_statements(
             source,
             &program.statements,
@@ -67,13 +67,15 @@ pub fn inspect(source: &SourceFile, profile: SyntaxProfile, cursor: usize) -> In
             &mut entries,
             &mut symbols,
         );
+        active_profile_at_cursor(&program.statements, cursor, profile)
     } else {
         collect_lexical_declarations(source, profile, &mut entries);
-    }
+        profile
+    };
 
     let mut completions = Vec::new();
     let mut labels = HashSet::new();
-    for (label, detail) in keyword_items(profile) {
+    for (label, detail) in keyword_items(active_profile) {
         add_completion(
             &mut completions,
             &mut labels,
@@ -154,29 +156,90 @@ impl SymbolEntry {
 }
 
 fn builtin_entries(source: &SourceFile) -> Vec<SymbolEntry> {
-    [
-        ("print", "action print(values…) -> Nil"),
-        ("canvas_clear", "action canvas_clear(color: String) -> Nil"),
-        (
-            "canvas_rect",
-            "action canvas_rect(x, y, width, height, color: String) -> Nil",
-        ),
-        (
-            "canvas_circle",
-            "action canvas_circle(x, y, radius, color: String) -> Nil",
-        ),
-    ]
-    .into_iter()
-    .map(|(name, detail)| SymbolEntry {
-        name: name.to_owned(),
-        kind: "action".to_owned(),
-        detail: detail.to_owned(),
-        insert_text: name.to_owned(),
-        declaration_span: None,
-        available_start: 0,
-        available_end: source.text().len(),
-    })
-    .collect()
+    let mut entries = vec![
+        SymbolEntry {
+            name: "print".to_owned(),
+            kind: "action".to_owned(),
+            detail: "action print(values…) -> Nil\n\nPrints formatted values to standard output.".to_owned(),
+            insert_text: "print".to_owned(),
+            declaration_span: None,
+            available_start: 0,
+            available_end: source.text().len(),
+        },
+        SymbolEntry {
+            name: "canvas_clear".to_owned(),
+            kind: "action".to_owned(),
+            detail: "action canvas_clear(color: String) -> Nil\n\nClears the 2D canvas with the specified color.".to_owned(),
+            insert_text: "canvas_clear".to_owned(),
+            declaration_span: None,
+            available_start: 0,
+            available_end: source.text().len(),
+        },
+        SymbolEntry {
+            name: "canvas_rect".to_owned(),
+            kind: "action".to_owned(),
+            detail: "action canvas_rect(x, y, width, height, color: String) -> Nil\n\nDraws a solid rectangle on the 2D canvas.".to_owned(),
+            insert_text: "canvas_rect".to_owned(),
+            declaration_span: None,
+            available_start: 0,
+            available_end: source.text().len(),
+        },
+        SymbolEntry {
+            name: "canvas_circle".to_owned(),
+            kind: "action".to_owned(),
+            detail: "action canvas_circle(x, y, radius, color: String) -> Nil\n\nDraws a solid circle on the 2D canvas.".to_owned(),
+            insert_text: "canvas_circle".to_owned(),
+            declaration_span: None,
+            available_start: 0,
+            available_end: source.text().len(),
+        },
+    ];
+
+    // Add standard library module entries
+    for module_name in crate::stdlib::STDLIB_MODULES {
+        entries.push(SymbolEntry {
+            name: (*module_name).to_owned(),
+            kind: "module".to_owned(),
+            detail: format!("Standard Library Module `{module_name}`"),
+            insert_text: (*module_name).to_owned(),
+            declaration_span: None,
+            available_start: 0,
+            available_end: source.text().len(),
+        });
+    }
+
+    // Add structured stdlib symbols
+    for doc in crate::stdlib::STDLIB_DOCS {
+        let full_name = format!("{}.{}", doc.module, doc.name);
+        let detail = format!(
+            "{}\n\n{}\n\nExample:\n{}",
+            doc.signature, doc.description, doc.example
+        );
+
+        // Fully qualified: math.sqrt
+        entries.push(SymbolEntry {
+            name: full_name.clone(),
+            kind: doc.kind.to_owned(),
+            detail: detail.clone(),
+            insert_text: full_name,
+            declaration_span: None,
+            available_start: 0,
+            available_end: source.text().len(),
+        });
+
+        // Short symbol: sqrt
+        entries.push(SymbolEntry {
+            name: doc.name.to_owned(),
+            kind: doc.kind.to_owned(),
+            detail,
+            insert_text: doc.name.to_owned(),
+            declaration_span: None,
+            available_start: 0,
+            available_end: source.text().len(),
+        });
+    }
+
+    entries
 }
 
 fn collect_statements(
@@ -189,6 +252,18 @@ fn collect_statements(
 ) {
     for statement in statements {
         match &statement.kind {
+            StatementKind::Import { module, alias } => {
+                let span = identifier_span(source, &statement.span, alias, 0);
+                entries.push(entry(
+                    alias,
+                    "module",
+                    &format!("Module alias for `{module}`"),
+                    span.clone(),
+                    statement.span.start,
+                    scope_end,
+                ));
+                symbols.push(symbol(alias, "module", module, span, Vec::new()));
+            }
             StatementKind::ImportPython { module, alias } => {
                 let span = identifier_span(source, &statement.span, alias, 0);
                 entries.push(entry(
@@ -315,11 +390,60 @@ fn collect_statements(
                     symbols,
                 );
             }
+            StatementKind::ProfileBlock { body, .. } => {
+                collect_statements(
+                    source,
+                    body,
+                    statement.span.start.max(scope_start),
+                    statement.span.end,
+                    entries,
+                    symbols,
+                );
+            }
             StatementKind::Assignment { .. }
             | StatementKind::Expression(_)
             | StatementKind::Return(_) => {}
         }
     }
+}
+
+fn active_profile_at_cursor(
+    statements: &[Statement],
+    cursor: usize,
+    default_profile: SyntaxProfile,
+) -> SyntaxProfile {
+    for statement in statements {
+        if statement.span.start <= cursor && cursor <= statement.span.end {
+            if let StatementKind::ProfileBlock { profile, body } = &statement.kind {
+                return active_profile_at_cursor(body, cursor, *profile);
+            }
+            if let StatementKind::If {
+                then_branch,
+                else_branch,
+                ..
+            } = &statement.kind
+            {
+                let p1 = active_profile_at_cursor(then_branch, cursor, default_profile);
+                if p1 != default_profile {
+                    return p1;
+                }
+                let p2 = active_profile_at_cursor(else_branch, cursor, default_profile);
+                if p2 != default_profile {
+                    return p2;
+                }
+            }
+            if let StatementKind::Repeat { body, .. }
+            | StatementKind::While { body, .. }
+            | StatementKind::Function { body, .. } = &statement.kind
+            {
+                let p = active_profile_at_cursor(body, cursor, default_profile);
+                if p != default_profile {
+                    return p;
+                }
+            }
+        }
+    }
+    default_profile
 }
 
 fn collect_lexical_declarations(
@@ -508,41 +632,50 @@ fn keyword_items(profile: SyntaxProfile) -> &'static [(&'static str, &'static st
     match profile {
         SyntaxProfile::Guided => &[
             ("action", "Declare a reusable action"),
+            ("advanced", "Start an Advanced profile block"),
             ("class", "Declare a class"),
             ("else", "Alternative conditional branch"),
             ("end", "Close a Guided block"),
             ("false", "Boolean false value"),
+            ("guided", "Start a Guided profile block"),
             ("has", "Declare an inferred variable"),
             ("if", "Start a conditional block"),
             ("import", "Import an explicit foreign module"),
             ("nil", "Absence of a value"),
             ("repeat", "Repeat a block a fixed number of times"),
             ("return", "Return from the current action"),
+            ("structured", "Start a Structured profile block"),
             ("true", "Boolean true value"),
             ("while", "Repeat while a condition is true"),
         ],
         SyntaxProfile::Structured => &[
+            ("advanced", "Start an Advanced profile block"),
             ("auto", "Inferred surface type"),
             ("class", "Declare a class"),
             ("else", "Alternative conditional branch"),
             ("false", "Boolean false value"),
+            ("guided", "Start a Guided profile block"),
             ("if", "Start a conditional block"),
             ("import", "Import an explicit foreign module"),
             ("nil", "Absence of a value"),
             ("repeat", "Repeat a block a fixed number of times"),
             ("return", "Return from the current action"),
+            ("structured", "Start a Structured profile block"),
             ("true", "Boolean true value"),
             ("while", "Repeat while a condition is true"),
         ],
         SyntaxProfile::Advanced => &[
+            ("advanced", "Start an Advanced profile block"),
             ("class", "Declare an indentation-based class"),
             ("else", "Alternative conditional branch"),
             ("false", "Boolean false value"),
+            ("guided", "Start a Guided profile block"),
             ("if", "Start an indentation-based conditional"),
             ("import", "Import an explicit foreign module"),
             ("nil", "Absence of a value"),
             ("repeat", "Repeat a block a fixed number of times"),
             ("return", "Return from the current action"),
+            ("structured", "Start a Structured profile block"),
             ("true", "Boolean true value"),
             ("while", "Repeat while a condition is true"),
         ],

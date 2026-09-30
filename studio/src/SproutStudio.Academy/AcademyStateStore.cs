@@ -38,13 +38,31 @@ public sealed class AcademyStateStore
             {
                 string json = await File.ReadAllTextAsync(_path, cancellationToken)
                     .ConfigureAwait(false);
-                AcademyState state = JsonSerializer.Deserialize<AcademyState>(json, SerializerOptions)
-                    ?? throw new InvalidDataException("The local Academy state is empty.");
-                if (state.SchemaVersion != AcademyState.CurrentSchemaVersion)
+                using var document = JsonDocument.Parse(json);
+                int schemaVersion = document.RootElement.TryGetProperty("schemaVersion", out var prop)
+                    ? prop.GetInt32()
+                    : 1;
+
+                if (schemaVersion > AcademyState.CurrentSchemaVersion)
                 {
                     throw new InvalidDataException(
-                        $"Academy state schema {state.SchemaVersion} is not supported.");
+                        $"Academy state schema {schemaVersion} is not supported.");
                 }
+
+                AcademyState state = JsonSerializer.Deserialize<AcademyState>(json, SerializerOptions)
+                    ?? throw new InvalidDataException("The local Academy state is empty.");
+
+                // Migrate v1 -> v2 if necessary
+                if (schemaVersion < AcademyState.CurrentSchemaVersion)
+                {
+                    state = state with
+                    {
+                        SchemaVersion = AcademyState.CurrentSchemaVersion,
+                        Submissions = state.Submissions ?? [],
+                        HintUsage = state.HintUsage ?? HintUsageState.Default,
+                    };
+                }
+
                 return state;
             }
             catch (JsonException exception)

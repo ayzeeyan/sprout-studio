@@ -1,0 +1,14 @@
+# Small benchmark sample: Basic arithmetic and control flow
+has x = 10
+has y = 20
+has total = 0
+
+action add_values(a, b)
+    return a + b
+end
+
+repeat 100 times
+    total = total + add_values(x, y)
+end
+
+print(total)

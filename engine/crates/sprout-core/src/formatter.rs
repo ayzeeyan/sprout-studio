@@ -76,6 +76,13 @@ impl Formatter {
     fn guided_statement(&mut self, statement: &Statement, indent: usize) {
         self.indent(indent);
         match &statement.kind {
+            StatementKind::Import { module, alias } => {
+                if module == alias {
+                    writeln!(self.output, "import {module}").unwrap();
+                } else {
+                    writeln!(self.output, "import {module} as {alias}").unwrap();
+                }
+            }
             StatementKind::ImportPython { module, alias } => {
                 writeln!(self.output, "import python {} as {alias}", quote(module)).unwrap();
             }
@@ -138,12 +145,33 @@ impl Formatter {
                 }
                 .unwrap();
             }
+            StatementKind::ProfileBlock { profile, body } => {
+                let kw = match profile {
+                    SyntaxProfile::Guided => "guided",
+                    SyntaxProfile::Structured => "structured",
+                    SyntaxProfile::Advanced => "advanced",
+                };
+                writeln!(self.output, "{kw} {{").unwrap();
+                let prev_profile = self.profile;
+                self.profile = *profile;
+                self.statements(body, indent + 1);
+                self.profile = prev_profile;
+                self.indent(indent);
+                writeln!(self.output, "}}").unwrap();
+            }
         }
     }
 
     fn structured_statement(&mut self, statement: &Statement, indent: usize) {
         self.indent(indent);
         match &statement.kind {
+            StatementKind::Import { module, alias } => {
+                if module == alias {
+                    writeln!(self.output, "import {module};").unwrap();
+                } else {
+                    writeln!(self.output, "import {module} as {alias};").unwrap();
+                }
+            }
             StatementKind::ImportPython { module, alias } => {
                 writeln!(self.output, "import python {} as {alias};", quote(module)).unwrap();
             }
@@ -219,12 +247,33 @@ impl Formatter {
                 }
                 .unwrap();
             }
+            StatementKind::ProfileBlock { profile, body } => {
+                let kw = match profile {
+                    SyntaxProfile::Guided => "guided",
+                    SyntaxProfile::Structured => "structured",
+                    SyntaxProfile::Advanced => "advanced",
+                };
+                writeln!(self.output, "{kw} {{").unwrap();
+                let prev_profile = self.profile;
+                self.profile = *profile;
+                self.statements(body, indent + 1);
+                self.profile = prev_profile;
+                self.indent(indent);
+                writeln!(self.output, "}}").unwrap();
+            }
         }
     }
 
     fn advanced_statement(&mut self, statement: &Statement, indent: usize) {
         self.indent(indent);
         match &statement.kind {
+            StatementKind::Import { module, alias } => {
+                if module == alias {
+                    writeln!(self.output, "import {module}").unwrap();
+                } else {
+                    writeln!(self.output, "import {module} as {alias}").unwrap();
+                }
+            }
             StatementKind::ImportPython { module, alias } => {
                 writeln!(self.output, "import python {} as {alias}", quote(module)).unwrap();
             }
@@ -276,6 +325,20 @@ impl Formatter {
                     None => writeln!(self.output, "return"),
                 }
                 .unwrap();
+            }
+            StatementKind::ProfileBlock { profile, body } => {
+                let kw = match profile {
+                    SyntaxProfile::Guided => "guided",
+                    SyntaxProfile::Structured => "structured",
+                    SyntaxProfile::Advanced => "advanced",
+                };
+                writeln!(self.output, "{kw} {{").unwrap();
+                let prev_profile = self.profile;
+                self.profile = *profile;
+                self.statements(body, indent + 1);
+                self.profile = prev_profile;
+                self.indent(indent);
+                writeln!(self.output, "}}").unwrap();
             }
         }
     }

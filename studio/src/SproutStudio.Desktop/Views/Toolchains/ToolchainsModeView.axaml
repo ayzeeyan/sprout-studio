@@ -18,9 +18,9 @@
     </Border>
     <Grid Grid.Row="1">
       <TextBlock Name="LoadingText" Text="Detecting installed toolchains…" Classes="empty-state" />
-      <ScrollViewer Name="ToolchainScroll" IsVisible="False" Padding="20,16,28,40"
+      <ScrollViewer Name="ToolchainScroll" IsVisible="False"
                     HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <ItemsControl Name="ToolchainList" MaxWidth="980" HorizontalAlignment="Stretch">
+        <ItemsControl Name="ToolchainList" MaxWidth="980" HorizontalAlignment="Stretch" Margin="20,16,28,40">
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="local:ToolchainModeRow">
               <Border Classes="toolchain-card" Margin="0,0,0,9">

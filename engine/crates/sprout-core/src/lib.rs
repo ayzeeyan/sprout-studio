@@ -8,11 +8,13 @@ pub mod diagnostic;
 pub mod formatter;
 pub mod ide;
 pub mod interop;
+pub mod json;
 pub mod lexer;
 pub mod parser;
 pub mod runtime;
 pub mod semantic;
 pub mod source;
+pub mod stdlib;
 pub mod token;
 
 use diagnostic::Diagnostic;

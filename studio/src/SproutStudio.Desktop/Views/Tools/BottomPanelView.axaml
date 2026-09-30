@@ -51,6 +51,58 @@
           <ListBox IsVisible="{Binding HasBuildOutput}" ItemsSource="{Binding BuildOutput}" Classes="monospace-list" />
         </Grid>
       </TabItem>
+      <TabItem Header="Tests">
+        <Grid RowDefinitions="36,*">
+          <!-- Test Suite Header Bar -->
+          <Border Background="{DynamicResource StudioRaisedBrush}" BorderBrush="{DynamicResource StudioBorderBrush}"
+                  BorderThickness="0,0,0,1" Padding="12,0">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="10" VerticalAlignment="Center">
+              <TextBlock Text="{Binding TestRun.SuiteName}" FontWeight="SemiBold" FontSize="12.5"
+                         VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+              <Border Grid.Column="1" Background="{Binding TestRun.StatusBadgeColor}" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding TestRun.StatusBadgeText}" FontSize="10.5" FontWeight="SemiBold" Foreground="White" />
+              </Border>
+
+              <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <TextBlock Text="{Binding TestRun.SummaryText}" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                <TextBlock Text="{Binding TestRun.DurationText}" FontSize="11.5" Foreground="{DynamicResource StudioTextMutedBrush}" />
+              </StackPanel>
+
+              <Button Grid.Column="4" Classes="icon-button small" Command="{Binding ToggleBottomPanelCommand}"
+                      ToolTip.Tip="Hide bottom panel (Ctrl+J)">
+                <TextBlock Classes="icon small" Text="&#xE70E;" />
+              </Button>
+            </Grid>
+          </Border>
+
+          <!-- Test Cases List -->
+          <ScrollViewer Grid.Row="1" Margin="12,6" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding TestRun.TestCases}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:TestCaseResultViewModel">
+                  <Border BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="0,0,0,1" Padding="0,5">
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="20,*,Auto" ColumnSpacing="8">
+                      <TextBlock Classes="icon academy" Text="{Binding StatusIcon}"
+                                 Foreground="{Binding StatusColor}" VerticalAlignment="Center" />
+
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource StudioTextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+
+                      <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="11"
+                                 Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+
+                      <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" IsVisible="{Binding HasError}"
+                                 Text="{Binding ErrorMessage}" FontSize="11"
+                                 Foreground="{DynamicResource StudioErrorBrush}" FontFamily="Cascadia Mono, Consolas"
+                                 TextWrapping="Wrap" MaxLines="2" Margin="0,3,0,1" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
       <TabItem Header="REPL">
         <Grid RowDefinitions="*,Auto">
           <Grid>

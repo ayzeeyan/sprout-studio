@@ -16,6 +16,11 @@
     <ProjectReference Include="..\..\src\SproutStudio.Interop\SproutStudio.Interop.csproj" />
     <ProjectReference Include="..\..\src\SproutStudio.Toolchains\SproutStudio.Toolchains.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\SproutStudio.Desktop\Services\UpdateService.cs" Link="Services\UpdateService.cs" />
+    <Compile Include="..\..\src\SproutStudio.Desktop\Services\StudioLog.cs" Link="Services\StudioLog.cs" />
+    <Compile Include="..\..\src\SproutStudio.Desktop\Services\AcademyExecutionService.cs" Link="Services\AcademyExecutionService.cs" />
+  </ItemGroup>
   <Target Name="BuildSproutNativeForTests"
           BeforeTargets="Build"
           DependsOnTargets="PrepareAndCopySproutPythonForTests">

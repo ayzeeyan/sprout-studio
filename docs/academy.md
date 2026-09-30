@@ -22,7 +22,7 @@ Writes use a uniquely named temporary sibling and replacement, so partial conten
 
 ## Offline catalog
 
-The catalog is stored separately from Avalonia in `academy/catalog.json` and embedded into the UI-independent `SproutStudio.Academy` library at build time. It contains six working tracks, each with three lessons:
+The catalog is stored separately from Avalonia in `academy/catalog.json` and embedded into the UI-independent `SproutStudio.Academy` library at build time. It contains seven working tracks. The Java course is the long-form path, with 22 coding lessons, six modules, recurring knowledge checks, and a checkpoint after every module; the other tracks provide focused three-lesson introductions.
 
 | Track | External prerequisite |
 |---|---|
@@ -32,6 +32,7 @@ The catalog is stored separately from Avalonia in `academy/catalog.json` and emb
 | Rust Systems Programming | Validated Rust 1.95+ |
 | Go Backend Development | Validated Go 1.22+ |
 | Python Automation | None; Sprout Studio already bundles Python |
+| Java: Object Oriented Programming - Zero to Hero | Validated JDK |
 
 Lesson content and programming concepts remain available without a network connection. The concept browser connects variables, functions, conditions, loops, collections, and data modeling across Sprout, Rust, Go, and Python examples. Search matches concept titles, explanations, and example languages.
 
@@ -51,7 +52,7 @@ Intermediate and Advanced profiles go directly to their selected goals; they are
 
 ## Enrollment prerequisites
 
-Sprout-only, computer-science, game, and Python tracks enroll immediately. Rust and Go are validated only when the user selects **Enroll** for the corresponding track. Merely starting Studio or opening Academy does not invoke an external toolchain.
+Sprout-only, computer-science, game, and Python tracks enroll immediately. Rust, Go, and Java are validated only when the user selects **Enroll** for the corresponding track. Merely starting Studio or opening Academy does not invoke an external toolchain.
 
 If validation fails, the Academy shows the exact Phase 7 status and validated components, then provides working actions:
 
@@ -65,21 +66,23 @@ The enrollment is persisted only after the required toolchain is usable. Automat
 
 ## Progress and achievements
 
-Completing a lesson records its stable identifier once. Repeating the action awards no additional XP, which prevents XP farming. Track completion is computed from distinct completed lessons and remains visible even when gamification is hidden.
+Passing a graded lesson or checkpoint records its stable identifier once. Every official submission is stored with its attempt number, answers or code, requirement-level feedback, score, and timestamp; **Run Tests** never creates an attempt. Repeating a passing submission awards no additional XP, which prevents XP farming. Track completion is computed from distinct completed activities and remains visible even when gamification is hidden.
 
 Current achievements reward meaningful milestones: first enrollment, first lesson, completing Sprout Fundamentals, beginning Python Automation, learning across two tracks, and completing an entire track. XP and levels are a projection of completed lesson values rather than a separately mutable counter.
 
 ## Integrated experience
 
-Academy runs inside the main Studio shell and preserves the live Workspace when users switch modes. **Home** presents continue-learning, deterministic recommendations, projected progress, and current toolchain readiness. **My Learning** lists enrolled tracks; **Learning Tracks** exposes module-grouped lessons, progress, prerequisites, enrollment, and completion; **Concept Browser** searches and compares linked language examples; **Profile & Progress** edits the local profile and presents earned achievements.
+Academy runs inside the main Studio shell and preserves the live Workspace when users switch modes. **Home** presents continue-learning, deterministic recommendations, projected progress, current toolchain readiness, and a queue that interleaves module checkpoints with lessons. **My Learning** lists enrolled tracks; **Learning Tracks** exposes module-grouped lessons, progress, prerequisites, enrollment, and completion; **Concept Browser** searches and compares linked language examples; **Challenges** lists remaining graded work; **Submissions** shows persisted official attempts; **Profile & Progress** edits the local profile and presents earned achievements.
 
-Sprout lessons can open a real runnable practice document in Workspace. The generated source contains the lesson objective and uses the authoritative Sprout engine when the user runs or checks it. This bridge is deliberately identified as practice, not as an automatically graded exercise. Academy links to relevant Documentation and Toolchains views through the shared Studio navigation system.
+Lessons, exercises, quizzes, and checkpoints open as native document tabs beside normal source files. Coding activities use a responsive split view with the rendered guide and requirement checklist on the left and a persistent real source document on the right. **Run Tests** performs a sandbox run and reports real timing and structured outcomes in the shared Tests panel without changing progress. **Submit** uses the same execution path, combines behavioral checks with any embedded knowledge questions, persists one official attempt, and awards completion and XP only after a passing result. Diagnostics retain expected and observed values and can navigate to relevant source.
+
+Sprout activities execute through the authoritative native engine. Java compiles with `javac` and runs an isolated behavioral harness; Rust, Go, and Python activities build and run through their validated adapters. Every run uses a unique temporary directory and cleans it afterward. Four progressive hint tiers—Nudge, Concept, Structure, and Detail—are persisted separately; newly revealed hints consume the local-day allowance while rereading an unlocked hint is free. Academy links to relevant Documentation and Toolchains views through the shared Studio navigation system.
 
 ## Explicitly deferred
 
-- Automatic exercise grading, quizzes, and certificates
+- Certificates
 - Cloud accounts, profile synchronization, leaderboards, and analytics
 - Automatic installation of Rust or Go
-- Academy-authored external-language project creation or execution
+- Full project scaffolding for Academy activities; exercises intentionally use isolated single-activity workspaces
 
 No deferred capability is exposed as complete.

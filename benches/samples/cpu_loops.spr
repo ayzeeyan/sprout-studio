@@ -1,0 +1,18 @@
+# CPU heavy loops benchmark
+has outer = 0
+has total = 0
+
+while outer < 50
+    has inner = 0
+    while inner < 100
+        has k = 0
+        while k < 10
+            total = total + (outer * 3 + inner * 2 + k) % 17
+            k = k + 1
+        end
+        inner = inner + 1
+    end
+    outer = outer + 1
+end
+
+print(total)

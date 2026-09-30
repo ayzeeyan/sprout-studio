@@ -41,15 +41,19 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         new("project.packages", "Project: Open Package Hub", "Project"),
         new("view.settings", "Preferences: Open Settings", "Preferences"),
         new("help.about", "Help: About Sprout Studio", "Help"),
+        new("help.update", "Help: Check for Updates…", "Help"),
     ];
 
     private readonly NativeSproutEngineClient _engine = new();
     private readonly ProjectWorkspace _projects;
     private readonly EditorWorkspace _editor = new();
     private readonly ToolchainManager _toolchains = ToolchainManager.CreateDefault();
+    private readonly AcademyService _academy;
+    private readonly AcademyExecutionService _academyExecution;
     private readonly GitRepositoryService _gitRepository = new();
     private readonly StudioLayoutStateStore _layoutStore = new();
     private readonly StudioSettingsStore _settingsStore = new();
+    private readonly IUpdateService _updateService;
     private readonly List<WorkspaceFile> _workspaceFiles = [];
     private CancellationTokenSource? _analysisCancellation;
     private IStudioDialogService? _dialogs;
@@ -64,7 +68,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private bool _explorerVisible = true;
     private bool _inspectorVisible = true;
     private bool _bottomPanelVisible = true;
-    private bool _compactToolbar;
+    private bool _compactToolbar = true;
     private int _selectedBottomTab;
     private int _selectedInspectorTab;
     private ActivityDestination _selectedActivity = ActivityDestination.Explorer;
@@ -81,9 +85,24 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private string _gitBranch = "Not a Git repository";
     private bool _hasSourceControl;
     private IReadOnlyList<CanvasCommand> _canvasCommands = [];
+    private UpdateInfo? _latestUpdate;
+    private bool _academyHubVisible = true;
+    private string _selectedAcademySection = "home";
+    private string? _selectedAcademyTrackId;
+    private AcademyDashboard? _academyDashboard;
 
     public MainWindowViewModel()
+        : this(new UpdateService())
     {
+    }
+
+    public MainWindowViewModel(IUpdateService updateService)
+    {
+        _updateService = updateService ?? throw new ArgumentNullException(nameof(updateService));
+        _academy = AcademyService.CreateDefault(
+            _toolchains,
+            Environment.GetEnvironmentVariable("SPROUT_STUDIO_TEST_ACADEMY_STATE"));
+        _academyExecution = new AcademyExecutionService(_toolchains);
         _projects = new ProjectWorkspace(_engine);
         _settings = _settingsStore.Load();
 
@@ -96,7 +115,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         OpenWorkspaceItemCommand = new AsyncRelayCommand<WorkspaceNodeViewModel>(OpenWorkspaceItemAsync);
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(OpenRecentProjectAsync, item => item is not null && !IsBusy);
         RemoveRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(RemoveRecentProjectAsync, item => item is not null && !IsBusy);
-        CheckCommand = new AsyncRelayCommand(() => ExecuteActiveAsync(EngineOperation.Check), CanExecuteSprout);
+        CheckCommand = new AsyncRelayCommand(ExecuteCheckAsync, CanCheckActive);
+        SubmitCommand = new AsyncRelayCommand(ExecuteSubmitAsync, () => !IsBusy);
         RunCommand = new AsyncRelayCommand(ExecuteRunAsync, CanRunActive);
         DebugCommand = new AsyncRelayCommand(() => ExecuteActiveAsync(EngineOperation.Debug), CanExecuteSprout);
         BuildCommand = new AsyncRelayCommand(ExecuteBuildAsync, CanBuildActive);
@@ -114,11 +134,31 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         ShowSourceControlCommand = new AsyncRelayCommand(ShowSourceControlAsync, () => !IsBusy);
         RefreshSourceControlCommand = new AsyncRelayCommand(RefreshSourceControlAsync, () => HasProject && !IsBusy);
         ShowAcademyCommand = new AsyncRelayCommand(ShowAcademyAsync, () => !IsBusy);
+        ShowAcademyHomeCommand = new RelayCommand(() => ShowAcademySection("home"));
+        ShowAcademyMyLearningCommand = new RelayCommand(() => ShowAcademySection("my-learning"));
+        ShowAcademyTracksCommand = new RelayCommand(() => ShowAcademySection("tracks"));
+        ShowAcademyConceptsCommand = new RelayCommand(() => ShowAcademySection("concepts"));
+        ShowAcademyChallengesCommand = new RelayCommand(() => ShowAcademySection("challenges"));
+        ShowAcademySubmissionsCommand = new RelayCommand(() => ShowAcademySection("submissions"));
+        OpenAcademyNextTaskCommand = new AsyncRelayCommand(OpenAcademyNextTaskAsync, () => CurrentAcademyNextTask is not null && !IsBusy);
+        SelectAcademyLanguageCommand = new RelayCommand<string>(lang =>
+        {
+            if (string.IsNullOrWhiteSpace(lang)) return;
+            TrackDefinition? track = _academy.Catalog.Tracks.FirstOrDefault(t =>
+                string.Equals(t.RequiredToolchainId, lang, StringComparison.OrdinalIgnoreCase))
+                ?? _academy.Catalog.Tracks.FirstOrDefault();
+            if (track is not null)
+            {
+                SelectedAcademyTrackId = track.Id;
+                ShowAcademySection("tracks");
+            }
+        });
         ShowDocumentationCommand = new AsyncRelayCommand(ShowDocumentationAsync, () => !IsBusy);
         ShowPackagesCommand = new AsyncRelayCommand(ShowPackagesAsync, () => !IsBusy);
         ShowToolchainsCommand = new AsyncRelayCommand(ShowToolchainsAsync, () => !IsBusy);
         ShowSettingsCommand = new AsyncRelayCommand(ShowSettingsAsync, () => !IsBusy);
         ShowAboutCommand = new AsyncRelayCommand(ShowAboutAsync, () => !IsBusy);
+        ShowUpdateDialogCommand = new AsyncRelayCommand(ShowUpdateDialogAsync, () => !IsBusy);
         PreviousDebugSnapshotCommand = new RelayCommand(PreviousDebugSnapshot, CanMoveDebugPrevious);
         NextDebugSnapshotCommand = new RelayCommand(NextDebugSnapshot, CanMoveDebugNext);
         ToggleBreakpointCommand = new RelayCommand(ToggleBreakpoint, () => SelectedDocument is not null);
@@ -132,7 +172,11 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         _selectedBottomTab = layout.SelectedBottomTab;
         _selectedInspectorTab = layout.SelectedInspectorTab;
         _selectedActivity = ParseActivity(layout.SelectedActivity);
+
+        AstGraph.NodeSelected += (sender, span) => SourceNavigationRequested?.Invoke(this, span);
     }
+
+    public ASTGraphViewModel AstGraph { get; } = new();
 
     public ObservableCollection<DocumentTabViewModel> Documents { get; } = [];
 
@@ -147,6 +191,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<string> BuildOutput { get; } = [];
 
     public ObservableCollection<string> SourceControlChanges { get; } = [];
+
+    public ObservableCollection<AcademyRecentSubmissionViewModel> AcademyRecentSubmissions { get; } = [];
+
+    public bool HasAcademyRecentSubmissions => AcademyRecentSubmissions.Count > 0;
+
+    public bool NoAcademyRecentSubmissions => AcademyRecentSubmissions.Count == 0;
 
     public ObservableCollection<ConsoleLineViewModel> ReplLines { get; } = [];
 
@@ -179,6 +229,35 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public IAsyncRelayCommand<RecentProjectViewModel> RemoveRecentProjectCommand { get; }
 
     public IAsyncRelayCommand CheckCommand { get; }
+
+    public IAsyncRelayCommand SubmitCommand { get; }
+
+    public bool IsContextualSubmitVisible =>
+        SelectedDocument?.IsSubmitCapable == true;
+
+    public string ContextualSubmitLabel =>
+        SelectedDocument?.ContextualSubmitLabel ?? "Submit";
+
+    public bool IsSubmitting =>
+        SelectedDocument?.IsSubmitting == true || IsBusy;
+
+    public TestRunViewModel TestRun { get; } = new();
+
+    public IRelayCommand ShowAcademyHomeCommand { get; }
+
+    public IRelayCommand ShowAcademyMyLearningCommand { get; }
+
+    public IRelayCommand ShowAcademyTracksCommand { get; }
+
+    public IRelayCommand ShowAcademyConceptsCommand { get; }
+
+    public IRelayCommand ShowAcademyChallengesCommand { get; }
+
+    public IRelayCommand ShowAcademySubmissionsCommand { get; }
+
+    public IAsyncRelayCommand OpenAcademyNextTaskCommand { get; }
+
+    public IRelayCommand<string> SelectAcademyLanguageCommand { get; }
 
     public IAsyncRelayCommand RunCommand { get; }
 
@@ -224,6 +303,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     public IAsyncRelayCommand ShowAboutCommand { get; }
 
+    public IAsyncRelayCommand ShowUpdateDialogCommand { get; }
+
+
+    public bool HasUpdate => _latestUpdate is not null;
+
+    public string UpdateBadgeText => _latestUpdate is not null ? $"Update Available: {_latestUpdate.TagName}" : string.Empty;
+
+    public UpdateInfo? LatestUpdate => _latestUpdate;
+
     public IRelayCommand PreviousDebugSnapshotCommand { get; }
 
     public IRelayCommand NextDebugSnapshotCommand { get; }
@@ -267,6 +355,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(WindowContext));
             OnPropertyChanged(nameof(CaretStatus));
             OnPropertyChanged(nameof(CurrentLanguage));
+            OnPropertyChanged(nameof(IsContextualSubmitVisible));
+            OnPropertyChanged(nameof(ContextualSubmitLabel));
+            OnPropertyChanged(nameof(IsSubmitting));
+            NotifyAcademyDashboardProperties();
+            OnPropertyChanged(nameof(HasAcademyRecentSubmissions));
+            OnPropertyChanged(nameof(NoAcademyRecentSubmissions));
             NotifyCommandState();
         }
     }
@@ -324,7 +418,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public string StatusText
     {
         get => _statusText;
-        private set => SetProperty(ref _statusText, value);
+        internal set => SetProperty(ref _statusText, value);
     }
 
     public string TaskText
@@ -373,7 +467,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public int SelectedBottomTab
     {
         get => _selectedBottomTab;
-        set => SetProperty(ref _selectedBottomTab, Math.Clamp(value, 0, 3));
+        set => SetProperty(ref _selectedBottomTab, Math.Clamp(value, 0, 4));
     }
 
     public int SelectedInspectorTab
@@ -491,6 +585,164 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     public bool IsAcademySelected => SelectedActivity == ActivityDestination.Academy;
 
+    public bool AcademyHubVisible
+    {
+        get => _academyHubVisible;
+        private set
+        {
+            if (SetProperty(ref _academyHubVisible, value))
+            {
+                OnPropertyChanged(nameof(IsWorkspaceMode));
+                OnPropertyChanged(nameof(IsIntegratedMode));
+            }
+        }
+    }
+
+    public string SelectedAcademySection
+    {
+        get => _selectedAcademySection;
+        private set
+        {
+            if (SetProperty(ref _selectedAcademySection, value))
+            {
+                NotifyAcademySelectionProperties();
+            }
+        }
+    }
+
+    public string? SelectedAcademyTrackId
+    {
+        get => _selectedAcademyTrackId;
+        private set
+        {
+            if (SetProperty(ref _selectedAcademyTrackId, value))
+            {
+                NotifyAcademySelectionProperties();
+            }
+        }
+    }
+
+    public bool IsAcademyHomeSection => IsAcademySection("home");
+    public bool IsAcademyMyLearningSection => IsAcademySection("my-learning");
+    public bool IsAcademyTracksSection => IsAcademySection("tracks");
+    public bool IsAcademyConceptsSection => IsAcademySection("concepts");
+    public bool IsAcademyChallengesSection => IsAcademySection("challenges");
+    public bool IsAcademySubmissionsSection => IsAcademySection("submissions");
+    public bool IsAcademyJavaTrack => IsAcademyLanguage("java");
+    public bool IsAcademySproutTrack => IsAcademyLanguage("sprout");
+    public bool IsAcademyRustTrack => IsAcademyLanguage("rust");
+    public bool IsAcademyPythonTrack => IsAcademyLanguage("python");
+    public bool IsAcademyGoTrack => IsAcademyLanguage("go");
+
+    public string AcademyTrackTitle => CurrentAcademyTrack?.Track.Title ?? "Choose an Academy track";
+
+    public string AcademyTrackLanguageKey => CurrentAcademyTrack?.Track.RequiredToolchainId ?? "sprout";
+
+    public string AcademyLevelText => $"Level {_academyDashboard?.Level ?? 1}";
+
+    public int AcademyTotalXp => _academyDashboard?.TotalXp ?? 0;
+
+    public int AcademyStreakDays => CalculateAcademyStreak(_academyDashboard?.State.Submissions ?? []);
+
+    public int AcademyXpProgress => _academyDashboard?.XpTowardNextLevel ?? 0;
+
+    public int AcademyXpPercent => Math.Clamp(AcademyXpProgress, 0, 100);
+
+    public string AcademyXpProgressText => $"{AcademyXpProgress} / 100 XP";
+
+    public string AcademyNextLessonTitle => CurrentAcademyNextTask?.Title ?? "All current activities complete";
+
+    public string AcademyNextLessonSummary => CurrentAcademyNextTask is { } task
+        ? $"{task.ModuleTitle} · {task.CompletionRequirement}"
+        : "Explore another track or review completed work.";
+
+    public string AcademyNextLessonXp => CurrentAcademyNextTask is { } next
+        ? $"~{next.EstimatedMinutes} min"
+        : string.Empty;
+
+    public string AcademyLessonsOverviewText => CurrentAcademyTrack is { } trackProgress
+        ? $"{trackProgress.CompletedLessons} / {trackProgress.TotalLessons} Lessons"
+        : "0 / 0 Lessons";
+
+    public int AcademyLessonsProgressValue => CurrentAcademyTrack?.CompletionPercent ?? 0;
+
+    public string AcademyExercisesOverviewText
+    {
+        get
+        {
+            TrackDefinition? track = CurrentAcademyTrack?.Track;
+            if (track is null)
+            {
+                return "0 / 0 Exercises";
+            }
+            LessonDefinition[] exercises = track.Lessons.Where(lesson => lesson.Exercise is not null).ToArray();
+            int completed = exercises.Count(lesson => _academyDashboard?.State.CompletedLessonIds.Contains(
+                lesson.Id,
+                StringComparer.OrdinalIgnoreCase) == true);
+            return $"{completed} / {exercises.Length} Exercises";
+        }
+    }
+
+    public int AcademyExercisesProgressValue
+    {
+        get
+        {
+            TrackDefinition? track = CurrentAcademyTrack?.Track;
+            if (track is null)
+            {
+                return 0;
+            }
+            LessonDefinition[] exercises = track.Lessons.Where(lesson => lesson.Exercise is not null).ToArray();
+            return exercises.Length == 0
+                ? 0
+                : exercises.Count(lesson => _academyDashboard?.State.CompletedLessonIds.Contains(
+                    lesson.Id,
+                    StringComparer.OrdinalIgnoreCase) == true) * 100 / exercises.Length;
+        }
+    }
+
+    private TrackProgress? CurrentAcademyTrack
+    {
+        get
+        {
+            if (_academyDashboard is null)
+            {
+                return null;
+            }
+            string? trackId = SelectedDocument?.AcademyTab?.Track.Id
+                ?? _academyDashboard.State.ActiveTrackId
+                ?? _academyDashboard.State.EnrolledTrackIds.FirstOrDefault();
+            return _academyDashboard.Tracks.FirstOrDefault(progress =>
+                    string.Equals(progress.Track.Id, trackId, StringComparison.OrdinalIgnoreCase))
+                ?? _academyDashboard.Tracks.FirstOrDefault();
+        }
+    }
+
+    private AcademyTask? CurrentAcademyNextTask
+    {
+        get
+        {
+            if (_academyDashboard is null)
+            {
+                return null;
+            }
+
+            string? trackId = CurrentAcademyTrack?.Track.Id;
+            if (trackId is null)
+            {
+                return _academyDashboard.ContinueTask;
+            }
+
+            return _academyDashboard.PrioritizedTasks.FirstOrDefault(task =>
+                    string.Equals(task.TrackId, trackId, StringComparison.OrdinalIgnoreCase)
+                    && task.Status != SproutStudio.Academy.TaskStatus.Completed)
+                ?? (_academyDashboard.ContinueTask is { } continuation
+                    && string.Equals(continuation.TrackId, trackId, StringComparison.OrdinalIgnoreCase)
+                        ? continuation
+                        : null);
+        }
+    }
+
     public bool IsDocumentationSelected => SelectedActivity == ActivityDestination.Documentation;
 
     public bool IsToolchainsSelected => SelectedActivity == ActivityDestination.Toolchains;
@@ -499,11 +751,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     public bool IsSettingsSelected => SelectedActivity == ActivityDestination.Settings;
 
-    public bool IsWorkspaceMode => SelectedActivity == ActivityDestination.Explorer;
+    public bool IsWorkspaceMode => SelectedActivity == ActivityDestination.Explorer
+        || (SelectedActivity == ActivityDestination.Academy && !AcademyHubVisible);
 
-    public bool IsIntegratedMode => SelectedActivity is ActivityDestination.Search
+    public bool IsIntegratedMode => (SelectedActivity == ActivityDestination.Academy && AcademyHubVisible)
+        || SelectedActivity is ActivityDestination.Search
         or ActivityDestination.SourceControl
-        or ActivityDestination.Academy
         or ActivityDestination.Documentation
         or ActivityDestination.Packages
         or ActivityDestination.Toolchains;
@@ -570,7 +823,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     internal ToolchainManager Toolchains => _toolchains;
 
-    public void ActivateMode(ActivityDestination destination) => SelectActivity(destination);
+    internal AcademyService Academy => _academy;
+
+    public void ActivateMode(ActivityDestination destination)
+    {
+        if (destination == ActivityDestination.Academy)
+        {
+            AcademyHubVisible = true;
+        }
+        SelectActivity(destination);
+    }
 
     public void RequestDocumentation(string topicId, string? anchor = null)
     {
@@ -610,13 +872,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             Math.Max(1, column)));
     }
 
-    public Task OpenAcademyPracticeAsync(TrackDefinition track, LessonDefinition lesson)
+    public async Task OpenAcademyPracticeAsync(TrackDefinition track, LessonDefinition lesson)
     {
         ArgumentNullException.ThrowIfNull(track);
         ArgumentNullException.ThrowIfNull(lesson);
-        SelectActivity(ActivityDestination.Explorer);
-        EditorDocument model = _editor.CreateSproutDocument(SelectedProfile);
-        model.UpdateSource(string.Join(Environment.NewLine,
+
+        string starterCode = lesson.Exercise?.StarterCode ?? string.Join(Environment.NewLine,
         [
             $"# Academy practice · {track.Title}",
             $"# Lesson: {lesson.Title}",
@@ -624,10 +885,97 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             "",
             $"print(\"Practice workspace ready: {EscapeSproutString(lesson.Title)}\")",
             "",
-        ]));
-        SelectedDocument = AddDocument(model);
-        StatusText = $"Opened Academy practice for {lesson.Title}";
-        return Task.CompletedTask;
+        ]);
+
+        bool isQuiz = lesson.TaskType is TaskType.Quiz or TaskType.Checkpoint
+            || (lesson.Exercise?.Questions?.Length > 0 && lesson.Exercise.Assertions.Length == 0);
+        bool hasCompanion = lesson.Exercise is not null && !isQuiz;
+        string filename = track.RequiredToolchainId switch
+        {
+            "java" => $"{lesson.Exercise?.EntryPoint ?? FindPrimaryJavaType(starterCode) ?? "Main"}.java",
+            "rust" => "main.rs",
+            "go" => "main.go",
+            "python" => "main.py",
+            _ => "main.spr",
+        };
+
+        string? companionPath = null;
+        if (hasCompanion)
+        {
+            companionPath = AcademyWorkspaceFilePath(track.Id, lesson.Id, filename);
+            string directory = Path.GetDirectoryName(companionPath)!;
+            Directory.CreateDirectory(directory);
+            if (!File.Exists(companionPath))
+            {
+                await File.WriteAllTextAsync(companionPath, starterCode);
+            }
+            EditorDocument codeModel = await _editor.OpenAsync(
+                companionPath,
+                SelectedProfile,
+                directory);
+            AddDocument(codeModel);
+        }
+
+        // Create or get Academy document tab
+        LanguageDescriptor lang = LanguageRegistry.TryGet(track.RequiredToolchainId, out var l) ? l! : LanguageRegistry.Get(DocumentLanguage.Sprout);
+        EditorDocument academyModel = _editor.OpenOrCreateAcademyDocument(
+            track.Id,
+            lesson.Id,
+            lesson.Title,
+            lang,
+            isExercise: lesson.Exercise is not null,
+            isQuiz: isQuiz,
+            linkedCompanionPath: companionPath);
+
+        DocumentTabViewModel academyTab = AddDocument(academyModel);
+        if (academyTab.AcademyTab is null)
+        {
+            academyTab.AcademyTab = new AcademyDocumentTabViewModel(this, _academy, track, lesson, companionPath);
+        }
+
+        SelectedDocument = academyTab;
+        StatusText = $"Opened Academy tab for {lesson.Title}";
+        AcademyHubVisible = false;
+        SelectActivity(ActivityDestination.Academy);
+    }
+
+    private async Task OpenAcademyNextTaskAsync()
+    {
+        AcademyTask? task = CurrentAcademyNextTask;
+        if (task is null)
+        {
+            ShowAcademySection("home");
+            return;
+        }
+
+        TrackDefinition track = _academy.Catalog.GetTrack(task.TrackId);
+        LessonDefinition activity = _academy.GetActivity(task.TrackId, task.LessonId);
+        await OpenAcademyPracticeAsync(track, activity);
+    }
+
+    private static string AcademyWorkspaceFilePath(string trackId, string lessonId, string filename) =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SproutStudio",
+            "Academy",
+            "Workspaces",
+            SafePathSegment(trackId),
+            SafePathSegment(lessonId),
+            filename);
+
+    private static string SafePathSegment(string value)
+    {
+        char[] invalid = Path.GetInvalidFileNameChars();
+        return new string(value.Select(character => invalid.Contains(character) ? '_' : character).ToArray());
+    }
+
+    private static string? FindPrimaryJavaType(string source)
+    {
+        System.Text.RegularExpressions.Match match = System.Text.RegularExpressions.Regex.Match(
+            source,
+            @"\bpublic\s+(?:(?:abstract|final|sealed|non-sealed)\s+)*(?:class|interface|record|enum)\s+(?<name>[A-Za-z_$][A-Za-z0-9_$]*)",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        return match.Success ? match.Groups["name"].Value : null;
     }
 
     public void ApplyProjectUpdate(ProjectInfo project)
@@ -650,6 +998,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     {
         ArgumentNullException.ThrowIfNull(arguments);
         StudioLog.Information($"Sprout Studio starting ({Environment.ProcessPath}).");
+        await RefreshAcademyDashboardAsync();
         try
         {
             _engineInfo = await _engine.GetInfoAsync();
@@ -698,11 +1047,106 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             {
                 await ShowToolchainsAsync();
             }
+
+            _ = CheckForUpdatesInBackgroundAsync();
         }
         catch (Exception exception)
         {
             await ReportFailureAsync("Startup failed", exception);
         }
+    }
+
+    public async Task RefreshAcademyDashboardAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            AcademyState state = await _academy.LoadStateAsync(cancellationToken);
+            _academyDashboard = _academy.CreateDashboard(state);
+            AcademyRecentSubmissions.Clear();
+            foreach (SubmissionRecord submission in _academyDashboard.RecentSubmissions.Take(5))
+            {
+                TrackDefinition? track = _academy.Catalog.Tracks.FirstOrDefault(candidate =>
+                    string.Equals(candidate.Id, submission.TrackId, StringComparison.OrdinalIgnoreCase));
+                AcademyRecentSubmissions.Add(new AcademyRecentSubmissionViewModel(
+                    submission,
+                    track?.RequiredToolchainId ?? "sprout"));
+            }
+            NotifyAcademyDashboardProperties();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            StudioLog.Warning("Could not refresh Academy dashboard state.", exception);
+        }
+    }
+
+    private void NotifyAcademyDashboardProperties()
+    {
+        OnPropertyChanged(nameof(AcademyTrackTitle));
+        OnPropertyChanged(nameof(AcademyTrackLanguageKey));
+        OnPropertyChanged(nameof(AcademyLevelText));
+        OnPropertyChanged(nameof(AcademyTotalXp));
+        OnPropertyChanged(nameof(AcademyStreakDays));
+        OnPropertyChanged(nameof(AcademyXpProgress));
+        OnPropertyChanged(nameof(AcademyXpPercent));
+        OnPropertyChanged(nameof(AcademyXpProgressText));
+        OnPropertyChanged(nameof(AcademyNextLessonTitle));
+        OnPropertyChanged(nameof(AcademyNextLessonSummary));
+        OnPropertyChanged(nameof(AcademyNextLessonXp));
+        OnPropertyChanged(nameof(AcademyLessonsOverviewText));
+        OnPropertyChanged(nameof(AcademyLessonsProgressValue));
+        OnPropertyChanged(nameof(AcademyExercisesOverviewText));
+        OnPropertyChanged(nameof(AcademyExercisesProgressValue));
+        OpenAcademyNextTaskCommand.NotifyCanExecuteChanged();
+        NotifyAcademySelectionProperties();
+    }
+
+    private bool IsAcademySection(string section) => string.Equals(
+        SelectedAcademySection,
+        section,
+        StringComparison.OrdinalIgnoreCase);
+
+    private bool IsAcademyLanguage(string language) => string.Equals(
+        AcademyTrackLanguageKey,
+        language,
+        StringComparison.OrdinalIgnoreCase);
+
+    private void NotifyAcademySelectionProperties()
+    {
+        OnPropertyChanged(nameof(IsAcademyHomeSection));
+        OnPropertyChanged(nameof(IsAcademyMyLearningSection));
+        OnPropertyChanged(nameof(IsAcademyTracksSection));
+        OnPropertyChanged(nameof(IsAcademyConceptsSection));
+        OnPropertyChanged(nameof(IsAcademyChallengesSection));
+        OnPropertyChanged(nameof(IsAcademySubmissionsSection));
+        OnPropertyChanged(nameof(IsAcademyJavaTrack));
+        OnPropertyChanged(nameof(IsAcademySproutTrack));
+        OnPropertyChanged(nameof(IsAcademyRustTrack));
+        OnPropertyChanged(nameof(IsAcademyPythonTrack));
+        OnPropertyChanged(nameof(IsAcademyGoTrack));
+    }
+
+    private static int CalculateAcademyStreak(IEnumerable<SubmissionRecord> submissions)
+    {
+        HashSet<DateOnly> successfulDays = submissions
+            .Where(submission => submission.Passed)
+            .Select(submission => DateOnly.FromDateTime(submission.SubmittedAt.LocalDateTime))
+            .ToHashSet();
+        DateOnly cursor = DateOnly.FromDateTime(DateTime.Now);
+        if (!successfulDays.Contains(cursor))
+        {
+            cursor = cursor.AddDays(-1);
+        }
+        int streak = 0;
+        while (successfulDays.Contains(cursor))
+        {
+            streak++;
+            cursor = cursor.AddDays(-1);
+        }
+        return streak;
     }
 
     public void UpdateCaret(int line, int column, int offset)
@@ -866,9 +1310,70 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         StatusText = "Ready";
     }
 
+    public (string Output, string[] Diagnostics) ExecuteSproutSnippet(string code)
+    {
+        EngineResponse runResult = _engine.ExecuteAsync(new EngineRequest(EngineOperation.Run, SelectedProfile, "snippet.spr", code, null)).GetAwaiter().GetResult();
+        return (string.Join(Environment.NewLine, runResult.Output), runResult.Diagnostics.Select(d => d.Message).ToArray());
+    }
+
+    public async Task<ExerciseRuntimeResult> ExecuteAcademyRuntimeAsync(
+        TrackDefinition track,
+        LessonDefinition lesson,
+        string code,
+        CancellationToken cancellationToken = default)
+    {
+        if (track.RequiredToolchainId is null
+            || string.Equals(track.RequiredToolchainId, "sprout", StringComparison.OrdinalIgnoreCase))
+        {
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            EngineResponse response = await _engine.ExecuteAsync(
+                new EngineRequest(
+                    EngineOperation.Run,
+                    SelectedProfile,
+                    $"{lesson.Id}.spr",
+                    code,
+                    null),
+                cancellationToken).ConfigureAwait(false);
+            timer.Stop();
+            string[] diagnostics = response.Diagnostics.Select(diagnostic => diagnostic.Message).ToArray();
+            return new ExerciseRuntimeResult(
+                response.Success,
+                string.Join(Environment.NewLine, response.Output),
+                diagnostics,
+                timer.Elapsed,
+                response.Success
+                    ? $"Ran with the Sprout engine in {timer.Elapsed.TotalMilliseconds:0} ms."
+                    : "Sprout execution reported diagnostics.",
+                RanProgram: true);
+        }
+
+        return await _academyExecution.ExecuteAsync(track, lesson, code, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     private DocumentTabViewModel AddDocument(EditorDocument model)
     {
+        DocumentTabViewModel? existing = Documents.FirstOrDefault(d => d.Id == model.Id);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
         var document = new DocumentTabViewModel(model);
+        if (model.IsAcademy && model.AcademyTrackId is not null && model.AcademyLessonId is not null)
+        {
+            try
+            {
+                TrackDefinition track = _academy.Catalog.GetTrack(model.AcademyTrackId);
+                LessonDefinition lesson = _academy.GetActivity(track.Id, model.AcademyLessonId);
+                document.AcademyTab = new AcademyDocumentTabViewModel(this, _academy, track, lesson, model.LinkedCompanionPath);
+            }
+            catch (Exception ex)
+            {
+                StudioLog.Warning($"Could not attach Academy tab: {ex.Message}");
+            }
+        }
+
         document.SourceChanged += Document_SourceChanged;
         document.CloseRequested += Document_CloseRequested;
         Documents.Add(document);
@@ -910,7 +1415,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private async Task SaveSelectedDocumentAsync()
     {
-        if (SelectedDocument is null || _dialogs is null)
+        DocumentTabViewModel? document = EffectiveFileDocument();
+        if (document is null || _dialogs is null)
         {
             return;
         }
@@ -918,24 +1424,24 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         BeginOperation("Saving…");
         try
         {
-            if (SelectedDocument.FilePath is null)
+            if (document.FilePath is null)
             {
                 string? path = await _dialogs.PickDocumentSavePathAsync(
-                    SelectedDocument.DisplayName);
+                    document.DisplayName);
                 if (string.IsNullOrWhiteSpace(path))
                 {
                     return;
                 }
-                await _editor.SaveAsAsync(SelectedDocument.Model, path);
+                await _editor.SaveAsAsync(document.Model, path);
             }
             else
             {
-                await _editor.SaveAsync(SelectedDocument.Model);
+                await _editor.SaveAsync(document.Model);
             }
-            SelectedDocument.RefreshMetadata();
+            document.RefreshMetadata();
             OnPropertyChanged(nameof(WindowContext));
             StatusText = "Saved";
-            StudioLog.Information($"Saved document {SelectedDocument.DisplayName}.");
+            StudioLog.Information($"Saved document {document.DisplayName}.");
         }
         catch (Exception exception)
         {
@@ -1243,13 +1749,40 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task ExecuteSubmitAsync()
+    {
+        AcademyDocumentTabViewModel? tab = SelectedDocument?.AcademyTab;
+        if (tab is not null)
+        {
+            await tab.SubmitExerciseCommand.ExecuteAsync(null);
+            SelectedBottomTab = 3;
+            BottomPanelVisible = true;
+            return;
+        }
+
+        StatusText = "Submit is available only for an active Academy exercise or quiz.";
+    }
+
     private Task ExecuteRunAsync()
     {
+        if (SelectedDocument?.AcademyTab is { HasLinkedCompanion: true } academyTab)
+        {
+            return academyTab.CheckRequirementsAsync();
+        }
         if (SelectedDocument?.Model.Language.Id == DocumentLanguage.Sprout)
         {
             return ExecuteActiveAsync(EngineOperation.Run);
         }
         return ExecuteExternalAsync(ToolchainAction.Run);
+    }
+
+    private Task ExecuteCheckAsync()
+    {
+        if (SelectedDocument?.AcademyTab is { HasLinkedCompanion: true } academyTab)
+        {
+            return academyTab.CheckRequirementsAsync();
+        }
+        return ExecuteActiveAsync(EngineOperation.Check);
     }
 
     private Task ExecuteBuildAsync()
@@ -1467,7 +2000,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private void OpenRepl()
     {
-        SelectedBottomTab = 3;
+        SelectedBottomTab = 4;
         BottomPanelVisible = true;
     }
 
@@ -1656,7 +2189,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         {
             if (!immediate)
             {
-                await Task.Delay(320, cancellationToken);
+                await Task.Delay(200, cancellationToken);
             }
             var request = new LanguageServiceRequest(
                 LanguageServiceOperation.Inspect,
@@ -1673,6 +2206,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             }
             ApplyDiagnostics(response.Diagnostics);
             RefreshOutline(response.Symbols);
+            if (document.Model.Language.Id == DocumentLanguage.Sprout && _engine is IEngineAstClient astClient)
+            {
+                string astJson = await astClient.GetAstJsonAsync(document.Source, cancellationToken);
+                if (!cancellationToken.IsCancellationRequested
+                    && version == document.AnalysisVersion
+                    && ReferenceEquals(document, SelectedDocument))
+                {
+                    AstGraph.UpdateAst(astJson);
+                }
+            }
             LanguageAnalysisUpdated?.Invoke(
                 this,
                 new LanguageAnalysisSnapshot(document.Id, version, response));
@@ -1717,6 +2260,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         Problems.Clear();
         _currentDiagnostics = [];
         OutlineItems.Clear();
+        AstGraph.ClearAst();
         OnPropertyChanged(nameof(HasProblems));
         OnPropertyChanged(nameof(NoProblems));
         OnPropertyChanged(nameof(ProblemCount));
@@ -1911,6 +2455,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         "project.packages" => ShowPackagesCommand.ExecuteAsync(null),
         "view.settings" => ShowSettingsCommand.ExecuteAsync(null),
         "help.about" => ShowAboutCommand.ExecuteAsync(null),
+        "help.update" => ShowUpdateDialogCommand.ExecuteAsync(null),
         _ => Task.CompletedTask,
     };
 
@@ -1980,8 +2525,18 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private async Task ShowAcademyAsync()
     {
+        AcademyHubVisible = true;
+        SelectedAcademySection = "home";
         SelectActivity(ActivityDestination.Academy);
         await Task.CompletedTask;
+    }
+
+    private void ShowAcademySection(string section)
+    {
+        SelectedAcademySection = section;
+        AcademyHubVisible = true;
+        SelectActivity(ActivityDestination.Academy);
+        OnPropertyChanged(nameof(SelectedAcademySection));
     }
 
     private async Task ShowDocumentationAsync()
@@ -2048,6 +2603,59 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         await _dialogs.ShowAboutAsync(info);
     }
 
+    private async Task CheckForUpdatesInBackgroundAsync()
+    {
+        try
+        {
+            UpdateInfo? update = await _updateService.CheckForUpdateAsync();
+            if (update is not null)
+            {
+                _latestUpdate = update;
+                OnPropertyChanged(nameof(HasUpdate));
+                OnPropertyChanged(nameof(UpdateBadgeText));
+                OnPropertyChanged(nameof(LatestUpdate));
+            }
+        }
+        catch (Exception exception)
+        {
+            StudioLog.Warning($"Background update check failed: {exception.Message}");
+        }
+    }
+
+    public async Task ShowUpdateDialogAsync()
+    {
+        if (_dialogs is null)
+        {
+            return;
+        }
+
+        if (_latestUpdate is null)
+        {
+            BeginOperation("Checking for updates…");
+            try
+            {
+                _latestUpdate = await _updateService.CheckForUpdateAsync();
+                OnPropertyChanged(nameof(HasUpdate));
+                OnPropertyChanged(nameof(UpdateBadgeText));
+                OnPropertyChanged(nameof(LatestUpdate));
+            }
+            finally
+            {
+                EndOperation();
+            }
+
+            if (_latestUpdate is null)
+            {
+                await _dialogs.ShowMessageAsync(
+                    "Sprout Studio",
+                    $"You are running the latest version of Sprout Studio (v{_updateService.CurrentVersion}).");
+                return;
+            }
+        }
+
+        await _dialogs.ShowUpdateDialogAsync(_latestUpdate, _updateService);
+    }
+
     private void BeginOperation(string task)
     {
         IsBusy = true;
@@ -2080,7 +2688,19 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         await Task.CompletedTask;
     }
 
-    private bool CanSaveDocument() => SelectedDocument is not null && !IsBusy;
+    private DocumentTabViewModel? EffectiveFileDocument()
+    {
+        if (SelectedDocument?.AcademyTab?.LinkedCompanionPath is { Length: > 0 } companionPath)
+        {
+            return Documents.FirstOrDefault(document => string.Equals(
+                document.FilePath,
+                companionPath,
+                StringComparison.OrdinalIgnoreCase));
+        }
+        return SelectedDocument is { IsAcademy: false } ? SelectedDocument : null;
+    }
+
+    private bool CanSaveDocument() => EffectiveFileDocument() is not null && !IsBusy;
 
     private bool CanUseProjectService() => EngineAvailable && !IsBusy;
 
@@ -2088,12 +2708,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         && SelectedDocument.Model.Language.Id == DocumentLanguage.Sprout
         && !IsBusy;
 
+    private bool CanCheckActive() => !IsBusy
+        && (SelectedDocument?.AcademyTab?.HasLinkedCompanion == true || CanExecuteSprout());
+
     private bool CanRunActive() => !IsBusy && SelectedDocument is { } document
-        && (document.Model.Language.Id == DocumentLanguage.Sprout
-            ? EngineAvailable
-            : document.FilePath is not null
-                && document.Model.Language.ToolchainId is not null
-                && document.Model.Language.Capabilities.HasFlag(EditorCapability.Run));
+        && (document.AcademyTab?.HasLinkedCompanion == true
+            || (document.Model.Language.Id == DocumentLanguage.Sprout
+                ? EngineAvailable
+                : document.FilePath is not null
+                    && document.Model.Language.ToolchainId is not null
+                    && document.Model.Language.Capabilities.HasFlag(EditorCapability.Run)));
 
     private bool CanBuildActive() => !IsBusy
         && (SelectedDocument is { Model.Language.Id: not DocumentLanguage.Sprout } document
@@ -2127,6 +2751,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         RunReplCommand.NotifyCanExecuteChanged();
         CommandPaletteCommand.NotifyCanExecuteChanged();
         ShowAcademyCommand.NotifyCanExecuteChanged();
+        OpenAcademyNextTaskCommand.NotifyCanExecuteChanged();
         ShowDocumentationCommand.NotifyCanExecuteChanged();
         ShowSourceControlCommand.NotifyCanExecuteChanged();
         RefreshSourceControlCommand.NotifyCanExecuteChanged();
@@ -2196,4 +2821,29 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         ActivityDestination.Settings => "settings",
         _ => "explorer",
     };
+}
+
+public sealed record AcademyRecentSubmissionViewModel(
+    SubmissionRecord Submission,
+    string LanguageKey)
+{
+    public string Title => Submission.ExerciseTitle;
+    public string Status => Submission.Passed ? "Passed" : "Needs revision";
+    public string ScoreText => Submission.Type == SubmissionType.CodeExercise
+        ? $"{Submission.Score}/10"
+        : $"{Submission.Score}%";
+    public string StatusGlyph => Submission.Passed ? "\uE73E" : "\uE711";
+    public string StatusColor => Submission.Passed ? "#49C979" : "#E5A84B";
+    public string RelativeTime
+    {
+        get
+        {
+            TimeSpan elapsed = DateTimeOffset.Now - Submission.SubmittedAt.ToLocalTime();
+            if (elapsed.TotalMinutes < 2) return "Just now";
+            if (elapsed.TotalHours < 1) return $"{(int)elapsed.TotalMinutes}m ago";
+            if (elapsed.TotalDays < 1) return $"{(int)elapsed.TotalHours}h ago";
+            if (elapsed.TotalDays < 2) return "Yesterday";
+            return Submission.SubmittedAt.ToLocalTime().ToString("MMM d");
+        }
+    }
 }

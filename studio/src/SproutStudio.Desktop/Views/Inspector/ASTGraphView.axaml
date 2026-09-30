@@ -1,0 +1,113 @@
+<UserControl
+    x:Class="SproutStudio.Views.Inspector.ASTGraphView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    x:DataType="vm:ASTGraphViewModel">
+  <Grid RowDefinitions="Auto,Auto,*">
+    <!-- Toolbar: Search, Filters & View Options -->
+    <Border Grid.Row="0" Background="{DynamicResource StudioPanelBrush}" BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="0,0,0,1" Padding="8,6">
+      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="6">
+        <!-- Search Box -->
+        <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Search AST nodes..." MinHeight="26" Margin="0,0,6,0">
+          <TextBox.InnerLeftContent>
+            <TextBlock Text="🔍" VerticalAlignment="Center" Margin="6,0,2,0" Foreground="{DynamicResource StudioTextMutedBrush}" FontSize="10" />
+          </TextBox.InnerLeftContent>
+        </TextBox>
+
+        <!-- Actions -->
+        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+          <Button Classes="icon-button small" Command="{Binding ExpandAllCommand}" ToolTip.Tip="Expand All Nodes">
+            <TextBlock Text="⊞" FontSize="12" />
+          </Button>
+          <Button Classes="icon-button small" Command="{Binding CollapseAllCommand}" ToolTip.Tip="Collapse All Nodes">
+            <TextBlock Text="⊟" FontSize="12" />
+          </Button>
+          <Button Classes="toolbar compact" Command="{Binding ToggleViewModeCommand}" ToolTip.Tip="Toggle Tree / Visual Graph">
+            <TextBlock Text="{Binding ViewModeLabel}" FontSize="11" />
+          </Button>
+        </StackPanel>
+
+        <!-- Category Filters -->
+        <ScrollViewer Grid.Row="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Button Classes="toolbar compact" Command="{Binding SelectCategoryCommand}" CommandParameter="{x:Static vm:AstNodeCategory.All}"
+                    Background="{Binding IsAllSelected, Converter={x:Null}}">
+              <TextBlock Text="All" FontSize="11" />
+            </Button>
+            <Button Classes="toolbar compact" Command="{Binding SelectCategoryCommand}" CommandParameter="{x:Static vm:AstNodeCategory.Statements}">
+              <TextBlock Text="Statements" Foreground="#38BDF8" FontSize="11" />
+            </Button>
+            <Button Classes="toolbar compact" Command="{Binding SelectCategoryCommand}" CommandParameter="{x:Static vm:AstNodeCategory.Expressions}">
+              <TextBlock Text="Expressions" Foreground="#A855F7" FontSize="11" />
+            </Button>
+            <Button Classes="toolbar compact" Command="{Binding SelectCategoryCommand}" CommandParameter="{x:Static vm:AstNodeCategory.Functions}">
+              <TextBlock Text="Functions" Foreground="#F59E0B" FontSize="11" />
+            </Button>
+            <Button Classes="toolbar compact" Command="{Binding SelectCategoryCommand}" CommandParameter="{x:Static vm:AstNodeCategory.Imports}">
+              <TextBlock Text="Imports" Foreground="#34D399" FontSize="11" />
+            </Button>
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <!-- Stats Bar -->
+    <Border Grid.Row="1" Background="{DynamicResource StudioRaisedBrush}" BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="0,0,0,1" Padding="8,4" IsVisible="{Binding HasAst}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="{Binding TotalNodeCount, StringFormat='Total: {0}'}" FontSize="10" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        <TextBlock Text="•" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+        <TextBlock Text="{Binding StatementCount, StringFormat='Stmts: {0}'}" FontSize="10" Foreground="#38BDF8" />
+        <TextBlock Text="•" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+        <TextBlock Text="{Binding ExpressionCount, StringFormat='Exprs: {0}'}" FontSize="10" Foreground="#A855F7" />
+        <TextBlock Text="•" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+        <TextBlock Text="{Binding FunctionCount, StringFormat='Fns: {0}'}" FontSize="10" Foreground="#F59E0B" />
+        <TextBlock Text="•" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+        <TextBlock Text="{Binding MaxDepth, StringFormat='Depth: {0}'}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+      </StackPanel>
+    </Border>
+
+    <!-- Main Content Area -->
+    <Grid Grid.Row="2">
+      <!-- Empty State -->
+      <StackPanel IsVisible="{Binding NoAst}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" Margin="20">
+        <TextBlock Text="◈" FontSize="28" Foreground="{DynamicResource StudioTextMutedBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="No AST Available" Classes="panel-header" HorizontalAlignment="Center" />
+        <TextBlock Text="Open or write Sprout code to visualize the live AST &amp; Scope Graph." Foreground="{DynamicResource StudioTextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="240" />
+      </StackPanel>
+
+      <!-- Mode 1: Tree View -->
+      <TreeView IsVisible="{Binding !IsVisualGraphView}" ItemsSource="{Binding RootNodes}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}" Margin="2">
+        <TreeView.ItemTemplate>
+          <TreeDataTemplate DataType="vm:AstNodeViewModel" ItemsSource="{Binding Children}">
+            <Border IsVisible="{Binding IsVisible}" Padding="4,2" CornerRadius="4" Margin="1,1">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" ColumnSpacing="6">
+                <!-- Kind Badge Pill -->
+                <Border Grid.Column="0" Background="{Binding BadgeBackground}" BorderBrush="{Binding BadgeColor}" BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="3">
+                    <TextBlock Text="{Binding Icon}" Foreground="{Binding BadgeColor}" FontSize="10" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Kind}" Foreground="{Binding BadgeColor}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Border>
+
+                <!-- Label & Detail -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" FontWeight="Medium" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" FontSize="11" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Location Coordinates -->
+                <TextBlock Grid.Column="2" Text="{Binding LocationText}" Foreground="{DynamicResource StudioTextMutedBrush}" FontFamily="Cascadia Mono, Consolas, monospace" FontSize="9" VerticalAlignment="Center" Margin="4,0" />
+              </Grid>
+            </Border>
+          </TreeDataTemplate>
+        </TreeView.ItemTemplate>
+      </TreeView>
+
+      <!-- Mode 2: Visual Canvas Graph -->
+      <ScrollViewer IsVisible="{Binding IsVisualGraphView}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Canvas x:Name="AstCanvas" Background="Transparent" MinWidth="600" MinHeight="400" Margin="16" />
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,139 @@
+<UserControl
+    x:Class="SproutStudio.Views.Inspector.AcademyProgressView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SproutStudio.ViewModels"
+    xmlns:shared="using:SproutStudio.Views.Shared"
+    x:DataType="vm:MainWindowViewModel"
+    x:CompileBindings="False">
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="14,10,14,24" Spacing="16">
+
+      <!-- Header -->
+      <TextBlock Text="ACADEMY PROGRESS" Classes="panel-header" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+
+      <!-- Active Course Progress Card -->
+      <Border Classes="dialog-card" Padding="14">
+        <StackPanel Spacing="12">
+          <!-- Course Title & Level -->
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <shared:LanguageIconView LanguageKey="{Binding AcademyTrackLanguageKey}" Width="24" Height="24" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding AcademyTrackTitle}" FontWeight="Bold" FontSize="13.5" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding AcademyTrackTitle}" />
+            <Border Grid.Column="2" Background="{DynamicResource StudioRaisedBrush}" BorderBrush="{DynamicResource StudioBorderBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="6,2">
+              <TextBlock Text="{Binding AcademyLevelText}" FontSize="10.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </Border>
+          </Grid>
+
+          <!-- XP Bar -->
+          <StackPanel Spacing="4">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding AcademyXpProgressText}" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+              <TextBlock Grid.Column="1" Text="{Binding AcademyXpPercent, StringFormat='{}{0}%'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource StudioAccentBrush}" />
+            </Grid>
+            <ProgressBar Value="{Binding AcademyXpPercent}" Minimum="0" Maximum="100" Height="6" CornerRadius="3"
+                         Foreground="{DynamicResource StudioAccentBrush}" Background="{DynamicResource StudioBorderBrush}" />
+          </StackPanel>
+
+          <!-- Stats: Total XP & Streak -->
+          <Grid ColumnDefinitions="*,*" Margin="0,4,0,0">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{Binding AcademyTotalXp}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource StudioTextPrimaryBrush}" />
+              <TextBlock Text="Total XP" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="2">
+              <TextBlock Text="{Binding AcademyStreakDays}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource StudioTextPrimaryBrush}" />
+              <TextBlock Text="Streak (days)" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- Next Lesson Recommendation Card -->
+      <Border Classes="dialog-card" Padding="14">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Next Lesson" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource StudioTextMutedBrush}" />
+          
+          <Button Command="{Binding OpenAcademyNextTaskCommand}" Classes="recent-project" HorizontalAlignment="Stretch" Padding="0">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+              <TextBlock Classes="icon academy accent" Text="&#xE7BE;" />
+              <StackPanel Grid.Column="1" MinWidth="0">
+                <TextBlock Text="{Binding AcademyNextLessonTitle}" FontWeight="SemiBold" FontSize="13"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding AcademyNextLessonTitle}" />
+                <TextBlock Text="{Binding AcademyNextLessonSummary}" FontSize="11"
+                           Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" Margin="0,2,0,0" />
+                <TextBlock Text="{Binding AcademyNextLessonXp}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource StudioAccentBrush}" Margin="0,4,0,0" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Classes="icon academy" Text="&#xE76C;" Foreground="{DynamicResource StudioTextMutedBrush}" />
+            </Grid>
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- Recent Submissions Card -->
+      <Border Classes="dialog-card" Padding="14">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBlock Text="Recent Submissions" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="1" Classes="hyperlink" Command="{Binding ShowAcademySubmissionsCommand}"
+                    Padding="0" HorizontalAlignment="Right">
+              <TextBlock Text="View all" FontSize="11" Foreground="{DynamicResource StudioAccentBrush}" />
+            </Button>
+          </Grid>
+
+          <TextBlock IsVisible="{Binding NoAcademyRecentSubmissions}"
+                     Text="Submit an Academy activity to see it here."
+                     FontSize="11" TextWrapping="Wrap"
+                     Foreground="{DynamicResource StudioTextMutedBrush}" />
+          <ItemsControl IsVisible="{Binding HasAcademyRecentSubmissions}"
+                        ItemsSource="{Binding AcademyRecentSubmissions}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:AcademyRecentSubmissionViewModel">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="0,0,0,8">
+                  <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="18" Height="18" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding RelativeTime}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Classes="icon academy" Text="{Binding StatusGlyph}" Foreground="{Binding StatusColor}" />
+                    <TextBlock Text="{Binding ScoreText}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding StatusColor}" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Track Overview Card -->
+      <Border Classes="dialog-card" Padding="14">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Track Overview" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource StudioTextMutedBrush}" />
+
+          <!-- Lessons Progress -->
+          <StackPanel Spacing="4">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding AcademyLessonsOverviewText}" FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </Grid>
+            <ProgressBar Value="{Binding AcademyLessonsProgressValue}" Minimum="0" Maximum="100" Height="5" CornerRadius="2.5"
+                         Foreground="{DynamicResource StudioAccentBrush}" Background="{DynamicResource StudioBorderBrush}" />
+          </StackPanel>
+
+          <!-- Exercises Progress -->
+          <StackPanel Spacing="4">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding AcademyExercisesOverviewText}" FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </Grid>
+            <ProgressBar Value="{Binding AcademyExercisesProgressValue}" Minimum="0" Maximum="100" Height="5" CornerRadius="2.5"
+                         Foreground="{DynamicResource StudioAccentBrush}" Background="{DynamicResource StudioBorderBrush}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,12 @@
+import math
+import string
+import json
+
+has text = "  sprout standard library  "
+print(string.to_upper(string.trim(text)))
+print(math.abs(-123))
+print(math.pow(2, 10))
+
+has data = json.parse("{\"message\": \"Hello from Sprout Standard Library!\", \"status\": 200}")
+print(data["message"])
+print(data["status"])

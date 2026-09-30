@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window
     private readonly Dictionary<ActivityDestination, Control> _modeViews = [];
     private CancellationTokenSource? _modeActivationCancellation;
     private bool _allowClose;
+    private bool _responsiveInspectorCollapsed;
     private double _lastExplorerWidth = 280;
     private double _lastInspectorWidth = 360;
     private double _lastBottomHeight = 220;
@@ -94,9 +95,21 @@ public sealed partial class MainWindow : Window
             or nameof(MainWindowViewModel.InspectorVisible)
             or nameof(MainWindowViewModel.BottomPanelVisible))
         {
+            RecalculateResponsivePaneVisibility(ClientSize.Width);
+            ApplyPaneVisibility();
+        }
+        else if (args.PropertyName == nameof(MainWindowViewModel.SelectedDocument))
+        {
+            RecalculateResponsivePaneVisibility(ClientSize.Width);
             ApplyPaneVisibility();
         }
         else if (args.PropertyName == nameof(MainWindowViewModel.SelectedActivity))
+        {
+            _ = ActivateStudioModeAsync();
+        }
+        else if (args.PropertyName is nameof(MainWindowViewModel.AcademyHubVisible)
+            or nameof(MainWindowViewModel.SelectedAcademySection)
+            or nameof(MainWindowViewModel.SelectedAcademyTrackId))
         {
             _ = ActivateStudioModeAsync();
         }
@@ -144,6 +157,14 @@ public sealed partial class MainWindow : Window
             try
             {
                 await mode.ActivateAsync(_viewModel, cancellationToken);
+                if (control is AcademyModeView academy)
+                {
+                    academy.SelectSection(_viewModel.SelectedAcademySection);
+                    if (_viewModel.SelectedAcademyTrackId is { Length: > 0 } trackId)
+                    {
+                        academy.SelectTrack(trackId);
+                    }
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -160,7 +181,7 @@ public sealed partial class MainWindow : Window
     {
         ActivityDestination.Search => new SearchModeView(),
         ActivityDestination.SourceControl => new SourceControlModeView(_viewModel.GitRepository),
-        ActivityDestination.Academy => new AcademyModeView(_viewModel.Toolchains),
+        ActivityDestination.Academy => new AcademyModeView(_viewModel.Toolchains, _viewModel.Academy),
         ActivityDestination.Documentation => new DocumentationModeView(),
         ActivityDestination.Packages => new PackagesModeView(),
         ActivityDestination.Toolchains => new ToolchainsModeView(_viewModel.Toolchains),
@@ -213,13 +234,14 @@ public sealed partial class MainWindow : Window
         activity.Width = new GridLength(_viewModel.ActivityVisible ? 88 : 0);
         explorer.Width = new GridLength(_viewModel.ExplorerVisible ? _lastExplorerWidth : 0);
         explorerSplitter.Width = new GridLength(_viewModel.ExplorerVisible ? 4 : 0);
-        inspector.Width = new GridLength(_viewModel.InspectorVisible ? _lastInspectorWidth : 0);
-        inspectorSplitter.Width = new GridLength(_viewModel.InspectorVisible ? 4 : 0);
+        bool showInspector = _viewModel.InspectorVisible && !_responsiveInspectorCollapsed;
+        inspector.Width = new GridLength(showInspector ? _lastInspectorWidth : 0);
+        inspectorSplitter.Width = new GridLength(showInspector ? 4 : 0);
         bottom.Height = new GridLength(_viewModel.BottomPanelVisible ? _lastBottomHeight : 0);
         bottomSplitter.Height = new GridLength(_viewModel.BottomPanelVisible ? 4 : 0);
 
         this.FindControl<GridSplitter>("ExplorerSplitter")!.IsVisible = _viewModel.ExplorerVisible;
-        this.FindControl<GridSplitter>("InspectorSplitter")!.IsVisible = _viewModel.InspectorVisible;
+        this.FindControl<GridSplitter>("InspectorSplitter")!.IsVisible = showInspector;
         this.FindControl<GridSplitter>("BottomSplitter")!.IsVisible = _viewModel.BottomPanelVisible;
     }
 
@@ -251,15 +273,33 @@ public sealed partial class MainWindow : Window
         double maximumHeight = Math.Max(MinHeight, (screen.WorkingArea.Height / screen.Scaling) - 20);
         Width = Math.Min(Width, maximumWidth);
         Height = Math.Min(Height, maximumHeight);
+        _viewModel.CompactToolbar = Width < 1600;
     }
 
     private void MainWindow_SizeChanged(object? sender, SizeChangedEventArgs args)
     {
-        _viewModel.CompactToolbar = args.NewSize.Width < 1360;
-        if (args.NewSize.Width < 1120 && _viewModel.InspectorVisible)
+        _viewModel.CompactToolbar = args.NewSize.Width < 1600;
+        if (RecalculateResponsivePaneVisibility(args.NewSize.Width))
         {
-            _viewModel.InspectorVisible = false;
+            ApplyPaneVisibility();
         }
+    }
+
+    private bool RecalculateResponsivePaneVisibility(double windowWidth)
+    {
+        double activityWidth = _viewModel.ActivityVisible ? 88 : 0;
+        double explorerWidth = _viewModel.ExplorerVisible ? _lastExplorerWidth + 4 : 0;
+        double inspectorWidth = _viewModel.InspectorVisible ? _lastInspectorWidth + 4 : 0;
+        double centerWidthWithInspector = windowWidth - activityWidth - explorerWidth - inspectorWidth;
+        double requiredCenterWidth = _viewModel.SelectedDocument?.IsAcademyCoding == true ? 920 : 620;
+        bool shouldCollapse = _viewModel.InspectorVisible && centerWidthWithInspector < requiredCenterWidth;
+        if (_responsiveInspectorCollapsed == shouldCollapse)
+        {
+            return false;
+        }
+
+        _responsiveInspectorCollapsed = shouldCollapse;
+        return true;
     }
 
     private void MainWindow_KeyDown(object? sender, KeyEventArgs args)

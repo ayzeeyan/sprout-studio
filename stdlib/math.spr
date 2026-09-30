@@ -1,0 +1,218 @@
+# Sprout Standard Library: Math Module
+# Mathematical constants and essential helper functions written in native Sprout syntax.
+
+## Mathematical constant representing the ratio of a circle's circumference to its diameter (π ≈ 3.14159).
+## @type Number
+## @example math.PI
+has PI = 3.141592653589793
+
+## Euler's number, the base of natural logarithms (e ≈ 2.71828).
+## @type Number
+## @example math.E
+has E = 2.718281828459045
+
+## Mathematical constant representing the circle constant TAU (τ = 2π ≈ 6.28318).
+## @type Number
+## @example math.TAU
+has TAU = 6.283185307179586
+
+## Returns the absolute value of a number.
+## @param x Number The input number.
+## @returns Number Non-negative magnitude of x.
+## @example math.abs(-42) # -> 42
+action abs(x)
+    if x < 0
+        return -x
+    end
+    return x
+end
+
+## Returns the smaller of two numbers.
+## @param a Number First number.
+## @param b Number Second number.
+## @returns Number The minimum of a and b.
+## @example math.min(10, 20) # -> 10
+action min(a, b)
+    if a < b
+        return a
+    end
+    return b
+end
+
+## Returns the larger of two numbers.
+## @param a Number First number.
+## @param b Number Second number.
+## @returns Number The maximum of a and b.
+## @example math.max(10, 20) # -> 20
+action max(a, b)
+    if a > b
+        return a
+    end
+    return b
+end
+
+## Restricts a value to lie within the inclusive range [min_val, max_val].
+## @param val Number The value to clamp.
+## @param min_val Number Lower bound.
+## @param max_val Number Upper bound.
+## @returns Number Clamped value.
+## @example math.clamp(150, 0, 100) # -> 100
+action clamp(val, min_val, max_val)
+    if val < min_val
+        return min_val
+    end
+    if val > max_val
+        return max_val
+    end
+    return val
+end
+
+## Returns the sign of a number (1 for positive, -1 for negative, 0 for zero).
+## @param x Number The input number.
+## @returns Number Sign indicator: 1, -1, or 0.
+## @example math.sign(-5) # -> -1
+action sign(x)
+    if x > 0
+        return 1
+    end
+    if x < 0
+        return -1
+    end
+    return 0
+end
+
+## Computes the result of raising base to the power of exp.
+## @param base Number The base value.
+## @param exp Number The integer exponent.
+## @returns Number base raised to exp.
+## @example math.pow(2, 8) # -> 256
+action pow(base, exp)
+    if exp == 0
+        return 1
+    end
+    has is_negative = false
+    if exp < 0
+        is_negative = true
+        exp = -exp
+    end
+    has result = 1
+    repeat exp times
+        result = result * base
+    end
+    if is_negative
+        return 1.0 / result
+    end
+    return result
+end
+
+## Computes the square root of a non-negative number using Newton-Raphson approximation.
+## @param x Number The number to compute the square root of.
+## @returns Number The computed square root (or 0 if x <= 0).
+## @example math.sqrt(25) # -> 5.0
+action sqrt(x)
+    if x < 0
+        return 0
+    end
+    if x == 0
+        return 0
+    end
+    # Newton-Raphson method
+    has guess = x / 2.0
+    if guess == 0
+        guess = 1.0
+    end
+    repeat 20 times
+        guess = (guess + x / guess) / 2.0
+    end
+    return guess
+end
+
+## Returns the largest integer less than or equal to x.
+## @param x Number The input number.
+## @returns Number Floor integer value.
+## @example math.floor(3.7) # -> 3
+action floor(x)
+    has i = 0
+    if x >= 0
+        while i + 1 <= x
+            i = i + 1
+        end
+        return i
+    else
+        while i > x
+            i = i - 1
+        end
+        return i
+    end
+end
+
+## Returns the smallest integer greater than or equal to x.
+## @param x Number The input number.
+## @returns Number Ceil integer value.
+## @example math.ceil(3.2) # -> 4
+action ceil(x)
+    has f = floor(x)
+    if f == x
+        return f
+    end
+    return f + 1
+end
+
+## Rounds a number to the nearest integer.
+## @param x Number The input number.
+## @returns Number Nearest integer.
+## @example math.round(4.6) # -> 5
+action round(x)
+    return floor(x + 0.5)
+end
+
+## Returns true if integer n is even, false otherwise.
+## @param n Number The integer to check.
+## @returns Boolean True if even.
+## @example math.is_even(4) # -> true
+action is_even(n)
+    return n % 2 == 0
+end
+
+## Returns true if integer n is odd, false otherwise.
+## @param n Number The integer to check.
+## @returns Boolean True if odd.
+## @example math.is_odd(5) # -> true
+action is_odd(n)
+    return n % 2 != 0
+end
+
+## Linearly interpolates between a and b with factor t in range [0.0, 1.0].
+## @param a Number Start value.
+## @param b Number End value.
+## @param t Number Interpolation fraction (0.0 to 1.0).
+## @returns Number Interpolated value.
+## @example math.lerp(0, 100, 0.5) # -> 50.0
+action lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+## Converts degrees to radians.
+## @param deg Number Angle in degrees.
+## @returns Number Angle in radians.
+## @example math.deg_to_rad(180) # -> 3.14159...
+action deg_to_rad(deg)
+    return deg * (PI / 180.0)
+end
+
+## Converts radians to degrees.
+## @param rad Number Angle in radians.
+## @returns Number Angle in degrees.
+## @example math.rad_to_deg(3.14159) # -> 180
+action rad_to_deg(rad)
+    return rad * (180.0 / PI)
+end
+
+## Returns the Euclidean distance hypotenuse sqrt(a^2 + b^2).
+## @param a Number First side length.
+## @param b Number Second side length.
+## @returns Number Hypotenuse length.
+## @example math.hypot(3, 4) # -> 5.0
+action hypot(a, b)
+    return sqrt(a * a + b * b)
+end

@@ -40,6 +40,10 @@ public sealed partial class DocumentationModeView : UserControl, IStudioModeView
                     await NavigateAsync(_catalog.Find("studio") ?? _catalog.Topics[0], null, addHistory: true);
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception exception)
             {
                 StudioLog.Error("Offline documentation failed to load.", exception);

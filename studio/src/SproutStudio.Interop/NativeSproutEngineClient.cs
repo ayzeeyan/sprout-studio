@@ -8,7 +8,7 @@ using SproutStudio.Editor;
 namespace SproutStudio.Interop;
 
 public sealed partial class NativeSproutEngineClient : IEngineClient, IEngineInformationClient,
-    IProjectClient, IProjectAdvancedClient, ISproutLanguageService
+    IProjectClient, IProjectAdvancedClient, ISproutLanguageService, IEngineAstClient
 {
     public const int SupportedApiVersion = 1;
 
@@ -30,6 +30,17 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IEngineInf
 
     public Task<EngineInfo> GetInfoAsync(CancellationToken cancellationToken = default) =>
         Task.Run(() => CompatibleEngine.Value, cancellationToken);
+
+    public Task<string> GetAstJsonAsync(string source, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return Task.Run(() =>
+        {
+            _ = CompatibleEngine.Value;
+            NativeBuffer buffer = NativeMethods.SproutGetAstJson(source);
+            return ReadBuffer(buffer);
+        }, cancellationToken);
+    }
 
     public Task<EngineResponse> ExecuteAsync(
         EngineRequest request,
@@ -426,6 +437,10 @@ public sealed partial class NativeSproutEngineClient : IEngineClient, IEngineInf
         internal static partial NativeBuffer SproutProjectBuild(
             byte[] projectPath,
             nuint projectPathLength);
+
+        [LibraryImport(LibraryName, EntryPoint = "sprout_get_ast_json", StringMarshalling = StringMarshalling.Utf8)]
+        [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+        internal static partial NativeBuffer SproutGetAstJson(string source);
 
         [LibraryImport(LibraryName, EntryPoint = "sprout_buffer_free")]
         [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]

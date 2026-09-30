@@ -12,7 +12,25 @@
           "summary": "Create values and print a result.",
           "content": "A program stores information in values and performs operations with it. In Guided Sprout, `has name = \"Sprout\"` declares a value and `print(name)` displays it. Change the value and predict the output before running the program.",
           "xp": 30,
-          "conceptIds": ["variables"]
+          "conceptIds": ["variables"],
+          "exercise": {
+            "title": "Complete the Greeting",
+            "objective": "Join the greeting with the word Sprout and print the completed message.",
+            "starterCode": "has greeting = \"Hello\"\n# Print greeting + Sprout\n",
+            "solutionCode": "has greeting = \"Hello\"\nprint(greeting + \" Sprout\")\n",
+            "expectedOutput": "Hello Sprout",
+            "hints": [
+              "Nudge: The greeting and the word Sprout must become one value before printing.",
+              "Concept: The + operator joins two text values in Guided Sprout.",
+              "Structure: Build greeting + \" Sprout\" inside the print call.",
+              "Detail: Replace the comment with print(greeting + \" Sprout\")."
+            ],
+            "assertions": [
+              "contains:has greeting",
+              "contains:print"
+            ],
+            "verifyExpectedOutput": true
+          }
         },
         {
           "id": "sprout-decisions-loops",
@@ -20,7 +38,25 @@
           "summary": "Choose behavior and repeat useful work.",
           "content": "Use `if` when behavior depends on a condition. Use `repeat count times` when a task has a known number of repetitions. Prefer a loop over copying the same statement because the loop expresses the intent and changes safely when the count changes.",
           "xp": 35,
-          "conceptIds": ["conditions", "loops"]
+          "conceptIds": ["conditions", "loops"],
+          "exercise": {
+            "title": "Repeat a Message",
+            "objective": "Use a counted repeat block to print Sprout exactly three times.",
+            "starterCode": "has count = 3\n# Repeat count times printing \"Sprout\"\n",
+            "solutionCode": "has count = 3\nrepeat 3 times\n    print(\"Sprout\")\n",
+            "expectedOutput": "Sprout\nSprout\nSprout",
+            "hints": [
+              "Nudge: One print statement can run more than once when it is inside a repeat block.",
+              "Concept: repeat declares a counted block and its indented body is executed for every iteration.",
+              "Structure: Start with repeat 3 times, then indent the print call beneath it.",
+              "Detail: Use repeat 3 times followed by four spaces and print(\"Sprout\")."
+            ],
+            "assertions": [
+              "contains:repeat",
+              "contains:print"
+            ],
+            "verifyExpectedOutput": true
+          }
         },
         {
           "id": "sprout-actions",
@@ -28,7 +64,25 @@
           "summary": "Name a behavior, pass inputs, and return a result.",
           "content": "An action packages a behavior behind a clear name. Parameters are local inputs and `return` sends a result to the caller. Small actions reduce duplication and make a program easier to test and explain.",
           "xp": 35,
-          "conceptIds": ["functions"]
+          "conceptIds": ["functions"],
+          "exercise": {
+            "title": "Return a Greeting",
+            "objective": "Return a greeting from an action and print the value produced by the call.",
+            "starterCode": "action greet(name)\n    # return greeting\nend\n",
+            "solutionCode": "action greet(name)\n    return \"Hello, \" + name\nend\nprint(greet(\"Sprout\"))\n",
+            "expectedOutput": "Hello, Sprout",
+            "hints": [
+              "Nudge: The action needs to produce a value before the caller can print it.",
+              "Concept: return sends a value from an action back to the call expression.",
+              "Structure: Return the joined greeting inside greet, then call greet from print after end.",
+              "Detail: Return \"Hello, \" + name and then print(greet(\"Sprout\"))."
+            ],
+            "assertions": [
+              "contains:action greet",
+              "contains:return"
+            ],
+            "verifyExpectedOutput": true
+          }
         }
       ]
     },
@@ -108,7 +162,22 @@
           "summary": "Understand how Rust ties values to responsible owners.",
           "content": "Rust bindings are immutable unless marked `mut`. Ownership gives each value a responsible scope, allowing resources to be released deterministically without a garbage collector.",
           "xp": 35,
-          "conceptIds": ["variables", "data-modeling"]
+          "conceptIds": ["variables", "data-modeling"],
+          "exercise": {
+            "title": "Transfer a String Owner",
+            "objective": "Move a String into a new binding and print it from the active owner.",
+            "starterCode": "fn main() {\n    let owner = String::from(\"Sprout\");\n    // TODO: move owner into active_owner and print it.\n}\n",
+            "solutionCode": "fn main() {\n    let owner = String::from(\"Sprout\");\n    let active_owner = owner;\n    println!(\"Owner: {active_owner}\");\n}\n",
+            "expectedOutput": "Owner: Sprout",
+            "hints": [
+              "Nudge: Create a second binding from owner before the print call.",
+              "Concept: Assigning a String moves ownership unless the value is cloned.",
+              "Structure: Bind active_owner to owner, then format active_owner in println!.",
+              "Detail: Use let active_owner = owner; followed by println!(\"Owner: {active_owner}\");."
+            ],
+            "assertions": ["contains:active_owner", "contains:println!", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
         },
         {
           "id": "rust-functions",
@@ -116,7 +185,22 @@
           "summary": "Use signatures to make contracts visible.",
           "content": "A Rust function signature states parameter and result types. The final expression can provide the return value, and the compiler checks that every path satisfies the declared contract.",
           "xp": 35,
-          "conceptIds": ["functions", "conditions"]
+          "conceptIds": ["functions", "conditions"],
+          "exercise": {
+            "title": "Complete a Typed Function",
+            "objective": "Return a computed i32 value through a typed Rust function contract.",
+            "starterCode": "fn double(value: i32) -> i32 {\n    // TODO: return twice the supplied value.\n    0\n}\n\nfn main() {\n    println!(\"Double: {}\", double(21));\n}\n",
+            "solutionCode": "fn double(value: i32) -> i32 {\n    value * 2\n}\n\nfn main() {\n    println!(\"Double: {}\", double(21));\n}\n",
+            "expectedOutput": "Double: 42",
+            "hints": [
+              "Nudge: The final expression of double should use its parameter.",
+              "Concept: A Rust function can return its last expression without return or a semicolon.",
+              "Structure: Replace the placeholder expression with value multiplied by two.",
+              "Detail: Make the body exactly value * 2."
+            ],
+            "assertions": ["contains:fn double", "contains:-> i32", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
         },
         {
           "id": "rust-results",
@@ -124,7 +208,22 @@
           "summary": "Model recoverable failure with explicit alternatives.",
           "content": "`Result` distinguishes success from recoverable failure. Handling both variants makes failure paths visible in control flow and prevents accidental use of a missing value.",
           "xp": 40,
-          "conceptIds": ["conditions", "data-modeling"]
+          "conceptIds": ["conditions", "data-modeling"],
+          "exercise": {
+            "title": "Parse a Port with Result",
+            "objective": "Convert text to a port number while preserving an explicit error path.",
+            "starterCode": "fn parse_port(value: &str) -> Result<u16, String> {\n    // TODO: parse value and map the parse error to readable text.\n    Err(String::from(\"not implemented\"))\n}\n\nfn main() {\n    match parse_port(\"8080\") {\n        Ok(port) => println!(\"Port: {port}\"),\n        Err(error) => println!(\"Error: {error}\"),\n    }\n}\n",
+            "solutionCode": "fn parse_port(value: &str) -> Result<u16, String> {\n    value.parse::<u16>().map_err(|_| format!(\"invalid port: {value}\"))\n}\n\nfn main() {\n    match parse_port(\"8080\") {\n        Ok(port) => println!(\"Port: {port}\"),\n        Err(error) => println!(\"Error: {error}\"),\n    }\n}\n",
+            "expectedOutput": "Port: 8080",
+            "hints": [
+              "Nudge: str has a parse method that can infer or receive the target type.",
+              "Concept: map_err transforms only the error side while leaving Ok values intact.",
+              "Structure: Parse as u16 and map the parsing error into a String containing the input.",
+              "Detail: Return value.parse::<u16>().map_err(|_| format!(\"invalid port: {value}\"))."
+            ],
+            "assertions": ["contains:Result<u16, String>", "contains:map_err", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
         }
       ]
     },
@@ -140,7 +239,22 @@
           "summary": "Organize Go code around small, explicit packages.",
           "content": "A Go package groups related declarations. Executable programs use package `main` and a `main` function, while reusable packages expose only identifiers that start with an uppercase letter.",
           "xp": 35,
-          "conceptIds": ["functions", "data-modeling"]
+          "conceptIds": ["functions", "data-modeling"],
+          "exercise": {
+            "title": "Build a Go Entry Point",
+            "objective": "Create an executable main package and print its ready state.",
+            "starterCode": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\t// TODO: report that the service is ready.\n}\n",
+            "solutionCode": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Service ready\")\n}\n",
+            "expectedOutput": "Service ready",
+            "hints": [
+              "Nudge: The fmt package already provides the output function you need.",
+              "Concept: Executable Go packages start in func main inside package main.",
+              "Structure: Call fmt.Println once inside main.",
+              "Detail: Replace the comment with fmt.Println(\"Service ready\")."
+            ],
+            "assertions": ["contains:package main", "contains:func main()", "contains:fmt.Println", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
         },
         {
           "id": "go-errors",
@@ -148,7 +262,22 @@
           "summary": "Return and inspect errors where they can be handled.",
           "content": "Go commonly returns a result and an error together. Check the error before using the result, add useful context, and let the layer with enough information decide how to recover.",
           "xp": 35,
-          "conceptIds": ["conditions", "functions"]
+          "conceptIds": ["conditions", "functions"],
+          "exercise": {
+            "title": "Return an Explicit Error",
+            "objective": "Return a quotient and reject division by zero through Go's error convention.",
+            "starterCode": "package main\n\nimport \"fmt\"\n\nfunc divide(a, b int) (int, error) {\n\t// TODO: reject a zero divisor and return the quotient otherwise.\n\treturn 0, nil\n}\n\nfunc main() {\n\tvalue, err := divide(84, 2)\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfmt.Printf(\"Result: %d\\n\", value)\n}\n",
+            "solutionCode": "package main\n\nimport \"fmt\"\n\nfunc divide(a, b int) (int, error) {\n\tif b == 0 {\n\t\treturn 0, fmt.Errorf(\"divisor must not be zero\")\n\t}\n\treturn a / b, nil\n}\n\nfunc main() {\n\tvalue, err := divide(84, 2)\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfmt.Printf(\"Result: %d\\n\", value)\n}\n",
+            "expectedOutput": "Result: 42",
+            "hints": [
+              "Nudge: Test b before calculating a / b.",
+              "Concept: Go communicates recoverable failure by returning a non-nil error beside the normal value.",
+              "Structure: Return fmt.Errorf from the zero branch and a / b with nil from the success path.",
+              "Detail: Use if b == 0 { return 0, fmt.Errorf(\"divisor must not be zero\") } then return a / b, nil."
+            ],
+            "assertions": ["contains:(int, error)", "contains:if b == 0", "contains:fmt.Errorf", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
         },
         {
           "id": "go-handlers",
@@ -156,7 +285,22 @@
           "summary": "Separate transport, validation, and application behavior.",
           "content": "A backend handler should decode input, validate it, call a focused application action, and encode the response. Keeping business behavior outside transport code makes it reusable and testable.",
           "xp": 40,
-          "conceptIds": ["functions", "data-modeling"]
+          "conceptIds": ["functions", "data-modeling"],
+          "exercise": {
+            "title": "Separate Handler Validation",
+            "objective": "Validate a request value in a focused function and keep main responsible for presentation.",
+            "starterCode": "package main\n\nimport (\n\t\"fmt\"\n\t\"strings\"\n)\n\nfunc greeting(name string) (string, error) {\n\t// TODO: reject a blank name and return a greeting otherwise.\n\treturn \"\", nil\n}\n\nfunc main() {\n\tmessage, err := greeting(\"Sprout\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfmt.Println(message)\n}\n",
+            "solutionCode": "package main\n\nimport (\n\t\"fmt\"\n\t\"strings\"\n)\n\nfunc greeting(name string) (string, error) {\n\tif strings.TrimSpace(name) == \"\" {\n\t\treturn \"\", fmt.Errorf(\"name is required\")\n\t}\n\treturn \"Hello, \" + name, nil\n}\n\nfunc main() {\n\tmessage, err := greeting(\"Sprout\")\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfmt.Println(message)\n}\n",
+            "expectedOutput": "Hello, Sprout",
+            "hints": [
+              "Nudge: Normalize whitespace before deciding whether the name is empty.",
+              "Concept: Transport code can present an error while the focused application function owns input validation.",
+              "Structure: Guard strings.TrimSpace(name), then return the greeting and nil.",
+              "Detail: Return an error for an empty trimmed name; otherwise return \"Hello, \" + name, nil."
+            ],
+            "assertions": ["contains:strings.TrimSpace", "contains:return \"Hello, \" + name, nil", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
         }
       ]
     },
@@ -172,7 +316,22 @@
           "summary": "Transform batches of values without duplicating steps.",
           "content": "Lists preserve an ordered group of values. Iterate over the items, keep transformations focused, and avoid changing a collection while traversing it unless the behavior is deliberate.",
           "xp": 30,
-          "conceptIds": ["collections", "loops"]
+          "conceptIds": ["collections", "loops"],
+          "exercise": {
+            "title": "Transform a Sequence",
+            "objective": "Create a new list containing twice each input value.",
+            "starterCode": "def double_all(values):\n    # TODO: return a transformed list without mutating values.\n    return []\n\n\nprint(double_all([1, 2, 3]))\n",
+            "solutionCode": "def double_all(values):\n    return [value * 2 for value in values]\n\n\nprint(double_all([1, 2, 3]))\n",
+            "expectedOutput": "[2, 4, 6]",
+            "hints": [
+              "Nudge: Produce a new list from every value in values.",
+              "Concept: A list comprehension maps an expression across an iterable without changing the original list.",
+              "Structure: Put value * 2 before the for clause.",
+              "Detail: Return [value * 2 for value in values]."
+            ],
+            "assertions": ["contains:def double_all", "contains:for value in values", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
         },
         {
           "id": "python-files",
@@ -180,7 +339,22 @@
           "summary": "Treat paths, encodings, and partial writes as part of correctness.",
           "content": "Validate the intended input and output paths before changing files. Use explicit text encodings and write to a temporary sibling before replacing important output when partial files would be harmful.",
           "xp": 35,
-          "conceptIds": ["conditions", "data-modeling"]
+          "conceptIds": ["conditions", "data-modeling"],
+          "exercise": {
+            "title": "Write a Report Atomically",
+            "objective": "Write UTF-8 content to a temporary sibling and replace the final report only after success.",
+            "starterCode": "from pathlib import Path\n\n\ndef write_report(path: Path, lines: list[str]) -> None:\n    # TODO: write to a temporary sibling, then replace path.\n    pass\n\n\nreport = Path(\"report.txt\")\nwrite_report(report, [\"alpha\", \"beta\"])\nprint(report.read_text(encoding=\"utf-8\").replace(\"\\n\", \"|\").strip(\"|\"))\n",
+            "solutionCode": "from pathlib import Path\n\n\ndef write_report(path: Path, lines: list[str]) -> None:\n    temporary = path.with_suffix(path.suffix + \".tmp\")\n    temporary.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")\n    temporary.replace(path)\n\n\nreport = Path(\"report.txt\")\nwrite_report(report, [\"alpha\", \"beta\"])\nprint(report.read_text(encoding=\"utf-8\").replace(\"\\n\", \"|\").strip(\"|\"))\n",
+            "expectedOutput": "alpha|beta",
+            "hints": [
+              "Nudge: Derive a temporary path beside the final report before writing anything.",
+              "Concept: Replacing a completed temporary file prevents readers from observing a partially written destination.",
+              "Structure: Use with_suffix, write_text with UTF-8, then temporary.replace(path).",
+              "Detail: Write the joined lines to path.with_suffix(path.suffix + \".tmp\") and replace path only after write_text succeeds."
+            ],
+            "assertions": ["contains:with_suffix", "contains:encoding=\"utf-8\"", "contains:replace(path)", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
         },
         {
           "id": "python-functions",
@@ -188,7 +362,959 @@
           "summary": "Separate decisions from external effects.",
           "content": "Put calculation and decision logic in functions that return values. Keep filesystem, network, and process effects at the edge so the core behavior can be tested with ordinary inputs.",
           "xp": 35,
-          "conceptIds": ["functions"]
+          "conceptIds": ["functions"],
+          "exercise": {
+            "title": "Separate Calculation from Output",
+            "objective": "Return a deterministic summary from a pure function and print it only at the program edge.",
+            "starterCode": "def summarize(values: list[int]) -> dict[str, int]:\n    # TODO: return count and total without printing here.\n    return {}\n\n\nsummary = summarize([3, 4, 5])\nprint(f\"count={summary['count']} total={summary['total']}\")\n",
+            "solutionCode": "def summarize(values: list[int]) -> dict[str, int]:\n    return {\"count\": len(values), \"total\": sum(values)}\n\n\nsummary = summarize([3, 4, 5])\nprint(f\"count={summary['count']} total={summary['total']}\")\n",
+            "expectedOutput": "count=3 total=12",
+            "hints": [
+              "Nudge: The result needs one entry for the number of items and one for their sum.",
+              "Concept: Pure calculation functions return data while callers decide how to display or persist it.",
+              "Structure: Build a dictionary from len(values) and sum(values).",
+              "Detail: Return {\"count\": len(values), \"total\": sum(values)}."
+            ],
+            "assertions": ["contains:def summarize", "contains:len(values)", "contains:sum(values)", "not-contains:TODO"],
+            "verifyExpectedOutput": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "java-oop-zero-to-hero",
+      "title": "Java: Object Oriented Programming - Zero to Hero",
+      "summary": "Master object-oriented programming from foundational class mechanics to modern records, sealed hierarchies, SOLID principles, and enterprise design patterns.",
+      "level": "Beginner to Advanced",
+      "category": "Object-Oriented Programming",
+      "requiredToolchainId": "java",
+      "modules": [
+        {
+          "id": "mod-1-foundations",
+          "title": "Module 1: Foundations of Java & Classes",
+          "summary": "Memory models, primitive vs reference types, class blueprints, fields, methods, and constructors.",
+          "lessonIds": [
+            "java-types-memory-model",
+            "java-class-blueprints",
+            "java-constructors-this"
+          ],
+          "checkpoint": {
+            "id": "java-foundations-checkpoint",
+            "moduleId": "mod-1-foundations",
+            "title": "Foundations Checkpoint: Model an Object",
+            "summary": "Confirm that you can explain references, assign responsibilities to a class, and establish valid state through constructors.",
+            "questions": [
+              {
+                "id": "java-foundations-cp-reference-copy",
+                "question": "Two variables refer to the same mutable Account object. What happens when code mutates the object through one variable?",
+                "type": "MultipleChoice",
+                "options": ["Only the first variable observes the change", "Both variables observe the changed object", "The JVM clones the object before mutation", "The second variable becomes null"],
+                "correctAnswers": ["Both variables observe the changed object"],
+                "explanation": "Assignment copies the reference value, not the referenced object, so both variables still identify the same mutable instance.",
+                "conceptId": "variables"
+              },
+              {
+                "id": "java-foundations-cp-constructor",
+                "question": "Which constructor design best protects a Customer invariant that the name must not be blank?",
+                "type": "MultipleChoice",
+                "options": ["Assign the field and validate it later", "Validate the parameter before assigning the field", "Expose the field as public", "Use a static mutable name field"],
+                "correctAnswers": ["Validate the parameter before assigning the field"],
+                "explanation": "A constructor should reject invalid input before the object becomes observable in an invalid state.",
+                "conceptId": "data-modeling"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mod-2-encapsulation",
+          "title": "Module 2: Encapsulation & Data Abstraction",
+          "summary": "Access modifiers, getters/setters, invariant validation, immutability, and Abstract Data Types.",
+          "lessonIds": [
+            "java-access-modifiers",
+            "java-getters-setters-validation",
+            "java-immutability-adts"
+          ],
+          "checkpoint": {
+            "id": "java-encapsulation-checkpoint",
+            "moduleId": "mod-2-encapsulation",
+            "title": "Encapsulation Checkpoint: Defend the Domain",
+            "summary": "Evaluate boundaries that prevent callers from creating invalid state or mutating internal collections indirectly.",
+            "questions": [
+              {
+                "id": "java-encapsulation-cp-boundary",
+                "question": "Where should an Account reject a negative deposit so every caller receives the same protection?",
+                "type": "MultipleChoice",
+                "options": ["Only in the user interface", "Inside the Account deposit method", "Only in a logging observer", "Inside toString"],
+                "correctAnswers": ["Inside the Account deposit method"],
+                "explanation": "The domain object owns its invariant; enforcing it at that boundary protects every user interface and service.",
+                "conceptId": "oop-encapsulation"
+              },
+              {
+                "id": "java-encapsulation-cp-copy",
+                "question": "Which techniques help an immutable object protect a mutable List field?",
+                "type": "MultipleSelect",
+                "options": ["Copy the list in the constructor", "Return an unmodifiable copy from the accessor", "Return the internal list directly", "Mark only the reference final and expose it"],
+                "correctAnswers": ["Copy the list in the constructor", "Return an unmodifiable copy from the accessor"],
+                "explanation": "A final reference alone does not freeze its contents; defensive copies prevent aliasing in both directions.",
+                "conceptId": "data-modeling"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mod-3-inheritance",
+          "title": "Module 3: Inheritance & Polymorphism",
+          "summary": "Class hierarchies with extends, method overriding, super chaining, dynamic dispatch, and casting.",
+          "lessonIds": [
+            "java-inheritance-extends",
+            "java-super-chaining",
+            "java-polymorphism-dispatch",
+            "java-casting-instanceof"
+          ],
+          "checkpoint": {
+            "id": "java-inheritance-checkpoint",
+            "moduleId": "mod-3-inheritance",
+            "title": "Inheritance Checkpoint: Substitute Safely",
+            "summary": "Check your understanding of construction order, overriding, substitutability, and safe runtime type refinement.",
+            "questions": [
+              {
+                "id": "java-inheritance-cp-dispatch",
+                "question": "A Notification variable holds an EmailNotification instance. Which send implementation runs?",
+                "type": "MultipleChoice",
+                "options": ["Notification.send", "EmailNotification.send", "Both implementations", "The compiler rejects the call"],
+                "correctAnswers": ["EmailNotification.send"],
+                "explanation": "Overridden instance methods use dynamic dispatch based on the runtime object type.",
+                "conceptId": "oop-polymorphism"
+              },
+              {
+                "id": "java-inheritance-cp-super",
+                "question": "Why must super(...) be the first statement of a subclass constructor?",
+                "type": "MultipleChoice",
+                "options": ["So superclass state is initialized before subclass initialization", "So private methods become public", "So Java supports multiple class inheritance", "So the object is copied to the stack"],
+                "correctAnswers": ["So superclass state is initialized before subclass initialization"],
+                "explanation": "Java completes the superclass portion of an object before the subclass establishes its own fields.",
+                "conceptId": "oop-inheritance"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mod-4-interfaces",
+          "title": "Module 4: Interfaces & Modern Abstraction",
+          "summary": "Decoupling with interfaces, default/static methods, functional interfaces, Records, and Sealed Types.",
+          "lessonIds": [
+            "java-interfaces-contracts",
+            "java-default-static-methods",
+            "java-abstract-classes-vs-interfaces",
+            "java-records-sealed-classes"
+          ],
+          "checkpoint": {
+            "id": "java-abstraction-checkpoint",
+            "moduleId": "mod-4-interfaces",
+            "title": "Abstraction Checkpoint: Choose the Right Contract",
+            "summary": "Distinguish behavioral interfaces, stateful abstract bases, immutable records, and closed sealed hierarchies.",
+            "questions": [
+              {
+                "id": "java-abstraction-cp-interface",
+                "question": "When is an interface generally preferable to an abstract class?",
+                "type": "MultipleChoice",
+                "options": ["When unrelated classes must share a capability contract", "When every subtype must inherit the same mutable fields", "When callers need a public constructor", "When only one implementation may exist"],
+                "correctAnswers": ["When unrelated classes must share a capability contract"],
+                "explanation": "Interfaces model roles independently of a class hierarchy and allow a class to implement several capabilities.",
+                "conceptId": "oop-abstraction"
+              },
+              {
+                "id": "java-abstraction-cp-sealed",
+                "question": "What is the primary design benefit of a sealed Result hierarchy?",
+                "type": "MultipleChoice",
+                "options": ["It guarantees every object is mutable", "It defines a known, restricted set of result variants", "It removes constructors", "It enables multiple class inheritance"],
+                "correctAnswers": ["It defines a known, restricted set of result variants"],
+                "explanation": "A sealed hierarchy makes the permitted variants explicit, which supports exhaustive reasoning and safer evolution.",
+                "conceptId": "data-modeling"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mod-5-patterns",
+          "title": "Module 5: Advanced OOP & Design Patterns",
+          "summary": "SOLID principles, Factory, Builder, Strategy, Observer, and thread-safe Singleton.",
+          "lessonIds": [
+            "java-solid-principles",
+            "java-factory-builder-patterns",
+            "java-strategy-observer-patterns",
+            "java-singleton-thread-safety"
+          ],
+          "checkpoint": {
+            "id": "java-patterns-checkpoint",
+            "moduleId": "mod-5-patterns",
+            "title": "Patterns Checkpoint: Design for Change",
+            "summary": "Select abstractions and patterns from the forces in a problem instead of applying pattern names mechanically.",
+            "questions": [
+              {
+                "id": "java-patterns-cp-strategy",
+                "question": "A checkout service must switch pricing algorithms at runtime without conditional chains. Which pattern fits best?",
+                "type": "MultipleChoice",
+                "options": ["Strategy", "Singleton", "Builder", "Observer"],
+                "correctAnswers": ["Strategy"],
+                "explanation": "Strategy encapsulates interchangeable algorithms behind one contract and lets a context delegate to the selected implementation.",
+                "conceptId": "design-patterns"
+              },
+              {
+                "id": "java-patterns-cp-dip",
+                "question": "Which change applies dependency inversion to an OrderService that directly constructs EmailSender?",
+                "type": "MultipleChoice",
+                "options": ["Inject a MessageSender interface", "Make every method static", "Expose the sender field publicly", "Move email code into the constructor"],
+                "correctAnswers": ["Inject a MessageSender interface"],
+                "explanation": "Depending on an injected abstraction separates business policy from the details of a particular delivery mechanism.",
+                "conceptId": "oop-abstraction"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mod-6-capstone",
+          "title": "Module 6: Capstone Project (Core Banking System)",
+          "summary": "End-to-end multi-tier object-oriented Banking System integrating domain models, transactions, and observers.",
+          "lessonIds": [
+            "java-capstone-domain-model",
+            "java-capstone-transaction-engine",
+            "java-capstone-audit-observer",
+            "java-capstone-bank-system"
+          ],
+          "checkpoint": {
+            "id": "java-capstone-checkpoint",
+            "moduleId": "mod-6-capstone",
+            "title": "Capstone Review: Explain the Banking Architecture",
+            "summary": "Defend the final design by tracing invariants, transaction boundaries, event delivery, and dependency direction.",
+            "questions": [
+              {
+                "id": "java-capstone-cp-transfer",
+                "question": "What must a transfer service guarantee if the debit succeeds but the credit operation fails?",
+                "type": "MultipleChoice",
+                "options": ["Leave the source debited", "Restore the source or use an atomic transaction boundary", "Retry forever on the UI thread", "Delete both accounts"],
+                "correctAnswers": ["Restore the source or use an atomic transaction boundary"],
+                "explanation": "A transfer is one business operation; partial application violates the conservation and balance invariants.",
+                "conceptId": "data-modeling"
+              },
+              {
+                "id": "java-capstone-cp-observer",
+                "question": "Why should BankingEngine publish an immutable transaction event instead of exposing Account internals to observers?",
+                "type": "MultipleChoice",
+                "options": ["To preserve encapsulation and give observers a stable fact", "To let observers mutate balances", "To avoid defining an interface", "To make account IDs global variables"],
+                "correctAnswers": ["To preserve encapsulation and give observers a stable fact"],
+                "explanation": "An immutable event communicates what happened without granting listeners authority over aggregate state.",
+                "conceptId": "oop-encapsulation"
+              }
+            ]
+          }
+        }
+      ],
+      "lessons": [
+        {
+          "id": "java-types-memory-model",
+          "title": "Primitive vs Reference Types & JVM Memory",
+          "summary": "Understand JVM Stack vs Heap memory allocation and reference semantics.",
+          "content": "Java variables hold values, but the kind of value depends on the declared type. A primitive variable contains its numeric, boolean, or character value directly. A reference variable contains a reference to an object or array, and the special value `null` means that it currently refers to no object. The JVM may place local variables in stack frames and objects in managed heap storage, but production Java code should reason primarily about observable value and reference semantics rather than assuming a fixed byte address or storage layout. Assigning one primitive variable to another copies the primitive value. Assigning one reference variable to another copies the reference, so both variables can observe mutations to the same mutable object. Reassigning either variable does not reassign the other. Method parameters follow the same rule: Java is always pass-by-value, including when the copied value is an object reference. In this lesson you will predict aliasing, distinguish mutation from reassignment, use `null` deliberately, and explain why immutable objects such as `String` are safer to share. These concepts are the basis for understanding object identity, constructor behavior, defensive copying, and the side effects that later OOP designs must control.",
+          "xp": 35,
+          "conceptIds": ["variables", "data-modeling"],
+          "moduleId": "mod-1-foundations",
+          "exercise": {
+            "starterCode": "public class MemoryDemo {\n    public static void main(String[] args) {\n        int stackPrimitive = 42;\n        // TODO: create the String object and assign its reference.\n        String heapReference = null;\n        System.out.println(\"Primitive: \" + stackPrimitive);\n        System.out.println(\"Reference: \" + heapReference);\n    }\n}",
+            "solutionCode": "public class MemoryDemo {\n    public static void main(String[] args) {\n        int stackPrimitive = 42;\n        String heapReference = new String(\"Sprout\");\n        System.out.println(\"Primitive: \" + stackPrimitive);\n        System.out.println(\"Reference: \" + heapReference);\n    }\n}",
+            "expectedOutput": "Primitive: 42\nReference: Sprout",
+            "hints": [
+              "Nudge: The primitive already has its value; focus on the reference that is still null.",
+              "Concept: Java copies reference values, while `new String(...)` creates the object to which that reference points.",
+              "Structure: Replace the null initializer with a construction expression that produces the text Sprout, then keep both print statements.",
+              "Detail: Initialize `heapReference` with `new String(\"Sprout\")`; the expected second line is produced when string concatenation calls that object's text value."
+            ],
+            "assertions": [
+              "contains:stackPrimitive",
+              "contains:heapReference",
+              "contains:System.out.println",
+              "not-contains:TODO"
+            ],
+            "testHarness": "String output = capture(() -> MemoryDemo.main(new String[0]));\ncheck(\"memory-output\", \"Primitive and reference values print correctly\", output.equals(\"Primitive: 42\\nReference: Sprout\"), \"Primitive: 42 then Reference: Sprout\", output, \"Construct the reference value before printing it.\", \"heapReference\");"
+          }
+        },
+        {
+          "id": "java-class-blueprints",
+          "title": "Class Blueprints, Fields & Methods",
+          "summary": "Design class blueprints with encapsulated state and behaviors.",
+          "content": "A class defines a new type by naming the state an object owns and the operations it can perform. Fields describe per-instance state unless they are marked `static`; methods describe behavior and should express the object's responsibilities rather than expose raw storage. Good class design begins with a concrete domain sentence: a bank account owns an account number and balance, accepts valid deposits, and can present a readable summary. That sentence helps separate cohesive behavior from unrelated work. Each call to a constructor creates a distinct object identity with its own instance fields. Two accounts can therefore share the same class while holding different values. Instance methods receive an implicit `this` reference, which is why they can read and update fields without receiving the object as an explicit parameter. Class invariants are rules that must remain true before and after every public operation; later lessons will strengthen the account so invalid deposits cannot violate its invariant. In this exercise, concentrate on translating nouns into fields, verbs into methods, and output requirements into a small demonstration. Avoid making every field public merely because it is convenient. The goal is a focused object whose behavior is easy to test and whose representation can evolve without forcing every caller to change.",
+          "xp": 35,
+          "conceptIds": ["data-modeling", "functions"],
+          "moduleId": "mod-1-foundations",
+          "exercise": {
+            "starterCode": "public class BankAccount {\n    String accountNumber;\n    double balance;\n\n    void deposit(double amount) {\n        // TODO: update this account's balance.\n    }\n\n    void display() {\n        // TODO: print the account number and current balance.\n    }\n}",
+            "solutionCode": "public class BankAccount {\n    String accountNumber;\n    double balance;\n\n    void deposit(double amount) {\n        balance += amount;\n    }\n\n    void display() {\n        System.out.println(accountNumber + \": $\" + balance);\n    }\n}",
+            "expectedOutput": "ACC-101: $250.0",
+            "hints": [
+              "Nudge: The fields already represent state; the unfinished methods should operate on those fields.",
+              "Concept: An instance method has access to the current object's fields through the implicit `this` reference.",
+              "Structure: Make `deposit` add its parameter to `balance`, then make `display` concatenate `accountNumber`, a separator, and `balance`.",
+              "Detail: Use `balance += amount;` and `System.out.println(accountNumber + \": $\" + balance);` so the completed object produces the required summary."
+            ],
+            "assertions": [
+              "contains:class BankAccount",
+              "contains:double balance",
+              "contains:void deposit",
+              "not-contains:TODO"
+            ],
+            "testHarness": "BankAccount account = new BankAccount();\naccount.accountNumber = \"ACC-101\";\naccount.balance = 100.0;\naccount.deposit(150.0);\ncheck(\"deposit-updates-balance\", \"Deposit updates the current account\", close(account.balance, 250.0), \"250.0\", account.balance, \"deposit must add the supplied amount to balance.\", \"deposit\");\nString output = capture(account::display);\ncheck(\"display-summary\", \"Display reports account number and balance\", output.equals(\"ACC-101: $250.0\"), \"ACC-101: $250.0\", output, \"display must print the account summary.\", \"display\");"
+          }
+        },
+        {
+          "id": "java-constructors-this",
+          "title": "Constructors, 'this' & Object Instantiation",
+          "summary": "Initialize instance invariants safely using parameterized constructors and 'this'.",
+          "content": "A constructor establishes the state an object needs before callers can use it. Its name matches the class, it has no return type, and Java invokes it immediately after memory is allocated for a new instance. If a class declares no constructor, the compiler can provide a no-argument constructor, but that default disappears as soon as you declare one yourself. Parameterized constructors make required data explicit and are the right place to validate initial invariants. When a parameter has the same name as a field, the bare name refers to the parameter and `this.field` refers to the current object's field. Writing `this.username = username` is therefore an intentional assignment from incoming data to owned state, not redundant syntax. A class may overload constructors to support several creation paths. One constructor can delegate to another with `this(...)`, but the delegation must be its first statement so initialization has one authoritative path. Constructor code should not publish `this` to callbacks or global collections before validation finishes, because other code could observe a partially initialized object. In this exercise you will complete a profile constructor and connect its parameters to instance fields. The resulting object must print the values supplied by its caller rather than default `null` and zero values.",
+          "xp": 40,
+          "conceptIds": ["data-modeling", "functions"],
+          "moduleId": "mod-1-foundations",
+          "exercise": {
+            "starterCode": "public class UserProfile {\n    private String username;\n    private int age;\n\n    public UserProfile(String username, int age) {\n        // TODO: initialize both instance fields from the parameters.\n    }\n\n    public void printDetails() {\n        System.out.println(\"User: \" + this.username + \", Age: \" + this.age);\n    }\n}",
+            "solutionCode": "public class UserProfile {\n    private String username;\n    private int age;\n\n    public UserProfile(String username, int age) {\n        this.username = username;\n        this.age = age;\n    }\n\n    public void printDetails() {\n        System.out.println(\"User: \" + this.username + \", Age: \" + this.age);\n    }\n}",
+            "expectedOutput": "User: Alice, Age: 28",
+            "hints": [
+              "Nudge: The constructor parameters shadow fields with the same names.",
+              "Concept: `this` selects the current object's field, while the unqualified name selects the nearest parameter.",
+              "Structure: Add one assignment for `username` and one for `age` inside the constructor body.",
+              "Detail: Write `this.username = username;` followed by `this.age = age;`, leaving `printDetails` to read the initialized fields."
+            ],
+            "assertions": [
+              "contains:this.username",
+              "contains:this.age",
+              "contains:public UserProfile(",
+              "not-contains:TODO"
+            ],
+            "testHarness": "UserProfile profile = new UserProfile(\"Alice\", 28);\nString output = capture(profile::printDetails);\ncheck(\"constructor-fields\", \"Constructor initializes both instance fields\", output.equals(\"User: Alice, Age: 28\"), \"User: Alice, Age: 28\", output, \"Assign each constructor parameter to the matching field.\", \"this.username\");",
+            "questions": [
+              {
+                "id": "java-constructors-this-quiz-shadowing",
+                "question": "Inside `UserProfile(String username)`, what does `this.username = username` do?",
+                "type": "MultipleChoice",
+                "options": ["Assigns the parameter to the instance field", "Assigns the field to itself", "Creates a static field", "Calls another constructor"],
+                "correctAnswers": ["Assigns the parameter to the instance field"],
+                "explanation": "`this.username` identifies the field on the current instance, while `username` identifies the constructor parameter.",
+                "conceptId": "data-modeling"
+              },
+              {
+                "id": "java-constructors-this-quiz-delegation",
+                "question": "Which statement about constructor delegation with `this(...)` is correct?",
+                "type": "MultipleChoice",
+                "options": ["It must be the first constructor statement", "It may appear after field assignments", "It invokes the superclass constructor", "It is valid only in static methods"],
+                "correctAnswers": ["It must be the first constructor statement"],
+                "explanation": "Java requires constructor delegation to be first so exactly one initialization path owns the remainder of construction.",
+                "conceptId": "functions"
+              }
+            ]
+          }
+        },
+        {
+          "id": "java-access-modifiers",
+          "title": "Access Control & Information Hiding",
+          "summary": "Control visibility across packages with private, protected, and public.",
+          "content": "Access control defines which code is allowed to depend on a member. `private` limits access to the declaring top-level class and its nested types, package-private grants access to code in the same package, `protected` adds access for subclasses under Java's precise package and inheritance rules, and `public` exposes a member wherever the declaring type is visible. These modifiers are not merely security labels; they shape the API that other code is permitted to couple to. A narrow public surface gives maintainers freedom to rename fields, replace data structures, cache derived values, or strengthen validation without breaking callers. Domain state should normally be private, while public methods express supported operations in the vocabulary of the domain. Package-private types and members are useful for collaboration inside one implementation package. Protected members require restraint because they expose representation details to every subclass and make base-class changes harder. Information hiding also reduces accidental misuse: callers can request a vault identifier without receiving its secret key. In this lesson, you will complete a constructor while preserving the intended visibility boundary. Afterward, evaluate every exposed member by asking whether an external caller truly needs it or whether behavior could provide a safer, more stable abstraction.",
+          "xp": 35,
+          "conceptIds": ["oop-encapsulation", "data-modeling"],
+          "moduleId": "mod-2-encapsulation",
+          "exercise": {
+            "starterCode": "public class SecureVault {\n    private String secretKey;\n    public String publicIdentifier;\n\n    public SecureVault(String key, String id) {\n        // TODO: initialize the hidden secret and visible identifier.\n    }\n}",
+            "solutionCode": "public class SecureVault {\n    private String secretKey;\n    public String publicIdentifier;\n\n    public SecureVault(String key, String id) {\n        this.secretKey = key;\n        this.publicIdentifier = id;\n    }\n}",
+            "expectedOutput": "Vault ID: VAULT-01",
+            "hints": [
+              "Nudge: Keep the existing visibility modifiers; the missing work is constructor initialization.",
+              "Concept: A private field remains owned by the class even when its value arrives through a public constructor.",
+              "Structure: Assign the `key` parameter to the private field and the `id` parameter to the public identifier.",
+              "Detail: Use `this.secretKey = key;` and `this.publicIdentifier = id;` inside the constructor without widening `secretKey` visibility."
+            ],
+            "assertions": [
+              "contains:private String secretKey",
+              "contains:public String publicIdentifier",
+              "not-contains:TODO"
+            ],
+            "testHarness": "SecureVault vault = new SecureVault(\"secret-42\", \"VAULT-01\");\nObject secret = field(vault, \"secretKey\");\ncheck(\"private-secret\", \"Constructor stores the private secret\", Objects.equals(secret, \"secret-42\"), \"secret-42\", secret, \"Keep the secret private while assigning the constructor value.\", \"secretKey\");\ncheck(\"public-id\", \"Constructor stores the public identifier\", Objects.equals(vault.publicIdentifier, \"VAULT-01\"), \"VAULT-01\", vault.publicIdentifier, \"Assign id to publicIdentifier.\", \"publicIdentifier\");"
+          }
+        },
+        {
+          "id": "java-getters-setters-validation",
+          "title": "Getters, Setters & Invariant Validation",
+          "summary": "Protect state integrity with guarded setters and domain validation.",
+          "content": "Encapsulation is valuable when methods protect meaningful rules, not when a class mechanically wraps every field with an unrestricted getter and setter. An invariant is a condition that must hold for every observable instance, such as a temperature never falling below absolute zero or a balance changing only through approved operations. The object that owns the state should enforce that invariant at each mutation boundary. A query method can expose a value without allowing callers to overwrite it directly. A command method should validate all inputs before changing any field so a rejected operation leaves the object unchanged. `IllegalArgumentException` is appropriate when a caller supplies a value outside the method's documented domain; the exception message should explain the violated rule. Validation should also cover non-finite floating-point values when the domain cannot represent them. Avoid partially applying a multi-field update before all validation succeeds. Setters are not mandatory: intention-revealing methods such as `recordReading`, `deposit`, or `renameTo` often communicate policy better than generic mutators. In this exercise, complete the sensor's guarded update. The getter reports state, while the setter must reject impossible input before assignment. Tests should cover the boundary value, a valid reading, and a rejected value that leaves the previous reading intact.",
+          "xp": 40,
+          "conceptIds": ["oop-encapsulation", "conditions"],
+          "moduleId": "mod-2-encapsulation",
+          "exercise": {
+            "starterCode": "public class TemperatureSensor {\n    private double celsius;\n\n    public double getCelsius() {\n        return celsius;\n    }\n\n    public void setCelsius(double value) {\n        // TODO: reject values below absolute zero before assigning the field.\n        this.celsius = value;\n    }\n}",
+            "solutionCode": "public class TemperatureSensor {\n    private double celsius;\n\n    public double getCelsius() {\n        return celsius;\n    }\n\n    public void setCelsius(double value) {\n        if (value < -273.15) {\n            throw new IllegalArgumentException(\"Temperature below absolute zero\");\n        }\n        this.celsius = value;\n    }\n}",
+            "expectedOutput": "Current Temperature: 25.0 C",
+            "hints": [
+              "Nudge: Compare the incoming value with the lowest physically valid Celsius temperature before assignment.",
+              "Concept: An invariant guard must run before mutation so a failed request cannot leave partially updated state.",
+              "Structure: Add an `if` block for values below -273.15 and throw `IllegalArgumentException` from that block.",
+              "Detail: Place `if (value < -273.15) { throw new IllegalArgumentException(\"Temperature below absolute zero\"); }` immediately before `this.celsius = value;`."
+            ],
+            "assertions": [
+              "contains:getCelsius",
+              "contains:setCelsius",
+              "contains:throw new IllegalArgumentException",
+              "not-contains:TODO"
+            ],
+            "testHarness": "TemperatureSensor sensor = new TemperatureSensor();\nsensor.setCelsius(25.0);\ncheck(\"valid-temperature\", \"Valid temperatures are stored\", close(sensor.getCelsius(), 25.0), \"25.0\", sensor.getCelsius(), \"Store valid values after the guard.\", \"setCelsius\");\nThrowable error = thrown(() -> sensor.setCelsius(-300.0));\ncheck(\"absolute-zero-guard\", \"Values below absolute zero are rejected\", error instanceof IllegalArgumentException, \"IllegalArgumentException\", error == null ? \"no exception\" : error.getClass().getSimpleName(), \"Reject impossible values before changing state.\", \"setCelsius\");\ncheck(\"failed-write-preserves-state\", \"Rejected writes preserve the previous value\", close(sensor.getCelsius(), 25.0), \"25.0\", sensor.getCelsius(), \"Validate before assigning celsius.\", \"this.celsius\");"
+          }
+        },
+        {
+          "id": "java-immutability-adts",
+          "title": "Immutability & Abstract Data Types",
+          "summary": "Design thread-safe, robust Abstract Data Types using final fields and defensive copying.",
+          "content": "An immutable object cannot change its observable state after construction. Immutability is a design property, not a single keyword: the class should prevent subclass-based mutation when necessary, every state field should be private and final, constructors should validate and fully initialize those fields, and no method should expose mutable internal objects. If a constructor accepts a mutable list, array, date, or map, storing the caller's object directly creates an alias through which the caller can mutate supposedly immutable state. Make a defensive copy on input and return an immutable view or copy on output. Operations that conceptually change a value return a new instance instead of modifying the current one. This style works especially well for money, coordinates, identifiers, and other value objects. It simplifies reasoning, makes sharing across threads safer, and gives stable keys for maps when `equals` and `hashCode` reflect the value. Immutability does not automatically make referenced collaborators thread-safe, so the complete reachable state must be considered. In the Money exercise, the currency is part of the value invariant and addition is valid only for matching currencies. Complete the method so it rejects an incompatible operand and returns a fresh Money value containing the sum, leaving both inputs unchanged.",
+          "xp": 45,
+          "conceptIds": ["oop-encapsulation", "data-modeling"],
+          "moduleId": "mod-2-encapsulation",
+          "exercise": {
+            "starterCode": "public final class Money {\n    private final long amountCents;\n    private final String currency;\n\n    public Money(long amountCents, String currency) {\n        if (currency == null || currency.isBlank()) {\n            throw new IllegalArgumentException(\"Currency cannot be empty\");\n        }\n        this.amountCents = amountCents;\n        this.currency = currency;\n    }\n\n    public long getAmountCents() { return amountCents; }\n    public String getCurrency() { return currency; }\n\n    public Money add(Money other) {\n        // TODO: reject mismatched currencies and return a new summed value.\n        return this;\n    }\n}",
+            "solutionCode": "public final class Money {\n    private final long amountCents;\n    private final String currency;\n\n    public Money(long amountCents, String currency) {\n        if (currency == null || currency.isBlank()) {\n            throw new IllegalArgumentException(\"Currency cannot be empty\");\n        }\n        this.amountCents = amountCents;\n        this.currency = currency;\n    }\n\n    public long getAmountCents() { return amountCents; }\n    public String getCurrency() { return currency; }\n\n    public Money add(Money other) {\n        if (!this.currency.equals(other.currency)) {\n            throw new IllegalArgumentException(\"Currency mismatch\");\n        }\n        return new Money(this.amountCents + other.amountCents, this.currency);\n    }\n}",
+            "expectedOutput": "Balance: 1500 USD",
+            "hints": [
+              "Nudge: Addition must not modify either operand, and currencies must agree.",
+              "Concept: An immutable value operation validates compatibility and represents the result with a newly constructed object.",
+              "Structure: Compare `this.currency` with `other.currency`, throw on mismatch, then construct Money from the summed cents and current currency.",
+              "Detail: After the currency guard, return `new Money(this.amountCents + other.amountCents, this.currency);` rather than returning or mutating `this`."
+            ],
+            "assertions": [
+              "contains:public final class Money",
+              "contains:private final long amountCents",
+              "contains:return new Money(",
+              "not-contains:TODO"
+            ],
+            "testHarness": "Money sum = new Money(125, \"USD\").add(new Money(75, \"USD\"));\ncheck(\"money-sum\", \"Adding compatible money returns a new summed value\", sum.getAmountCents() == 200 && sum.getCurrency().equals(\"USD\"), \"200 USD\", sum.getAmountCents() + \" \" + sum.getCurrency(), \"Return a new Money with the summed cents.\", \"add\");\nThrowable mismatch = thrown(() -> new Money(100, \"USD\").add(new Money(100, \"EUR\")));\ncheck(\"currency-guard\", \"Mismatched currencies are rejected\", mismatch instanceof IllegalArgumentException, \"IllegalArgumentException\", mismatch == null ? \"no exception\" : mismatch.getClass().getSimpleName(), \"Money addition must preserve the currency invariant.\", \"add\");",
+            "questions": [
+              {
+                "id": "java-immutability-quiz-final-reference",
+                "question": "Why is a `private final List<String>` field not sufficient by itself to make a class immutable?",
+                "type": "MultipleChoice",
+                "options": ["The final reference can still point to mutable list contents", "Final fields are always public", "Lists cannot be copied", "Final disables constructors"],
+                "correctAnswers": ["The final reference can still point to mutable list contents"],
+                "explanation": "`final` prevents reassigning the field, but mutations through any alias can still change the referenced list.",
+                "conceptId": "oop-encapsulation"
+              },
+              {
+                "id": "java-immutability-quiz-operation",
+                "question": "How should an immutable Money value implement addition?",
+                "type": "MultipleChoice",
+                "options": ["Return a new Money result", "Mutate its amount field with reflection", "Expose its fields and let callers add them", "Store the result in a static field"],
+                "correctAnswers": ["Return a new Money result"],
+                "explanation": "Returning a new value preserves the original operands and keeps their observable state stable.",
+                "conceptId": "data-modeling"
+              }
+            ]
+          }
+        },
+        {
+          "id": "java-inheritance-extends",
+          "title": "Class Hierarchies & 'extends'",
+          "summary": "Model specialized subtypes from generalized base classes using inheritance.",
+          "content": "Inheritance lets a subclass specialize the public and protected behavior of one superclass. It is appropriate when the subtype truly satisfies an `is-a` relationship and callers can use it anywhere the base type is expected without surprising changes to the base contract. Java permits single inheritance of classes, so a class has one direct superclass, while interfaces provide additional capability contracts. A subclass inherits accessible members but does not directly access private fields; the base class should provide protected or public behavior that preserves its invariants. Inheritance is not a shortcut for code reuse when the domain relationship is weak. Composition is usually safer when one object merely uses another or when behavior must vary independently. Keep hierarchies shallow, document what overriding methods must preserve, and prefer private base state with intentional operations over broadly protected data. A Manager can be modeled as an Employee if it honors every Employee expectation while adding a bonus-specific calculation. The Employee constructor remains responsible for employee state, and the Manager constructor establishes only its added state after delegating upward. In this exercise, complete that delegation and bonus initialization. The finished hierarchy should make the common state reusable without duplicating initialization or weakening the superclass boundary.",
+          "xp": 35,
+          "conceptIds": ["oop-inheritance", "data-modeling"],
+          "moduleId": "mod-3-inheritance",
+          "exercise": {
+            "starterCode": "public class Employee {\n    protected String name;\n    protected double baseSalary;\n\n    public Employee(String name, double baseSalary) {\n        this.name = name;\n        this.baseSalary = baseSalary;\n    }\n}\n\npublic class Manager extends Employee {\n    private double bonus;\n\n    public Manager(String name, double baseSalary, double bonus) {\n        // TODO: initialize inherited state, then the manager bonus.\n        super(name, baseSalary);\n    }\n}",
+            "solutionCode": "public class Employee {\n    protected String name;\n    protected double baseSalary;\n\n    public Employee(String name, double baseSalary) {\n        this.name = name;\n        this.baseSalary = baseSalary;\n    }\n}\n\npublic class Manager extends Employee {\n    private double bonus;\n\n    public Manager(String name, double baseSalary, double bonus) {\n        super(name, baseSalary);\n        this.bonus = bonus;\n    }\n}",
+            "expectedOutput": "Manager: Bob, Total Pay: $8500.0",
+            "hints": [
+              "Nudge: A Manager constructor must initialize both the Employee portion and its own bonus.",
+              "Concept: `super(...)` delegates initialization of superclass-owned state before subclass fields are assigned.",
+              "Structure: Keep the superclass call first, then assign the bonus parameter to the Manager field.",
+              "Detail: Follow `super(name, baseSalary);` with `this.bonus = bonus;` and remove the unfinished marker."
+            ],
+            "assertions": [
+              "contains:class Manager extends Employee",
+              "contains:super(name, baseSalary)",
+              "not-contains:TODO"
+            ],
+            "testHarness": "Manager manager = new Manager(\"Bob\", 7000.0, 1500.0);\ncheck(\"manager-name\", \"Superclass state is initialized\", Objects.equals(field(manager, \"name\"), \"Bob\"), \"Bob\", field(manager, \"name\"), \"Delegate inherited initialization to super.\", \"super\");\ncheck(\"manager-bonus\", \"Subclass state is initialized\", close(((Number) field(manager, \"bonus\")).doubleValue(), 1500.0), \"1500.0\", field(manager, \"bonus\"), \"Assign the bonus after the super call.\", \"bonus\");"
+          }
+        },
+        {
+          "id": "java-super-chaining",
+          "title": "Constructor Chaining with 'super'",
+          "summary": "Master initialization order and constructor propagation across class hierarchies.",
+          "content": "Object construction proceeds from the top of a class hierarchy down to the most specific subclass. Before an ElectricCar can establish battery state, its Vehicle superclass must establish the brand state it owns. A subclass constructor selects a superclass constructor with `super(...)`, and that call must be the first statement. If no explicit call is written, Java inserts `super()`, which compiles only when the superclass has an accessible no-argument constructor. Field initializers and initialization blocks also participate in a defined order: superclass initialization completes before subclass initialization, and instance field initializers run before the remainder of that class's constructor body. Understanding the sequence makes debugging much easier because overridden methods, validation, and logging can otherwise appear to run in surprising order. Constructors should avoid calling overridable methods; dynamic dispatch could invoke subclass code before subclass fields have been initialized. Pass only the data the superclass owns, let it validate that data, and then establish subtype-specific invariants. In this exercise, the Vehicle constructor requires a brand, so an implicit no-argument call cannot work. Complete the ElectricCar constructor by explicitly chaining to the proper superclass constructor before storing battery capacity.",
+          "xp": 40,
+          "conceptIds": ["oop-inheritance", "functions"],
+          "moduleId": "mod-3-inheritance",
+          "exercise": {
+            "starterCode": "public class Vehicle {\n    private String brand;\n    public Vehicle(String brand) {\n        this.brand = brand;\n    }\n    public String getBrand() { return brand; }\n}\n\npublic class ElectricCar extends Vehicle {\n    private int batteryCapacityKwh;\n    public ElectricCar(String brand, int batteryCapacityKwh) {\n        // TODO: call the required Vehicle constructor and store capacity.\n    }\n}",
+            "solutionCode": "public class Vehicle {\n    private String brand;\n    public Vehicle(String brand) {\n        this.brand = brand;\n    }\n    public String getBrand() { return brand; }\n}\n\npublic class ElectricCar extends Vehicle {\n    private int batteryCapacityKwh;\n    public ElectricCar(String brand, int batteryCapacityKwh) {\n        super(brand);\n        this.batteryCapacityKwh = batteryCapacityKwh;\n    }\n}",
+            "expectedOutput": "Brand: Tesla, Battery: 100 kWh",
+            "hints": [
+              "Nudge: Vehicle has no zero-argument constructor, so ElectricCar must choose one explicitly.",
+              "Concept: The superclass constructor runs before subclass field assignments and owns validation of superclass state.",
+              "Structure: Put a `super` call first in the ElectricCar constructor, then initialize `batteryCapacityKwh`.",
+              "Detail: Write `super(brand);` as the first statement and `this.batteryCapacityKwh = batteryCapacityKwh;` immediately after it."
+            ],
+            "assertions": [
+              "contains:super(brand)",
+              "contains:class ElectricCar extends Vehicle",
+              "not-contains:TODO"
+            ],
+            "testHarness": "ElectricCar car = new ElectricCar(\"Tesla\", 100);\ncheck(\"vehicle-brand\", \"Superclass constructor receives the brand\", car.getBrand().equals(\"Tesla\"), \"Tesla\", car.getBrand(), \"Call the Vehicle constructor first.\", \"super\");\ncheck(\"battery-capacity\", \"Subclass constructor stores battery capacity\", ((Number) field(car, \"batteryCapacityKwh\")).intValue() == 100, \"100\", field(car, \"batteryCapacityKwh\"), \"Assign batteryCapacityKwh after super.\", \"batteryCapacityKwh\");"
+          }
+        },
+        {
+          "id": "java-polymorphism-dispatch",
+          "title": "Method Overriding & Dynamic Dispatch",
+          "summary": "Leverage subtype polymorphism and virtual method tables for flexible behaviors.",
+          "content": "Subtype polymorphism allows client code to depend on a stable abstraction while runtime objects supply different behavior. A collection of Notification references can contain email, SMS, and future notification implementations, and a loop can call `send` without a type-specific conditional. Java resolves an overridden instance method from the runtime class of the object, a process called dynamic dispatch. The reference's declared type controls which members are legal to call at compile time, while the object's runtime type determines which compatible override runs. `@Override` asks the compiler to verify that a method really replaces an inherited declaration; it catches misspelled names and incompatible parameter lists. An override cannot reduce visibility, and it should preserve the promises of the base contract so callers do not need subtype knowledge. Static methods and fields do not participate in instance dynamic dispatch in the same way, and overloaded methods are selected at compile time from declared types. Prefer polymorphism when alternatives share a genuine contract and new variants should be addable without editing existing client branches. In this exercise, complete two concrete notification types. Each override should produce its own output while remaining callable through the abstract Notification API.",
+          "xp": 45,
+          "conceptIds": ["oop-polymorphism", "functions"],
+          "moduleId": "mod-3-inheritance",
+          "exercise": {
+            "starterCode": "public abstract class Notification {\n    public abstract void send(String message);\n}\n\npublic class EmailNotification extends Notification {\n    @Override\n    public void send(String message) {\n        // TODO: print the email-specific message.\n    }\n}\n\npublic class SmsNotification extends Notification {\n    @Override\n    public void send(String message) {\n        // TODO: print the SMS-specific message.\n    }\n}",
+            "solutionCode": "public abstract class Notification {\n    public abstract void send(String message);\n}\n\npublic class EmailNotification extends Notification {\n    @Override\n    public void send(String message) {\n        System.out.println(\"Sending Email: \" + message);\n    }\n}\n\npublic class SmsNotification extends Notification {\n    @Override\n    public void send(String message) {\n        System.out.println(\"Sending SMS: \" + message);\n    }\n}",
+            "expectedOutput": "Sending Email: Alert\nSending SMS: Alert",
+            "hints": [
+              "Nudge: Both subclasses already satisfy the method signature; each body needs distinct behavior.",
+              "Concept: Calling `send` through a Notification reference dispatches to the runtime subtype's override.",
+              "Structure: Print one line prefixed with Sending Email and the other prefixed with Sending SMS, both followed by the parameter.",
+              "Detail: Use `System.out.println(\"Sending Email: \" + message);` and the corresponding SMS expression inside their annotated overrides."
+            ],
+            "assertions": [
+              "contains:@Override",
+              "contains:class EmailNotification extends Notification",
+              "contains:class SmsNotification extends Notification",
+              "not-contains:TODO"
+            ],
+            "testHarness": "Notification email = new EmailNotification();\nNotification sms = new SmsNotification();\nString emailOutput = capture(() -> email.send(\"Alert\"));\nString smsOutput = capture(() -> sms.send(\"Alert\"));\ncheck(\"email-dispatch\", \"Email override handles dynamic dispatch\", emailOutput.equals(\"Sending Email: Alert\"), \"Sending Email: Alert\", emailOutput, \"Implement the email-specific override.\", \"EmailNotification\");\ncheck(\"sms-dispatch\", \"SMS override handles dynamic dispatch\", smsOutput.equals(\"Sending SMS: Alert\"), \"Sending SMS: Alert\", smsOutput, \"Implement the SMS-specific override.\", \"SmsNotification\");"
+          }
+        },
+        {
+          "id": "java-casting-instanceof",
+          "title": "Type Casting & Pattern Matching 'instanceof'",
+          "summary": "Safely inspect, narrow, and cast subtype references using modern pattern matching.",
+          "content": "Upcasting a subtype reference to a supertype is implicit because every subtype object satisfies the supertype contract. Downcasting moves in the opposite direction and is safe only when the runtime object actually has the requested subtype. An unchecked explicit cast can throw `ClassCastException`, so casts should be rare and justified. Pattern matching for `instanceof` combines the runtime check with a scoped variable, as in `if (value instanceof String text)`, eliminating a duplicated cast. The pattern variable is available only where the compiler can prove the match succeeded. Order tests from specific to general when types overlap, handle `null` explicitly when necessary, and provide an intentional fallback for unsupported types rather than silently doing nothing. Repeated type checks over a closed family can be appropriate at a system boundary, but a long chain over types you own may signal that polymorphic behavior belongs on the types themselves. Modern Java also expands pattern matching across switch expressions for suitable sealed hierarchies, which you will encounter later. In this exercise, implement two safe branches that format strings and numeric values differently. The code should never cast an object before a successful test and should make the narrowed variables do the work.",
+          "xp": 40,
+          "conceptIds": ["oop-polymorphism", "conditions"],
+          "moduleId": "mod-3-inheritance",
+          "exercise": {
+            "starterCode": "public class Formatter {\n    public static void formatValue(Object obj) {\n        // TODO: use pattern variables for String and Number values.\n    }\n}",
+            "solutionCode": "public class Formatter {\n    public static void formatValue(Object obj) {\n        if (obj instanceof String s) {\n            System.out.println(\"String uppercase: \" + s.toUpperCase());\n        } else if (obj instanceof Number n) {\n            System.out.println(\"Numeric double: \" + n.doubleValue());\n        }\n    }\n}",
+            "expectedOutput": "String uppercase: SPROUT\nNumeric double: 42.0",
+            "hints": [
+              "Nudge: Test the runtime type before using behavior that exists only on String or Number.",
+              "Concept: An `instanceof Type variable` pattern both validates the type and introduces a safely narrowed local variable.",
+              "Structure: Add a String branch that uppercases text and an `else if` Number branch that reads its double value.",
+              "Detail: Implement `if (obj instanceof String s)` and `else if (obj instanceof Number n)`, printing the exact prefixes and converted values from the solution output."
+            ],
+            "assertions": [
+              "contains:instanceof String s",
+              "contains:instanceof Number n",
+              "not-contains:TODO"
+            ],
+            "testHarness": "String textOutput = capture(() -> Formatter.formatValue(\"sprout\"));\nString numberOutput = capture(() -> Formatter.formatValue(21));\ncheck(\"string-pattern\", \"String pattern produces uppercase text\", textOutput.equals(\"String uppercase: SPROUT\"), \"String uppercase: SPROUT\", textOutput, \"Use the String pattern variable in the first branch.\", \"instanceof String\");\ncheck(\"number-pattern\", \"Number pattern produces a double value\", numberOutput.equals(\"Numeric double: 21.0\"), \"Numeric double: 21.0\", numberOutput, \"Use the Number pattern variable in the second branch.\", \"instanceof Number\");",
+            "questions": [
+              {
+                "id": "java-casting-quiz-upcast",
+                "question": "Why does assigning an EmailNotification to a Notification variable require no explicit cast?",
+                "type": "MultipleChoice",
+                "options": ["Every EmailNotification satisfies the Notification contract", "The JVM converts it to a new object", "All Java casts are implicit", "Notification becomes the runtime class"],
+                "correctAnswers": ["Every EmailNotification satisfies the Notification contract"],
+                "explanation": "Upcasting is safe because the subtype guarantees all operations promised by the supertype.",
+                "conceptId": "oop-inheritance"
+              },
+              {
+                "id": "java-casting-quiz-pattern",
+                "question": "What does `value instanceof String text` provide inside the successful branch?",
+                "type": "MultipleChoice",
+                "options": ["A safely narrowed String variable named text", "A global String variable", "A compile-time conversion of every object", "A new copy of the string"],
+                "correctAnswers": ["A safely narrowed String variable named text"],
+                "explanation": "The pattern performs the runtime test and introduces a scoped variable whose type is already narrowed.",
+                "conceptId": "oop-polymorphism"
+              }
+            ]
+          }
+        },
+        {
+          "id": "java-interfaces-contracts",
+          "title": "Decoupling with Interfaces",
+          "summary": "Build flexible, decoupled architectures using pure contract interfaces.",
+          "content": "An interface names a capability that clients can rely on without knowing the implementing class. Its method signatures form a contract: implementations may differ internally, but each must honor the same input, output, error, and side-effect expectations. A class declares the relationship with `implements` and may implement several interfaces, which allows one object to play multiple roles without inheriting state from multiple classes. Program to the interface at collaboration boundaries, constructor parameters, and collection element types. That makes tests able to substitute controlled implementations and lets production wiring choose a provider without rewriting business logic. Keep interfaces cohesive; a payment processor should not also require unrelated reporting and storage methods. A tiny interface defined near the client often expresses the dependency more accurately than a large provider-oriented API. Interfaces can declare constants, abstract methods, default methods, static methods, and private helpers under modern Java rules, but they do not own per-instance mutable fields. Document behavioral guarantees such as whether a failed payment throws, returns false, or is retryable. In this exercise, complete a StripeProcessor that honors the PaymentProcessor contract. The concrete class should override the method, report the attempted amount, and return a success value through an interface-typed call.",
+          "xp": 40,
+          "conceptIds": ["oop-abstraction", "data-modeling"],
+          "moduleId": "mod-4-interfaces",
+          "exercise": {
+            "starterCode": "public interface PaymentProcessor {\n    boolean processPayment(double amount);\n}\n\npublic class StripeProcessor implements PaymentProcessor {\n    @Override\n    public boolean processPayment(double amount) {\n        // TODO: report the payment and return its result.\n        return false;\n    }\n}",
+            "solutionCode": "public interface PaymentProcessor {\n    boolean processPayment(double amount);\n}\n\npublic class StripeProcessor implements PaymentProcessor {\n    @Override\n    public boolean processPayment(double amount) {\n        System.out.println(\"Processed $\" + amount + \" via Stripe\");\n        return true;\n    }\n}",
+            "expectedOutput": "Processed $99.99 via Stripe",
+            "hints": [
+              "Nudge: The class already implements the interface; complete the one required method body.",
+              "Concept: An implementation must honor both the interface signature and the meaning clients expect from its result.",
+              "Structure: Print the processed amount with the provider name, then return the success boolean.",
+              "Detail: Add `System.out.println(\"Processed $\" + amount + \" via Stripe\");` and return `true` from the override."
+            ],
+            "assertions": [
+              "contains:interface PaymentProcessor",
+              "contains:implements PaymentProcessor",
+              "contains:@Override",
+              "not-contains:TODO"
+            ],
+            "testHarness": "StripeProcessor processor = new StripeProcessor();\nfinal boolean[] accepted = new boolean[1];\nString output = capture(() -> accepted[0] = processor.processPayment(99.99));\ncheck(\"payment-result\", \"Processor returns a successful result\", accepted[0], \"true\", accepted[0], \"Return the result promised by the contract.\", \"processPayment\");\ncheck(\"payment-output\", \"Processor reports the handled amount\", output.equals(\"Processed $99.99 via Stripe\"), \"Processed $99.99 via Stripe\", output, \"Print the provider-specific payment message.\", \"processPayment\");"
+          }
+        },
+        {
+          "id": "java-default-static-methods",
+          "title": "Default & Static Methods in Interfaces",
+          "summary": "Evolve interface contracts safely using default fallback methods and static utilities.",
+          "content": "A default interface method supplies reusable behavior while preserving source compatibility for existing implementations. It is useful when the behavior can be expressed entirely through the interface contract and a sensible default applies broadly. Default methods should not become a substitute for a stateful base class or a dumping ground for unrelated utilities. If two implemented interfaces provide conflicting defaults with the same signature, the class must resolve the conflict explicitly and may call a chosen implementation with `InterfaceName.super.method()`. Static interface methods belong to the contract's namespace and are invoked on the interface, not on implementing instances. They work well for factories, validation helpers, and operations whose meaning is inseparable from the abstraction. Private interface methods can remove duplication among default methods without expanding the public contract. API evolution still demands care: a new default can conflict with methods in downstream interfaces or change overload resolution. In the Logger exercise, the abstract `log` operation remains the capability implementers supply. Complete a default decorator that adds a prefix before delegating, and complete a static factory that returns a console-backed implementation. Both features should strengthen the contract without exposing any mutable interface state.",
+          "xp": 40,
+          "conceptIds": ["oop-abstraction", "functions"],
+          "moduleId": "mod-4-interfaces",
+          "exercise": {
+            "starterCode": "public interface Logger {\n    void log(String message);\n\n    default void logWithTimestamp(String message) {\n        // TODO: decorate the message and delegate to log.\n    }\n\n    static Logger consoleLogger() {\n        // TODO: return a console-backed Logger implementation.\n        return null;\n    }\n}",
+            "solutionCode": "public interface Logger {\n    void log(String message);\n\n    default void logWithTimestamp(String message) {\n        log(\"[TIMESTAMP] \" + message);\n    }\n\n    static Logger consoleLogger() {\n        return msg -> System.out.println(msg);\n    }\n}",
+            "expectedOutput": "[TIMESTAMP] System online",
+            "hints": [
+              "Nudge: The default method can reuse the abstract `log` operation, and Logger has only one abstract method.",
+              "Concept: Default behavior operates through the contract; a functional interface can be implemented with a lambda.",
+              "Structure: Delegate the decorated message to `log`, then have the factory return a lambda that prints its parameter.",
+              "Detail: Call `log(\"[TIMESTAMP] \" + message);` and return `msg -> System.out.println(msg);` from `consoleLogger`."
+            ],
+            "assertions": [
+              "contains:default void logWithTimestamp",
+              "contains:static Logger consoleLogger",
+              "not-contains:TODO"
+            ],
+            "testHarness": "Logger logger = Logger.consoleLogger();\nString output = logger == null ? \"factory returned null\" : capture(() -> logger.logWithTimestamp(\"System online\"));\ncheck(\"logger-factory\", \"Static factory returns a logger\", logger != null, \"non-null Logger\", logger, \"Return a console-backed implementation.\", \"consoleLogger\");\ncheck(\"default-decoration\", \"Default method decorates and delegates\", output.equals(\"[TIMESTAMP] System online\"), \"[TIMESTAMP] System online\", output, \"Delegate the timestamped message through log.\", \"logWithTimestamp\");"
+          }
+        },
+        {
+          "id": "java-abstract-classes-vs-interfaces",
+          "title": "Abstract Classes vs Interfaces",
+          "summary": "Architect systems choosing between shared state/templates and pure capability contracts.",
+          "content": "Interfaces and abstract classes solve related but different design problems. An interface describes a role that potentially unrelated classes can implement, supports several capabilities per class, and is ideal at dependency boundaries. An abstract class is a partially implemented base type that can own instance state, constructors, protected helpers, and a common lifecycle. Use one when subtypes share a genuine identity and the base can preserve invariants for common state. Abstract classes can mix concrete and abstract methods. A template method may keep an algorithm's ordering final while delegating selected steps to protected abstract hooks. Interfaces can now contain behavior too, but they still do not provide per-instance fields or constructor initialization. Choose based on semantic relationship and change pressure, not simply because one syntax requires less typing. Excessive protected mutable state tightly couples every subclass to the base representation; prefer private state and protected operations. A class can extend only one class, so spending that inheritance slot on convenience can limit future design. In this exercise, GameCharacter is a stateful abstraction: every character has validated identity and health, while concrete types decide how to attack. Complete a concrete Warrior subtype so the abstract contract becomes executable without duplicating common fields or construction rules.",
+          "xp": 45,
+          "conceptIds": ["oop-abstraction", "data-modeling"],
+          "moduleId": "mod-4-interfaces",
+          "exercise": {
+            "starterCode": "public abstract class GameCharacter {\n    protected String name;\n    protected int health;\n\n    public GameCharacter(String name, int health) {\n        this.name = name;\n        this.health = health;\n    }\n\n    public abstract void attack();\n}\n\nclass Warrior extends GameCharacter {\n    Warrior(String name, int health) {\n        super(name, health);\n    }\n\n    // TODO: implement the required attack behavior.\n}",
+            "solutionCode": "public abstract class GameCharacter {\n    protected String name;\n    protected int health;\n\n    public GameCharacter(String name, int health) {\n        this.name = name;\n        this.health = health;\n    }\n\n    public abstract void attack();\n}\n\nclass Warrior extends GameCharacter {\n    Warrior(String name, int health) {\n        super(name, health);\n    }\n\n    @Override\n    public void attack() {\n        System.out.println(\"Warrior swings broadsword!\");\n    }\n}",
+            "expectedOutput": "Warrior swings broadsword!",
+            "hints": [
+              "Nudge: Warrior is concrete, so it must supply every inherited abstract operation.",
+              "Concept: The abstract base owns common state and construction; the subclass provides the varying behavior.",
+              "Structure: Declare an `attack` method in Warrior with the exact public void signature and annotate it as an override.",
+              "Detail: Add `@Override public void attack() { System.out.println(\"Warrior swings broadsword!\"); }` to the concrete subclass."
+            ],
+            "assertions": [
+              "contains:public abstract class GameCharacter",
+              "contains:public abstract void attack();",
+              "contains:class Warrior extends GameCharacter",
+              "not-contains:TODO"
+            ],
+            "testHarness": "GameCharacter warrior = new Warrior(\"Ari\", 100);\nString output = capture(warrior::attack);\ncheck(\"warrior-attack\", \"Concrete subclass implements the abstract attack\", output.equals(\"Warrior swings broadsword!\"), \"Warrior swings broadsword!\", output, \"Override attack in Warrior.\", \"attack\");"
+          }
+        },
+        {
+          "id": "java-records-sealed-classes",
+          "title": "Modern Java: Records & Sealed Types",
+          "summary": "Model domain data concisely with immutable Records and exhaustive Sealed Hierarchies.",
+          "content": "A record is a concise declaration for a transparent data carrier whose state is defined by its components. Java generates private final component fields, accessors named after the components, a canonical constructor, and value-oriented `equals`, `hashCode`, and `toString` implementations. Records are shallowly immutable: a record component that refers to a mutable list can still expose mutable contents unless the canonical constructor copies it. Compact constructors can validate or normalize components without repeating the parameter list. Records cannot extend an arbitrary class, but they can implement interfaces. A sealed class or interface explicitly restricts which types may directly extend or implement it. Permitted subtypes must be declared `final`, `sealed`, or `non-sealed`, making future extension policy visible. Closed hierarchies pair naturally with pattern matching because the compiler can reason about the known variants. They are effective for outcomes, commands, and domain states, but they should not close an extension point intended for third parties. In this exercise, finish a generic Result family with Success and Failure record variants. Each variant must implement the sealed contract and carry the minimal data its case needs, enabling callers to handle value and error paths without null conventions or loosely related flags.",
+          "xp": 50,
+          "conceptIds": ["oop-abstraction", "data-modeling"],
+          "moduleId": "mod-4-interfaces",
+          "exercise": {
+            "starterCode": "public sealed interface Result<T> permits Success, Failure {}\n\n// TODO: define Success and Failure record variants that implement Result.\n",
+            "solutionCode": "public sealed interface Result<T> permits Success, Failure {}\n\npublic record Success<T>(T value) implements Result<T> {}\npublic record Failure<T>(String error) implements Result<T> {}",
+            "expectedOutput": "Success: 200 OK",
+            "hints": [
+              "Nudge: The permits clause names the two direct variants that still need declarations.",
+              "Concept: A record supplies value semantics and can implement a sealed generic interface with the same type parameter.",
+              "Structure: Declare a Success record carrying `T value` and a Failure record carrying `String error`; make both implement Result<T>.",
+              "Detail: Add `record Success<T>(T value) implements Result<T> {}` and `record Failure<T>(String error) implements Result<T> {}` after the interface."
+            ],
+            "assertions": [
+              "contains:sealed interface Result",
+              "contains:record Success",
+              "contains:record Failure",
+              "not-contains:TODO"
+            ],
+            "testHarness": "Success<String> success = new Success<>(\"200 OK\");\nFailure<String> failure = new Failure<>(\"timeout\");\ncheck(\"success-record\", \"Success record retains its value\", success.value().equals(\"200 OK\"), \"200 OK\", success.value(), \"Declare the Success record component.\", \"record Success\");\ncheck(\"failure-record\", \"Failure record retains its error\", failure.error().equals(\"timeout\"), \"timeout\", failure.error(), \"Declare the Failure record component.\", \"record Failure\");",
+            "questions": [
+              {
+                "id": "java-records-quiz-shallow",
+                "question": "What does it mean that a Java record is only shallowly immutable?",
+                "type": "MultipleChoice",
+                "options": ["A record component may still refer to a mutable object", "Record fields can always be reassigned", "Records have no constructors", "Records cannot implement interfaces"],
+                "correctAnswers": ["A record component may still refer to a mutable object"],
+                "explanation": "The component reference is final, but the referenced object's contents require their own immutability or defensive copy.",
+                "conceptId": "data-modeling"
+              },
+              {
+                "id": "java-records-quiz-sealed",
+                "question": "What must a direct permitted subtype of a sealed interface declare?",
+                "type": "MultipleChoice",
+                "options": ["final, sealed, or non-sealed", "static only", "private only", "record only"],
+                "correctAnswers": ["final, sealed, or non-sealed"],
+                "explanation": "The subtype must state whether inheritance stops, remains restricted, or reopens at that point.",
+                "conceptId": "oop-abstraction"
+              }
+            ]
+          }
+        },
+        {
+          "id": "java-solid-principles",
+          "title": "The SOLID Principles in Practice",
+          "summary": "Engineer maintainable, extensible architectures adhering to SOLID design laws.",
+          "content": "SOLID is a set of design lenses for managing change, not a checklist that automatically improves every small class. Single Responsibility asks whether a module has one coherent reason to change. Open/Closed encourages stable policy code that can accept new behavior through extension points instead of repeated edits. Liskov Substitution requires each subtype to preserve the promises clients rely on, including accepted inputs and postconditions. Interface Segregation keeps clients from depending on methods they do not use. Dependency Inversion places abstractions at policy boundaries so high-level decisions do not construct or import low-level delivery details. Apply these ideas in response to observed coupling and change pressure; excessive interfaces and one-method classes can obscure a simple design. Tests should target behavior through public contracts, which reveals whether substitution is genuine. Constructor injection makes required dependencies explicit, prevents hidden global lookup, and supports controlled test implementations. In the OrderService example, order completion is business policy while message delivery is an external detail. The service should depend on a small MessageSender contract supplied by composition. Complete the collaboration so the service delegates its notification without choosing email, SMS, or any other concrete provider itself.",
+          "xp": 50,
+          "conceptIds": ["design-patterns", "oop-abstraction"],
+          "moduleId": "mod-5-patterns",
+          "exercise": {
+            "starterCode": "public interface MessageSender {\n    void send(String message);\n}\n\npublic class OrderService {\n    private final MessageSender sender;\n    public OrderService(MessageSender sender) {\n        // TODO: retain the injected abstraction.\n        this.sender = null;\n    }\n    public void completeOrder() {\n        // TODO: delegate notification through MessageSender.\n    }\n}",
+            "solutionCode": "public interface MessageSender {\n    void send(String message);\n}\n\npublic class OrderService {\n    private final MessageSender sender;\n    public OrderService(MessageSender sender) {\n        this.sender = sender;\n    }\n    public void completeOrder() {\n        sender.send(\"Order completed successfully.\");\n    }\n}",
+            "expectedOutput": "Order completed successfully.",
+            "hints": [
+              "Nudge: OrderService already receives the abstraction it needs; do not construct a provider inside the service.",
+              "Concept: Constructor injection makes the dependency required and lets high-level policy depend on an interface rather than a detail.",
+              "Structure: Store the constructor parameter in the final field, then call that field from `completeOrder` with the expected message.",
+              "Detail: Assign `this.sender = sender;` and invoke `sender.send(\"Order completed successfully.\");` without referencing a concrete sender class."
+            ],
+            "assertions": [
+              "contains:private final MessageSender sender",
+              "contains:public OrderService(MessageSender sender)",
+              "not-contains:TODO"
+            ],
+            "testHarness": "StringBuilder delivered = new StringBuilder();\nMessageSender sender = delivered::append;\nOrderService service = new OrderService(sender);\nservice.completeOrder();\ncheck(\"injected-sender\", \"Order completion delegates through the injected abstraction\", delivered.toString().equals(\"Order completed successfully.\"), \"Order completed successfully.\", delivered, \"Store and call the injected MessageSender.\", \"sender\");"
+          }
+        },
+        {
+          "id": "java-factory-builder-patterns",
+          "title": "Creational Patterns: Factory & Builder",
+          "summary": "Master dynamic object instantiation and fluent multi-stage assembly.",
+          "content": "Creational patterns separate the decision to create an object from the code that uses the resulting abstraction. A factory is useful when construction selects among implementations, requires validation, or coordinates dependencies that clients should not know. It should return a meaningful contract and reject unsupported requests clearly rather than hide arbitrary global behavior. A builder is useful when an immutable object has several optional values, construction needs named steps, or validation belongs at the final assembly boundary. Fluent builder methods usually return `this`, while `build()` validates required fields and creates a fresh target object. A builder is not automatically better than a short constructor or static factory; use it when it makes invalid combinations harder to express or call sites easier to read. Builders are typically mutable and not thread-safe, whereas each built product can remain immutable. Reusing a builder should not cause already-built objects to change. In this exercise, complete an HttpRequest builder. The request constructor copies builder state into final fields, setter-like methods record choices and return the same builder, and `build` creates the product. Ensure the URL path is explicit and the default method remains available when the caller does not override it.",
+          "xp": 45,
+          "conceptIds": ["design-patterns", "data-modeling"],
+          "moduleId": "mod-5-patterns",
+          "exercise": {
+            "starterCode": "public class HttpRequest {\n    private final String url;\n    private final String method;\n    private final String body;\n\n    private HttpRequest(Builder builder) {\n        this.url = builder.url;\n        this.method = builder.method;\n        this.body = builder.body;\n    }\n\n    public static class Builder {\n        private String url;\n        private String method = \"GET\";\n        private String body = \"\";\n\n        public Builder url(String url) { this.url = url; return this; }\n        public Builder method(String method) { this.method = method; return this; }\n        public Builder body(String body) { this.body = body; return this; }\n        public HttpRequest build() {\n            // TODO: validate the required URL and create the request.\n            return null;\n        }\n    }\n}",
+            "solutionCode": "public class HttpRequest {\n    private final String url;\n    private final String method;\n    private final String body;\n\n    private HttpRequest(Builder builder) {\n        this.url = builder.url;\n        this.method = builder.method;\n        this.body = builder.body;\n    }\n\n    public static class Builder {\n        private String url;\n        private String method = \"GET\";\n        private String body = \"\";\n\n        public Builder url(String url) { this.url = url; return this; }\n        public Builder method(String method) { this.method = method; return this; }\n        public Builder body(String body) { this.body = body; return this; }\n        public HttpRequest build() {\n            if (url == null || url.isBlank()) {\n                throw new IllegalStateException(\"URL is required\");\n            }\n            return new HttpRequest(this);\n        }\n    }\n}",
+            "expectedOutput": "HTTP Request: POST https://api.sprout.dev",
+            "hints": [
+              "Nudge: The fluent methods are complete; only the final assembly step still returns null.",
+              "Concept: `build()` is the boundary where required builder state is checked before an immutable product is created.",
+              "Structure: Reject a missing or blank URL, then pass the current builder into HttpRequest's private constructor.",
+              "Detail: In `build`, throw `IllegalStateException` when `url` is null or blank and otherwise `return new HttpRequest(this);`."
+            ],
+            "assertions": [
+              "contains:public static class Builder",
+              "contains:public HttpRequest build()",
+              "contains:return new HttpRequest(this)",
+              "not-contains:TODO"
+            ],
+            "testHarness": "HttpRequest request = new HttpRequest.Builder().url(\"https://api.sprout.dev\").method(\"POST\").body(\"{}\").build();\ncheck(\"builder-product\", \"Builder creates a request with all configured fields\", request != null && Objects.equals(field(request, \"url\"), \"https://api.sprout.dev\") && Objects.equals(field(request, \"method\"), \"POST\"), \"POST https://api.sprout.dev\", request == null ? \"null\" : field(request, \"method\") + \" \" + field(request, \"url\"), \"Construct HttpRequest from the current builder.\", \"build\");\nThrowable missingUrl = thrown(() -> new HttpRequest.Builder().build());\ncheck(\"required-url\", \"Builder rejects a missing URL\", missingUrl instanceof IllegalStateException, \"IllegalStateException\", missingUrl == null ? \"no exception\" : missingUrl.getClass().getSimpleName(), \"Validate the required URL at build time.\", \"build\");"
+          }
+        },
+        {
+          "id": "java-strategy-observer-patterns",
+          "title": "Behavioral Patterns: Strategy & Observer",
+          "summary": "Implement swappable runtime algorithms and decoupled event-driven architectures.",
+          "content": "Strategy and Observer both use interfaces to remove condition-heavy coupling, but they address different forces. Strategy represents one interchangeable algorithm selected by a context or its composition root. The context delegates a calculation to the current strategy and does not know how that implementation reaches its answer. This supports runtime selection, isolated testing, and new algorithms without editing the context. Observer represents a one-to-many notification relationship. A subject publishes an immutable event to registered listeners after a meaningful state transition, while publishers remain independent of logging, metrics, or user notification details. Observer APIs need explicit lifecycle rules: registration, removal, ordering, duplicate handling, and failure isolation. Synchronous observers can delay or fail the publisher, while asynchronous delivery introduces concurrency and eventual consistency. Avoid using either pattern when a direct method call is clearer. In the exercise, focus first on Strategy. Cart owns a DiscountStrategy dependency and delegates checkout pricing to it. Complete the VIP algorithm and delegation while keeping the Cart free from membership-level conditionals. Later, the capstone will apply Observer to audit events where multiple independent listeners react to completed transactions.",
+          "xp": 45,
+          "conceptIds": ["design-patterns", "oop-polymorphism"],
+          "moduleId": "mod-5-patterns",
+          "exercise": {
+            "starterCode": "public interface DiscountStrategy {\n    double applyDiscount(double total);\n}\n\npublic class VipDiscount implements DiscountStrategy {\n    @Override\n    public double applyDiscount(double total) {\n        // TODO: apply the twenty-percent VIP reduction.\n        return total;\n    }\n}\n\npublic class Cart {\n    private DiscountStrategy strategy;\n    public Cart(DiscountStrategy strategy) { this.strategy = strategy; }\n    public double checkout(double total) {\n        // TODO: delegate pricing to the configured strategy.\n        return total;\n    }\n}",
+            "solutionCode": "public interface DiscountStrategy {\n    double applyDiscount(double total);\n}\n\npublic class VipDiscount implements DiscountStrategy {\n    @Override\n    public double applyDiscount(double total) { return total * 0.80; }\n}\n\npublic class Cart {\n    private DiscountStrategy strategy;\n    public Cart(DiscountStrategy strategy) { this.strategy = strategy; }\n    public double checkout(double total) { return strategy.applyDiscount(total); }\n}",
+            "expectedOutput": "Final Price: $80.0",
+            "hints": [
+              "Nudge: VIP customers pay eighty percent of the original total, and Cart should not reproduce that formula.",
+              "Concept: Strategy keeps the varying algorithm behind an interface while the context delegates without subtype checks.",
+              "Structure: Implement the multiplication in VipDiscount and make Cart call `strategy.applyDiscount(total)`.",
+              "Detail: Return `total * 0.80` from the strategy and return `strategy.applyDiscount(total)` from checkout."
+            ],
+            "assertions": [
+              "contains:interface DiscountStrategy",
+              "contains:class VipDiscount implements DiscountStrategy",
+              "contains:applyDiscount",
+              "not-contains:TODO"
+            ],
+            "testHarness": "Cart cart = new Cart(new VipDiscount());\ndouble price = cart.checkout(100.0);\ncheck(\"vip-strategy\", \"VIP strategy applies a twenty-percent discount\", close(price, 80.0), \"80.0\", price, \"Delegate checkout to the configured strategy.\", \"applyDiscount\");"
+          }
+        },
+        {
+          "id": "java-singleton-thread-safety",
+          "title": "Singleton & Thread-Safe Resource Management",
+          "summary": "Ensure single-instance resource coordinators with thread-safe lazy initialization.",
+          "content": "A Singleton restricts a type to one process-wide instance and provides a global access point, but that global lifetime introduces hidden coupling and makes isolated tests harder. Use it only when the domain genuinely requires one identity per class loader, not merely to avoid passing a dependency. Prefer constructing normal service objects in a composition root and injecting them where possible. When a lazy singleton is justified, the initialization-on-demand holder idiom uses JVM class initialization guarantees: the nested holder class is not initialized until first referenced, and its static initialization is synchronized by the runtime. A private constructor prevents ordinary external construction, while a public static accessor returns the holder's instance. A single-element enum offers even stronger serialization and reflection guarantees for simple cases. Singleton does not make the object's mutable operations thread-safe; any shared connection pool state still needs its own synchronization or concurrent data structures. It also operates per class loader, which matters in application servers and plugins. In this exercise, complete the holder idiom rather than hand-writing double-checked locking. The outer type owns no eager instance, the nested holder creates exactly one, and every accessor call returns that same reference.",
+          "xp": 45,
+          "conceptIds": ["design-patterns", "data-modeling"],
+          "moduleId": "mod-5-patterns",
+          "exercise": {
+            "starterCode": "public class DatabaseConnectionPool {\n    private DatabaseConnectionPool() {}\n\n    private static class Holder {\n        // TODO: initialize the single pool instance.\n        private static final DatabaseConnectionPool INSTANCE = null;\n    }\n\n    public static DatabaseConnectionPool getInstance() {\n        // TODO: return the holder-managed instance.\n        return null;\n    }\n}",
+            "solutionCode": "public class DatabaseConnectionPool {\n    private DatabaseConnectionPool() {}\n\n    private static class Holder {\n        private static final DatabaseConnectionPool INSTANCE = new DatabaseConnectionPool();\n    }\n\n    public static DatabaseConnectionPool getInstance() {\n        return Holder.INSTANCE;\n    }\n}",
+            "expectedOutput": "Pool Instance Acquired: OK",
+            "hints": [
+              "Nudge: Keep the private constructor; initialize the instance only inside the nested holder.",
+              "Concept: JVM class initialization makes the holder's static field lazy and safely published without manual locking.",
+              "Structure: Construct DatabaseConnectionPool in Holder.INSTANCE and have the public accessor return that field.",
+              "Detail: Set `INSTANCE = new DatabaseConnectionPool();` and implement `getInstance` as `return Holder.INSTANCE;`."
+            ],
+            "assertions": [
+              "contains:private DatabaseConnectionPool()",
+              "contains:private static class Holder",
+              "contains:public static DatabaseConnectionPool getInstance()",
+              "not-contains:TODO"
+            ],
+            "testHarness": "DatabaseConnectionPool first = DatabaseConnectionPool.getInstance();\nDatabaseConnectionPool second = DatabaseConnectionPool.getInstance();\ncheck(\"singleton-present\", \"Accessor returns an initialized pool\", first != null, \"non-null instance\", first, \"Initialize Holder.INSTANCE.\", \"INSTANCE\");\ncheck(\"singleton-identity\", \"Accessor returns the same instance\", first == second, \"same object\", first == second ? \"same object\" : \"different objects\", \"Return Holder.INSTANCE from every call.\", \"getInstance\");",
+            "questions": [
+              {
+                "id": "java-singleton-quiz-holder",
+                "question": "Why is the initialization-on-demand holder idiom thread-safe without explicit synchronization?",
+                "type": "MultipleChoice",
+                "options": ["JVM class initialization safely initializes the static holder field once", "Every method is implicitly synchronized", "The constructor is public", "It creates a new instance per call"],
+                "correctAnswers": ["JVM class initialization safely initializes the static holder field once"],
+                "explanation": "The runtime serializes class initialization and safely publishes the initialized static fields.",
+                "conceptId": "design-patterns"
+              },
+              {
+                "id": "java-singleton-quiz-caution",
+                "question": "What is a major design cost of using a singleton as a service locator?",
+                "type": "MultipleChoice",
+                "options": ["It hides dependencies and global state from callers", "It prevents all concurrency", "It requires multiple class inheritance", "It makes every object immutable"],
+                "correctAnswers": ["It hides dependencies and global state from callers"],
+                "explanation": "Implicit global access obscures collaborators and makes tests and lifetime control more difficult.",
+                "conceptId": "oop-abstraction"
+              }
+            ]
+          }
+        },
+        {
+          "id": "java-capstone-domain-model",
+          "title": "Domain Modeling: Bank Accounts & Customers",
+          "summary": "Construct an encapsulated banking domain hierarchy with polymorphic accounts.",
+          "content": "The capstone begins with a domain model whose types express banking rules instead of acting as passive bags of fields. An Account owns its identifier and balance and is the only object allowed to mutate that balance. Construction rejects a blank identifier and negative opening balance. Deposits require positive finite amounts. Withdrawals are operations with explicit success or failure semantics, and a failed withdrawal must not change state. SavingsAccount and CheckingAccount may implement different withdrawal policies, but both must preserve the Account contract. Money in a production system should use an exact decimal representation rather than binary `double`; the simplified exercise retains `double` so the focus remains on OOP structure, and the limitation should be documented. Prefer private base state with protected behavior such as `debitIfAllowed` over a protected mutable field, because subclasses should not bypass invariants. Customer-to-account ownership is a separate relationship and should be represented by identifiers or immutable collections rather than public mutable lists. Equality needs an identity policy: an account identifier is stable, while balance is changing state and should not define identity. In this step, complete the abstract Account boundary. Validate its initial state, expose read-only queries, and leave withdrawal policy abstract so later transaction services can use polymorphism without reaching inside the aggregate.",
+          "xp": 50,
+          "conceptIds": ["data-modeling", "oop-encapsulation"],
+          "moduleId": "mod-6-capstone",
+          "exercise": {
+            "starterCode": "public abstract class Account {\n    private final String id;\n    protected double balance;\n\n    public Account(String id, double initialBalance) {\n        // TODO: reject invalid opening balances and initialize both fields.\n        this.id = id;\n    }\n    public String getId() { return id; }\n    public double getBalance() { return balance; }\n    public abstract boolean withdraw(double amount);\n}",
+            "solutionCode": "public abstract class Account {\n    private final String id;\n    protected double balance;\n\n    public Account(String id, double initialBalance) {\n        if (initialBalance < 0) throw new IllegalArgumentException(\"Negative balance\");\n        this.id = id;\n        this.balance = initialBalance;\n    }\n    public String getId() { return id; }\n    public double getBalance() { return balance; }\n    public abstract boolean withdraw(double amount);\n}",
+            "expectedOutput": "Account ACC-1 created with balance: $500.0",
+            "hints": [
+              "Nudge: The base constructor owns the opening-balance invariant before any subtype becomes usable.",
+              "Concept: A superclass should initialize and defend the state common to every implementation of its abstract contract.",
+              "Structure: Check for a negative opening balance, then assign both the stable identifier and validated balance.",
+              "Detail: Throw `IllegalArgumentException(\"Negative balance\")` when `initialBalance < 0`, then set `this.id` and `this.balance`."
+            ],
+            "assertions": [
+              "contains:public abstract class Account",
+              "contains:public abstract boolean withdraw",
+              "not-contains:TODO"
+            ],
+            "testHarness": "Account account = new Account(\"ACC-1\", 500.0) { public boolean withdraw(double amount) { if (amount <= 0 || amount > balance) return false; balance -= amount; return true; } };\ncheck(\"account-initialization\", \"Account constructor initializes id and balance\", account.getId().equals(\"ACC-1\") && close(account.getBalance(), 500.0), \"ACC-1 with 500.0\", account.getId() + \" with \" + account.getBalance(), \"Initialize both superclass fields.\", \"Account\");\nThrowable negative = thrown(() -> new Account(\"BAD\", -1.0) { public boolean withdraw(double amount) { return false; } });\ncheck(\"negative-opening-balance\", \"Negative opening balances are rejected\", negative instanceof IllegalArgumentException, \"IllegalArgumentException\", negative == null ? \"no exception\" : negative.getClass().getSimpleName(), \"Guard the opening balance before assignment.\", \"initialBalance\");"
+          }
+        },
+        {
+          "id": "java-capstone-transaction-engine",
+          "title": "Transaction Processing & Strategy Pattern",
+          "summary": "Process deposits, withdrawals, and transfers with atomic transaction strategies.",
+          "content": "A transaction service coordinates one business operation across domain objects while keeping entities responsible for their own invariants. Representing an operation as a Transaction object can capture its inputs, provide an `execute` boundary, and support logging or retries, but the object must not mutate account fields directly. It should call approved Account methods so negative deposits, insufficient funds, and closed accounts are handled consistently. A transfer is more demanding than a deposit because debit and credit form one logical unit. If the credit cannot complete after a debit, the service must roll back, use a database transaction, or otherwise guarantee that money is not lost. A simple in-memory lesson can stage all validation before mutation, but production persistence requires an atomic transaction boundary and idempotency key to make retries safe. FeePolicy is a Strategy selected by customer tier; the transaction asks it for a fee rather than containing a growing tier conditional. Record a transaction result that distinguishes success, rejection, and technical failure instead of returning an ambiguous boolean when the design grows. In this exercise, complete DepositTransaction's constructor guard and execution path. It must reject non-positive amounts and delegate the actual balance change through the domain operation supplied by Account rather than silently claiming success.",
+          "xp": 50,
+          "conceptIds": ["design-patterns", "oop-polymorphism"],
+          "moduleId": "mod-6-capstone",
+          "exercise": {
+            "starterCode": "public interface Transaction {\n    boolean execute();\n    double getAmount();\n}\n\nabstract class Account {\n    private double balance;\n    protected Account(double openingBalance) { this.balance = openingBalance; }\n    public void deposit(double amount) {\n        if (amount <= 0) throw new IllegalArgumentException(\"Amount must be positive\");\n        balance += amount;\n    }\n    public double getBalance() { return balance; }\n}\n\npublic class DepositTransaction implements Transaction {\n    private final Account account;\n    private final double amount;\n    public DepositTransaction(Account account, double amount) {\n        this.account = account;\n        this.amount = amount;\n    }\n    @Override\n    public boolean execute() {\n        // TODO: apply the deposit through the account and report success.\n        return false;\n    }\n    @Override public double getAmount() { return amount; }\n}",
+            "solutionCode": "public interface Transaction {\n    boolean execute();\n    double getAmount();\n}\n\nabstract class Account {\n    private double balance;\n    protected Account(double openingBalance) { this.balance = openingBalance; }\n    public void deposit(double amount) {\n        if (amount <= 0) throw new IllegalArgumentException(\"Amount must be positive\");\n        balance += amount;\n    }\n    public double getBalance() { return balance; }\n}\n\npublic class DepositTransaction implements Transaction {\n    private final Account account;\n    private final double amount;\n    public DepositTransaction(Account account, double amount) {\n        this.account = account;\n        this.amount = amount;\n    }\n    @Override\n    public boolean execute() {\n        account.deposit(amount);\n        return true;\n    }\n    @Override public double getAmount() { return amount; }\n}",
+            "expectedOutput": "Deposit successful: $200.0",
+            "hints": [
+              "Nudge: The command already stores its account and amount; `execute` must perform the operation instead of returning a constant.",
+              "Concept: A transaction coordinates behavior through the aggregate's public API so the Account remains the invariant owner.",
+              "Structure: Call the account's deposit operation with `amount`, then return true only after that call completes.",
+              "Detail: Replace the placeholder with `account.deposit(amount); return true;` and keep amount validation inside Account or the transaction constructor."
+            ],
+            "assertions": [
+              "contains:interface Transaction",
+              "contains:class DepositTransaction implements Transaction",
+              "not-contains:TODO"
+            ],
+            "testHarness": "Account account = new Account(100.0) {};\nDepositTransaction transaction = new DepositTransaction(account, 200.0);\nboolean executed = transaction.execute();\ncheck(\"deposit-command-result\", \"Deposit transaction reports success\", executed, \"true\", executed, \"Return success only after applying the deposit.\", \"execute\");\ncheck(\"deposit-command-balance\", \"Deposit transaction changes the account through its API\", close(account.getBalance(), 300.0), \"300.0\", account.getBalance(), \"Call account.deposit(amount).\", \"account.deposit\");"
+          }
+        },
+        {
+          "id": "java-capstone-audit-observer",
+          "title": "Audit Logging & Event Observers",
+          "summary": "Decouple security audit logs and alert notifications with the Observer pattern.",
+          "content": "Audit logging and fraud detection are reactions to completed or rejected banking operations, not responsibilities of Account itself. Define an immutable BankEvent containing the transaction identifier, account identifier, event type, amount, timestamp, and outcome. BankingEngine publishes the event after the relevant state transition, and each BankObserver receives the same fact without direct access to mutable Account internals. This Observer boundary allows AuditLogger, FraudDetector, metrics, and notification adapters to evolve independently. Decide whether delivery is synchronous. A synchronous audit listener is simple and ordered but can delay the transaction; an asynchronous queue improves isolation but requires durable delivery, ordering rules, retry policy, and duplicate handling. Security audit records normally demand append-only persistence and must not be dropped because one listener failed. Observer registration should reject null, avoid unintended duplicates, and return a way to unsubscribe for components with bounded lifetimes. Do not let observers modify the collection while it is being iterated without a safe snapshot or concurrent design. In this exercise, implement the AuditLogger callback. It should format the immutable event data consistently and never reach back into Account to rediscover mutable state that may already have changed.",
+          "xp": 50,
+          "conceptIds": ["design-patterns", "oop-abstraction"],
+          "moduleId": "mod-6-capstone",
+          "exercise": {
+            "starterCode": "public interface BankObserver {\n    void onTransaction(String accountId, double amount, String type);\n}\n\npublic class AuditLogger implements BankObserver {\n    @Override\n    public void onTransaction(String accountId, double amount, String type) {\n        // TODO: emit the stable audit record from the supplied event data.\n    }\n}",
+            "solutionCode": "public interface BankObserver {\n    void onTransaction(String accountId, double amount, String type);\n}\n\npublic class AuditLogger implements BankObserver {\n    @Override\n    public void onTransaction(String accountId, double amount, String type) {\n        System.out.println(\"[AUDIT] \" + type + \" on \" + accountId + \": $\" + amount);\n    }\n}",
+            "expectedOutput": "[AUDIT] TRANSFER on ACC-1: $1500.0",
+            "hints": [
+              "Nudge: The observer callback already receives every value needed for the audit line.",
+              "Concept: Observers consume an event snapshot and should not reach into the publisher's mutable domain state.",
+              "Structure: Concatenate the audit prefix, transaction type, account identifier, and amount in the expected order.",
+              "Detail: Print `\"[AUDIT] \" + type + \" on \" + accountId + \": $\" + amount` from the override."
+            ],
+            "assertions": [
+              "contains:interface BankObserver",
+              "contains:class AuditLogger implements BankObserver",
+              "not-contains:TODO"
+            ],
+            "testHarness": "AuditLogger logger = new AuditLogger();\nString output = capture(() -> logger.onTransaction(\"ACC-1\", 1500.0, \"TRANSFER\"));\ncheck(\"audit-record\", \"Observer emits the stable transaction audit record\", output.equals(\"[AUDIT] TRANSFER on ACC-1: $1500.0\"), \"[AUDIT] TRANSFER on ACC-1: $1500.0\", output, \"Format the event data in the audit observer.\", \"onTransaction\");"
+          }
+        },
+        {
+          "id": "java-capstone-bank-system",
+          "title": "The Unified Core Banking Engine",
+          "summary": "Integrate Repositories, Services, Observers, and Factories into an operational Banking Engine.",
+          "content": "The final BankingEngine is an application facade that coordinates repositories, domain objects, transaction policies, and observers without absorbing every responsibility. Accounts preserve balance invariants. A repository owns lookup and persistence. A factory translates an account-opening request into the proper subtype. A transaction service applies operations and atomicity rules. Event publishers notify audit and fraud listeners only after a clearly defined outcome. BankingEngine exposes use-case methods in domain language and wires those collaborators through constructor injection. It should not reveal its mutable maps or lists, and a missing account should produce an explicit result rather than a delayed null failure. Registration rejects duplicate identifiers. Transfer operations load both accounts, validate the complete operation, execute within a transaction boundary, and publish one immutable result event. Tests should cover success, insufficient funds, unknown accounts, listener failure, duplicate registration, and repeated commands with the same idempotency key. The simplified in-memory implementation teaches these boundaries but does not claim database-grade durability. In this exercise, complete the facade's account registration and lookup behavior while preserving encapsulation. The resulting design should make it obvious where a persistent repository can replace the map and where additional observers can be added without editing Account classes.",
+          "xp": 60,
+          "conceptIds": ["design-patterns", "data-modeling"],
+          "moduleId": "mod-6-capstone",
+          "exercise": {
+            "starterCode": "import java.util.ArrayList;\nimport java.util.HashMap;\nimport java.util.List;\nimport java.util.Map;\n\ninterface BankObserver {}\nfinal class Account {\n    private final String id;\n    Account(String id) { this.id = id; }\n    String getId() { return id; }\n}\n\npublic class BankingEngine {\n    private final Map<String, Account> accounts = new HashMap<>();\n    private final List<BankObserver> observers = new ArrayList<>();\n\n    public void registerObserver(BankObserver observer) {\n        // TODO: retain the observer for future events.\n    }\n\n    public void addAccount(Account account) {\n        // TODO: index the account by its stable identifier.\n    }\n\n    public Account getAccount(String id) {\n        // TODO: return the matching account from the repository map.\n        return null;\n    }\n}",
+            "solutionCode": "import java.util.ArrayList;\nimport java.util.HashMap;\nimport java.util.List;\nimport java.util.Map;\n\ninterface BankObserver {}\nfinal class Account {\n    private final String id;\n    Account(String id) { this.id = id; }\n    String getId() { return id; }\n}\n\npublic class BankingEngine {\n    private final Map<String, Account> accounts = new HashMap<>();\n    private final List<BankObserver> observers = new ArrayList<>();\n\n    public void registerObserver(BankObserver observer) {\n        observers.add(observer);\n    }\n\n    public void addAccount(Account account) {\n        accounts.put(account.getId(), account);\n    }\n\n    public Account getAccount(String id) {\n        return accounts.get(id);\n    }\n}",
+            "expectedOutput": "Banking Engine Ready: 2 accounts active.",
+            "hints": [
+              "Nudge: Each unfinished method delegates to one of the two private collections already owned by the facade.",
+              "Concept: The facade coordinates collaborators while keeping its repository and subscriber collections encapsulated.",
+              "Structure: Add observers to the list, put accounts into the map under `account.getId()`, and read accounts by the requested id.",
+              "Detail: Implement `observers.add(observer);`, `accounts.put(account.getId(), account);`, and `return accounts.get(id);` in their respective methods."
+            ],
+            "assertions": [
+              "contains:class BankingEngine",
+              "contains:registerObserver",
+              "contains:addAccount",
+              "not-contains:TODO"
+            ],
+            "testHarness": "BankingEngine engine = new BankingEngine();\nAccount account = new Account(\"ACC-1\");\nengine.addAccount(account);\ncheck(\"account-repository\", \"Banking facade indexes and retrieves accounts\", engine.getAccount(\"ACC-1\") == account, \"same Account instance\", engine.getAccount(\"ACC-1\"), \"Store accounts under their stable identifier.\", \"addAccount\");\nBankObserver observer = new BankObserver() {};\nengine.registerObserver(observer);\nObject observers = field(engine, \"observers\");\ncheck(\"observer-registration\", \"Banking facade retains registered observers\", observers instanceof java.util.List && ((java.util.List<?>) observers).size() == 1, \"1 observer\", observers, \"Add the observer to the private list.\", \"registerObserver\");",
+            "questions": [
+              {
+                "id": "java-capstone-quiz-facade",
+                "question": "Which responsibility belongs in BankingEngine rather than in Account?",
+                "type": "MultipleChoice",
+                "options": ["Coordinating account lookup, transaction execution, and event publication", "Allowing any caller to assign balance directly", "Formatting every user interface", "Hiding failed transfers from audit"],
+                "correctAnswers": ["Coordinating account lookup, transaction execution, and event publication"],
+                "explanation": "The facade coordinates a use case while Account remains responsible for its own state and invariants.",
+                "conceptId": "design-patterns"
+              },
+              {
+                "id": "java-capstone-quiz-transfer",
+                "question": "What is the essential invariant of a transfer between two accounts?",
+                "type": "MultipleChoice",
+                "options": ["Debit and credit succeed or fail as one logical operation", "The destination is credited even if debit fails", "Observers directly mutate both balances", "The source balance may become silently negative"],
+                "correctAnswers": ["Debit and credit succeed or fail as one logical operation"],
+                "explanation": "A partial transfer loses or creates money; the operation requires an atomic boundary or compensation.",
+                "conceptId": "data-modeling"
+              }
+            ]
+          }
         }
       ]
     }
@@ -201,6 +1327,7 @@
       "relatedConceptIds": ["data-modeling", "collections"],
       "examples": [
         { "language": "Sprout", "code": "has score = 10\nscore = score + 5" },
+        { "language": "Java", "code": "int score = 10;\nscore += 5;" },
         { "language": "Rust", "code": "let mut score = 10;\nscore += 5;" },
         { "language": "Go", "code": "score := 10\nscore += 5" },
         { "language": "Python", "code": "score = 10\nscore += 5" }
@@ -208,11 +1335,12 @@
     },
     {
       "id": "functions",
-      "title": "Functions",
+      "title": "Functions and Methods",
       "summary": "Functions name reusable behavior, receive inputs, and optionally produce a result.",
       "relatedConceptIds": ["variables", "conditions"],
       "examples": [
         { "language": "Sprout", "code": "action add(a, b)\n    return a + b\nend" },
+        { "language": "Java", "code": "public static int add(int a, int b) {\n    return a + b;\n}" },
         { "language": "Rust", "code": "fn add(a: i32, b: i32) -> i32 {\n    a + b\n}" },
         { "language": "Go", "code": "func add(a int, b int) int {\n    return a + b\n}" },
         { "language": "Python", "code": "def add(a, b):\n    return a + b" }
@@ -225,6 +1353,7 @@
       "relatedConceptIds": ["functions", "loops"],
       "examples": [
         { "language": "Sprout", "code": "if score >= 10\n    print(\"ready\")\nend" },
+        { "language": "Java", "code": "if (score >= 10) {\n    System.out.println(\"ready\");\n}" },
         { "language": "Rust", "code": "if score >= 10 {\n    println!(\"ready\");\n}" },
         { "language": "Go", "code": "if score >= 10 {\n    fmt.Println(\"ready\")\n}" },
         { "language": "Python", "code": "if score >= 10:\n    print(\"ready\")" }
@@ -237,6 +1366,7 @@
       "relatedConceptIds": ["conditions", "collections"],
       "examples": [
         { "language": "Sprout", "code": "repeat 3 times\n    print(\"grow\")\nend" },
+        { "language": "Java", "code": "for (int i = 0; i < 3; i++) {\n    System.out.println(\"grow\");\n}" },
         { "language": "Rust", "code": "for _ in 0..3 {\n    println!(\"grow\");\n}" },
         { "language": "Go", "code": "for i := 0; i < 3; i++ {\n    fmt.Println(\"grow\")\n}" },
         { "language": "Python", "code": "for _ in range(3):\n    print(\"grow\")" }
@@ -249,6 +1379,7 @@
       "relatedConceptIds": ["loops", "data-modeling"],
       "examples": [
         { "language": "Sprout", "code": "# Collection literals are planned; Python values can currently cross the explicit interop boundary." },
+        { "language": "Java", "code": "List<Integer> scores = List.of(10, 20, 30);" },
         { "language": "Rust", "code": "let scores = vec![10, 20, 30];" },
         { "language": "Go", "code": "scores := []int{10, 20, 30}" },
         { "language": "Python", "code": "scores = [10, 20, 30]" }
@@ -258,12 +1389,74 @@
       "id": "data-modeling",
       "title": "Data Modeling",
       "summary": "A data model chooses representations and invariants that match the problem domain.",
-      "relatedConceptIds": ["variables", "collections"],
+      "relatedConceptIds": ["variables", "collections", "oop-encapsulation"],
       "examples": [
         { "language": "Sprout", "code": "class Player\n    action greet()\n        print(\"ready\")\n    end\nend" },
+        { "language": "Java", "code": "public class Player {\n    private int score;\n    public Player(int score) { this.score = score; }\n}" },
         { "language": "Rust", "code": "struct Player {\n    score: i32,\n}" },
         { "language": "Go", "code": "type Player struct {\n    Score int\n}" },
         { "language": "Python", "code": "class Player:\n    def __init__(self):\n        self.score = 0" }
+      ]
+    },
+    {
+      "id": "oop-encapsulation",
+      "title": "Encapsulation and Data Hiding",
+      "summary": "Encapsulation bundles data with accessor behaviors and restricts direct access to internal invariants.",
+      "relatedConceptIds": ["data-modeling", "oop-abstraction"],
+      "examples": [
+        { "language": "Sprout", "code": "class Vault\n    has balance = 100\n    action get_balance()\n        return balance\n    end\nend" },
+        { "language": "Java", "code": "public class Vault {\n    private double balance;\n    public double getBalance() { return balance; }\n}" },
+        { "language": "Go", "code": "type Vault struct {\n    balance float64\n}\nfunc (v Vault) Balance() float64 { return v.balance }" },
+        { "language": "Rust", "code": "pub struct Vault {\n    balance: f64,\n}\nimpl Vault {\n    pub fn balance(&self) -> f64 { self.balance }\n}" },
+        { "language": "Python", "code": "class Vault:\n    def __init__(self):\n        self._balance = 100\n    @property\n    def balance(self):\n        return self._balance" }
+      ]
+    },
+    {
+      "id": "oop-inheritance",
+      "title": "Inheritance and Subtyping",
+      "summary": "Inheritance establishes 'is-a' relationships, enabling child classes to inherit state and behaviors from parent classes.",
+      "relatedConceptIds": ["data-modeling", "oop-polymorphism"],
+      "examples": [
+        { "language": "Sprout", "code": "class Animal\n    action speak()\n        print(\"...\")\n    end\nend" },
+        { "language": "Java", "code": "public class Dog extends Animal {\n    @Override\n    public void speak() { System.out.println(\"Woof\"); }\n}" },
+        { "language": "Go", "code": "type Animal struct{}\ntype Dog struct{\n    Animal\n}\nfunc (d Dog) Speak() { fmt.Println(\"Woof\") }" },
+        { "language": "Python", "code": "class Dog(Animal):\n    def speak(self):\n        print('Woof')" }
+      ]
+    },
+    {
+      "id": "oop-polymorphism",
+      "title": "Polymorphism and Dynamic Dispatch",
+      "summary": "Polymorphism allows specialized subtypes to respond to uniform message interfaces via runtime virtual dispatch.",
+      "relatedConceptIds": ["oop-inheritance", "oop-abstraction"],
+      "examples": [
+        { "language": "Java", "code": "Animal a = new Dog();\na.speak(); // executes Dog's overridden speak()" },
+        { "language": "Rust", "code": "let a: &dyn Speakable = &Dog;\na.speak();" },
+        { "language": "Go", "code": "var a Speaker = Dog{}\na.Speak()" },
+        { "language": "Python", "code": "animals = [Dog(), Cat()]\nfor a in animals: a.speak()" }
+      ]
+    },
+    {
+      "id": "oop-abstraction",
+      "title": "Interfaces and Abstract Classes",
+      "summary": "Abstraction establishes contracts separating client expectations from internal concrete implementation details.",
+      "relatedConceptIds": ["data-modeling", "design-patterns"],
+      "examples": [
+        { "language": "Java", "code": "public interface PaymentProcessor {\n    boolean process(double amount);\n}" },
+        { "language": "Rust", "code": "pub trait PaymentProcessor {\n    fn process(&self, amount: f64) -> bool;\n}" },
+        { "language": "Go", "code": "type PaymentProcessor interface {\n    Process(amount float64) bool\n}" },
+        { "language": "Python", "code": "from abc import ABC, abstractmethod\nclass PaymentProcessor(ABC):\n    @abstractmethod\n    def process(self, amount: float) -> bool: pass" }
+      ]
+    },
+    {
+      "id": "design-patterns",
+      "title": "Object-Oriented Design Patterns",
+      "summary": "Proven reusable solutions for recurring architectural challenges in software engineering.",
+      "relatedConceptIds": ["oop-abstraction", "oop-polymorphism"],
+      "examples": [
+        { "language": "Java", "code": "PaymentProcessor p = PaymentFactory.create(\"stripe\");\np.process(100.0);" },
+        { "language": "Go", "code": "p := PaymentFactory.Create(\"stripe\")\np.Process(100.0)" },
+        { "language": "Rust", "code": "let p = PaymentFactory::create(\"stripe\");\np.process(100.0);" },
+        { "language": "Python", "code": "p = PaymentFactory.create('stripe')\np.process(100.0)" }
       ]
     }
   ],
@@ -273,6 +1466,7 @@
     { "id": "syntax-adapter", "title": "Syntax Adapter", "description": "Complete Sprout Programming Fundamentals." },
     { "id": "python-pioneer", "title": "Python Pioneer", "description": "Complete a Python Automation lesson." },
     { "id": "polyglot-explorer", "title": "Polyglot Explorer", "description": "Complete lessons in two different tracks." },
+    { "id": "java-architect", "title": "Java Architect", "description": "Complete the Java: Object Oriented Programming course." },
     { "id": "deep-roots", "title": "Deep Roots", "description": "Complete every lesson in a track." }
   ]
 }

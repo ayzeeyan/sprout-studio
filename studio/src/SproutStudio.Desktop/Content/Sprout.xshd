@@ -28,6 +28,9 @@
       <Word>and</Word>
       <Word>or</Word>
       <Word>not</Word>
+      <Word>guided</Word>
+      <Word>structured</Word>
+      <Word>advanced</Word>
     </Keywords>
     <Keywords color="Literal">
       <Word>true</Word>
@@ -40,6 +43,14 @@
       <Word>bool</Word>
       <Word>text</Word>
       <Word>auto</Word>
+      <Word>void</Word>
+      <Word>Int</Word>
+      <Word>Float</Word>
+      <Word>Bool</Word>
+      <Word>Text</Word>
+      <Word>Auto</Word>
+      <Word>Void</Word>
+      <Word>String</Word>
     </Keywords>
     <Keywords color="BuiltIn">
       <Word>print</Word>
