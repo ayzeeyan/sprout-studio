@@ -11,10 +11,6 @@ using AvaloniaEdit.Document;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Folding;
 using System.ComponentModel;
-using System.Reflection;
-using System.Xml;
-using AvaloniaEdit.Highlighting;
-using AvaloniaEdit.Highlighting.Xshd;
 using AvaloniaEdit.Rendering;
 using SproutStudio.Core;
 using SproutStudio.Editor;
@@ -26,9 +22,6 @@ namespace SproutStudio.Views.Editor;
 
 public sealed partial class EditorHostView : UserControl
 {
-    private static readonly Lazy<IHighlightingDefinition?> SproutHighlighting = new(
-        LoadSproutHighlighting,
-        LazyThreadSafetyMode.ExecutionAndPublication);
     private TextEditor? _editor;
     private TextEditor? _companionEditor;
     private MainWindowViewModel? _viewModel;
@@ -344,10 +337,9 @@ public sealed partial class EditorHostView : UserControl
                 string.Equals(d.FilePath, companionPath, StringComparison.OrdinalIgnoreCase));
             string companionSource = companionDoc?.Source ?? _viewModel.SelectedDocument.AcademyTab?.Lesson.Exercise?.StarterCode ?? string.Empty;
 
-            string extension = Path.GetExtension(companionPath);
-            _companionEditor.SyntaxHighlighting = string.IsNullOrEmpty(extension)
-                ? null
-                : HighlightingManager.Instance.GetDefinitionByExtension(extension);
+            // The companion file's own language wins; fall back to the exercise track's language.
+            _companionEditor.SyntaxHighlighting = SyntaxHighlightingRegistry.ForPath(companionPath)
+                ?? SyntaxHighlightingRegistry.For(_viewModel.SelectedDocument.LanguageKey);
 
             if (!string.Equals(_companionEditor.Text, companionSource, StringComparison.Ordinal))
             {
@@ -378,27 +370,9 @@ public sealed partial class EditorHostView : UserControl
         {
             return;
         }
-        if (document?.Model.Language.Id == global::SproutStudio.Editor.DocumentLanguage.Sprout)
-        {
-            _editor.SyntaxHighlighting = SproutHighlighting.Value;
-            return;
-        }
-        string extension = Path.GetExtension(document?.FilePath ?? document?.DisplayName ?? string.Empty);
-        _editor.SyntaxHighlighting = string.IsNullOrEmpty(extension)
+        _editor.SyntaxHighlighting = document is null
             ? null
-            : HighlightingManager.Instance.GetDefinitionByExtension(extension);
-    }
-
-    private static IHighlightingDefinition? LoadSproutHighlighting()
-    {
-        Assembly assembly = typeof(EditorHostView).Assembly;
-        using Stream? stream = assembly.GetManifestResourceStream("SproutStudio.Content.Sprout.xshd");
-        if (stream is null)
-        {
-            return null;
-        }
-        using XmlReader reader = XmlReader.Create(stream);
-        return HighlightingLoader.Load(reader, HighlightingManager.Instance);
+            : SyntaxHighlightingRegistry.For(document.Model.Language.Id);
     }
 
     private void Editor_TextChanged(object? sender, EventArgs args)

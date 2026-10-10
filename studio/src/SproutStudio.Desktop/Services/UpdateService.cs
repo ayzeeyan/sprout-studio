@@ -62,7 +62,7 @@ public sealed class UpdateService : IUpdateService
         {
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
-        return "0.1.0";
+        return "0.2.0";
     }
 
     public async Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken cancellationToken = default)

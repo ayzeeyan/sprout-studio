@@ -30,6 +30,23 @@ public sealed class DocumentTabViewModel : ObservableObject
 
     public string DisplayName => Model.DisplayName;
 
+    private string _tabHint = string.Empty;
+
+    /// <summary>Muted text that tells apart tabs with the same file name (for example a folder).</summary>
+    public string TabHint
+    {
+        get => _tabHint;
+        set
+        {
+            if (SetProperty(ref _tabHint, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(HasTabHint));
+            }
+        }
+    }
+
+    public bool HasTabHint => _tabHint.Length > 0;
+
     public string TabTitle => Model.TabTitle;
 
     public string Breadcrumb => EditorBreadcrumbs.Format(

@@ -46,7 +46,7 @@ public sealed partial class MainWindowViewModel
         ? "Search commands, files, and settings"
         : $"{CurrentProject.Name}  ·  Search commands";
 
-    /// <summary>Short status-bar label, e.g. "Sprout 0.1.0 · x64".</summary>
+    /// <summary>Short status-bar label, e.g. "Sprout 0.2.0 · x64".</summary>
     public string EngineArchitecture => _engineInfo is null
         ? "Engine offline"
         : $"Sprout {_engineInfo.EngineVersion} · {FriendlyArchitecture(_engineInfo.Architecture)}";
@@ -58,6 +58,7 @@ public sealed partial class MainWindowViewModel
 
     private void InitializeWorkbenchCommands()
     {
+        Documents.CollectionChanged += (_, _) => UpdateTabHints();
         ZoomInCommand = new RelayCommand(() => SetEditorFontSize(EditorFontSize + 1));
         ZoomOutCommand = new RelayCommand(() => SetEditorFontSize(EditorFontSize - 1));
         ResetZoomCommand = new RelayCommand(() => SetEditorFontSize(DefaultEditorFontSize));
@@ -160,6 +161,42 @@ public sealed partial class MainWindowViewModel
             StatusText = "Zen mode — press F11 to return";
         }
         OnPropertyChanged(nameof(IsZenMode));
+    }
+
+    /// <summary>
+    /// Tabs that share a file name get a short hint: "Academy" for exercise files, otherwise the
+    /// parent folder, so two "main.spr" tabs can be told apart at a glance.
+    /// </summary>
+    private void UpdateTabHints()
+    {
+        foreach (IGrouping<string, DocumentTabViewModel> group in Documents.GroupBy(
+            document => document.DisplayName,
+            StringComparer.OrdinalIgnoreCase))
+        {
+            bool duplicate = group.Count() > 1;
+            foreach (DocumentTabViewModel document in group)
+            {
+                document.TabHint = duplicate ? TabHintFor(document) : string.Empty;
+            }
+        }
+    }
+
+    private static string TabHintFor(DocumentTabViewModel document)
+    {
+        if (document.IsAcademy)
+        {
+            return "Academy";
+        }
+        string? path = document.FilePath;
+        if (string.IsNullOrEmpty(path))
+        {
+            return "unsaved";
+        }
+        if (path.Contains(Path.Combine("SproutStudio", "Academy"), StringComparison.OrdinalIgnoreCase))
+        {
+            return "Academy";
+        }
+        return Path.GetFileName(Path.GetDirectoryName(path)) ?? string.Empty;
     }
 
     private static string FriendlyArchitecture(string architecture) => architecture.ToLowerInvariant() switch

@@ -385,7 +385,7 @@ dependencies = [
 
 [[package]]
 name = "sprout-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "sprout-core",
  "sprout-project",
@@ -394,14 +394,14 @@ dependencies = [
 
 [[package]]
 name = "sprout-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
 ]
 
 [[package]]
 name = "sprout-ffi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "sprout-core",
  "sprout-project",
@@ -410,7 +410,7 @@ dependencies = [
 
 [[package]]
 name = "sprout-project"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "sprout-core",
@@ -420,7 +420,7 @@ dependencies = [
 
 [[package]]
 name = "sprout-python"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pyo3",
  "sprout-core",

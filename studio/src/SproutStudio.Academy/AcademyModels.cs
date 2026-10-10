@@ -310,6 +310,19 @@ public sealed record AchievementDefinition(
 
 public sealed record AchievementAward(string Id, DateTimeOffset EarnedAt);
 
+/// <summary>A beginner-friendly Handbook guide: an easy version of the documentation.</summary>
+public sealed record GuideDefinition(
+    string Id,
+    string Title,
+    string Summary,
+    int Minutes,
+    string Level,
+    string[] ConceptIds,
+    string? ReferenceDocId = null);
+
+/// <summary>When the learner finished reading a Handbook guide.</summary>
+public sealed record GuideReadRecord(string GuideId, DateTimeOffset ReadAt);
+
 public sealed record AcademyState(
     int SchemaVersion,
     AcademyProfile? Profile,
@@ -319,8 +332,15 @@ public sealed record AcademyState(
     SubmissionRecord[] Submissions,
     HintUsageState HintUsage,
     string? ActiveTrackId = null,
-    string? ActiveLessonId = null)
+    string? ActiveLessonId = null,
+    GuideReadRecord[]? GuideReads = null)
 {
+    /// <summary>Guides the learner has read (never null for consumers).</summary>
+    public GuideReadRecord[] ReadGuides => GuideReads ?? [];
+
+    public bool HasReadGuide(string guideId) =>
+        ReadGuides.Any(read => string.Equals(read.GuideId, guideId, StringComparison.OrdinalIgnoreCase));
+
     public const int CurrentSchemaVersion = 2;
 
     public static AcademyState Empty { get; } = new(
@@ -334,6 +354,12 @@ public sealed record AcademyState(
         null,
         null);
 }
+
+public sealed record ConceptLearningProgress(
+    string ConceptId,
+    bool Practiced,
+    TrackDefinition? SuggestedTrack,
+    LessonDefinition? SuggestedLesson);
 
 public sealed record TrackRecommendation(
     TrackDefinition Track,
@@ -359,7 +385,15 @@ public sealed record AcademyDashboard(
     int XpTowardNextLevel,
     AchievementDefinition[] EarnedAchievements,
     int CompletedLessonsToday = 0,
-    int XpEarnedToday = 0);
+    int XpEarnedToday = 0,
+    LearningHabitSummary? Habits = null)
+{
+    /// <summary>Streaks, daily goal, and activity calendar (never null for consumers).</summary>
+    public LearningHabitSummary HabitSummary => Habits ?? LearningHabitSummary.Empty;
+
+    /// <summary>XP needed per level; levels are 1 + TotalXp / XpPerLevel.</summary>
+    public const int XpPerLevel = 100;
+}
 
 public enum EnrollmentStatus
 {

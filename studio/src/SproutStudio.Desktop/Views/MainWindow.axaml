@@ -116,5 +116,28 @@
     </Grid>
 
     <shell:StatusBarView Grid.Row="3" />
+
+    <!-- Notifications: celebrations for lessons, levels, streaks, and achievements. -->
+    <ItemsControl Grid.Row="2" ItemsSource="{Binding Toasts}" ZIndex="100"
+                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,18,14">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate DataType="vm:StudioToastViewModel">
+          <Border Classes="toast" Classes.success="{Binding IsSuccess}" Classes.celebration="{Binding IsCelebration}"
+                  Classes.warning="{Binding IsWarning}">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
+              <Border Classes="toast-icon" VerticalAlignment="Top"><TextBlock Text="{Binding Glyph}" /></Border>
+              <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Message}" FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+              </StackPanel>
+              <Button Grid.Column="2" Classes="icon-button small" VerticalAlignment="Top" ToolTip.Tip="Dismiss"
+                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DismissToastCommand}" CommandParameter="{Binding}">
+                <TextBlock Classes="icon small" Text="&#xE711;" FontSize="9" />
+              </Button>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
   </Grid>
 </Window>

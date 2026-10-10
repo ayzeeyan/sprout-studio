@@ -23,7 +23,11 @@
             <DataTemplate DataType="vm:DocumentTabViewModel">
               <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="7" MinWidth="120" MaxWidth="240">
                 <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="16" Height="16" />
-                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding TabHint}" IsVisible="{Binding HasTabHint}" FontSize="10.5" VerticalAlignment="Center"
+                             Foreground="{DynamicResource StudioTextMutedBrush}" />
+                </StackPanel>
                 <Ellipse Grid.Column="2" Classes="dirty-dot" IsVisible="{Binding IsDirty}" ToolTip.Tip="Unsaved changes" />
                 <Button Grid.Column="3" Classes="tab-close" Command="{Binding CloseCommand}" ToolTip.Tip="Close (Ctrl+W)">
                   <TextBlock Classes="icon small" Text="&#xE711;" FontSize="10" />
@@ -46,7 +50,7 @@
         <!-- Side-by-Side Split Workspace Mode for Academy Exercise & Companion Code -->
         <Grid IsVisible="{Binding SelectedDocument.IsAcademyCoding}">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="360" MinWidth="300" MaxWidth="420" />
+            <ColumnDefinition Width="420" MinWidth="340" MaxWidth="620" />
             <ColumnDefinition Width="4" />
             <ColumnDefinition Width="*" MinWidth="320" />
           </Grid.ColumnDefinitions>
@@ -165,8 +169,55 @@
                      TextWrapping="Wrap" TextAlignment="Center" MaxWidth="520" Margin="0,8,0,0" LineHeight="19"
                      Foreground="{DynamicResource StudioTextSecondaryBrush}" />
 
+          <!-- Learning hub: pick up where you left off. -->
+          <Border Classes="academy-feature" Margin="5,24,5,0" Padding="18,16" IsVisible="{Binding HasContinueLesson}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+              <StackPanel Spacing="4">
+                <TextBlock Classes="eyebrow" Text="CONTINUE LEARNING" />
+                <TextBlock Text="{Binding AcademyNextLessonTitle}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ContinueLessonTrack}" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                <Button Classes="hyperlink" HorizontalAlignment="Left" Padding="0" Margin="0,2,0,0" FontSize="11.5"
+                        IsVisible="{Binding HasNextLessonGuide}" Command="{Binding OpenGuideCommand}" CommandParameter="{Binding NextLessonGuideId}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Classes="icon small" Text="&#xE82D;" />
+                    <TextBlock Text="{Binding NextLessonGuideText}" />
+                  </StackPanel>
+                </Button>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                  <Button Classes="accent" Command="{Binding OpenAcademyNextTaskCommand}" Padding="14,0">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <TextBlock Classes="icon small" Text="&#xE768;" />
+                      <TextBlock Text="Continue lesson" />
+                    </StackPanel>
+                  </Button>
+                  <Button Command="{Binding ShowLearningProgressCommand}" Content="My progress" />
+                </StackPanel>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="18" VerticalAlignment="Center" IsVisible="{Binding ShowGamification}">
+                <StackPanel Spacing="4" HorizontalAlignment="Center" ToolTip.Tip="{Binding StreakTooltip}">
+                  <Path Classes="flame" Classes.cold="{Binding !HasStreak}" Width="26" Height="32" HorizontalAlignment="Center" />
+                  <TextBlock Text="{Binding StreakText}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                  <TextBlock Text="streak" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Spacing="4" HorizontalAlignment="Center" ToolTip.Tip="{Binding DailyGoalText}">
+                  <Grid Width="34" Height="34" HorizontalAlignment="Center">
+                    <Ellipse Classes="goal-track" StrokeThickness="4" />
+                    <Arc Classes="goal-ring" SweepAngle="{Binding DailyGoalSweep}" StrokeThickness="4" />
+                    <TextBlock Text="{Binding DailyGoalPercent, StringFormat='{}{0}%'}" FontSize="9" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Grid>
+                  <TextBlock Text="{Binding DailyGoalText}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                  <Border Classes="level-chip" Padding="8,4" HorizontalAlignment="Center"><TextBlock Text="{Binding LevelBadgeText}" FontSize="13" /></Border>
+                  <TextBlock Text="{Binding AcademyXpProgressText}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" HorizontalAlignment="Center" />
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+          </Border>
+
           <!-- Quick actions -->
-          <Grid Name="WelcomeCards" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" Margin="0,26,0,0">
+          <Grid Name="WelcomeCards" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" Margin="0,14,0,0">
             <Button Classes="quick-card primary" Command="{Binding NewProjectCommand}">
               <StackPanel Spacing="8">
                 <Border Classes="card-icon" HorizontalAlignment="Left"><TextBlock Classes="icon" Text="&#xE8F4;" /></Border>

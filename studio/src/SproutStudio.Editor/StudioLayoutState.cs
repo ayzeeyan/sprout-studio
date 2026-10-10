@@ -4,6 +4,9 @@ namespace SproutStudio.Editor;
 
 public sealed record StudioLayoutState
 {
+    /// <summary>Learn, Variables, Debugger, Outline, AST Graph, Properties, Canvas.</summary>
+    public const int InspectorTabCount = 7;
+
     public int SchemaVersion { get; init; } = 5;
     public int? WindowX { get; init; }
     public int? WindowY { get; init; }
@@ -115,7 +118,7 @@ public sealed class StudioLayoutStateStore
             InspectorWidth = Math.Clamp(state.InspectorWidth, 280, 440),
             BottomPanelHeight = Math.Clamp(state.BottomPanelHeight, 120, 500),
             SelectedBottomTab = Math.Clamp(state.SelectedBottomTab, 0, 4),
-            SelectedInspectorTab = Math.Clamp(state.SelectedInspectorTab, 0, 4),
+            SelectedInspectorTab = Math.Clamp(state.SelectedInspectorTab, 0, StudioLayoutState.InspectorTabCount - 1),
             SelectedActivity = ActivityKeys.Contains(state.SelectedActivity)
                 ? state.SelectedActivity
                 : "explorer",

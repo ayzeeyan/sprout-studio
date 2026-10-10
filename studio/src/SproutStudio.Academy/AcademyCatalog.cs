@@ -6,6 +6,9 @@ namespace SproutStudio.Academy;
 public sealed class AcademyCatalog
 {
     private const string ResourceName = "SproutStudio.Academy.Content.catalog.json";
+    private const string HandbookResourcePrefix = "SproutStudio.Academy.Content.Handbook.";
+    private readonly Dictionary<string, GuideDefinition> _guides;
+    private readonly Dictionary<string, string> _guideContent;
     private readonly Dictionary<string, TrackDefinition> _tracks;
     private readonly Dictionary<string, LessonDefinition> _lessons;
     private readonly Dictionary<string, ConceptDefinition> _concepts;
@@ -16,6 +19,12 @@ public sealed class AcademyCatalog
         Tracks = document.Tracks;
         Concepts = document.Concepts;
         Achievements = document.Achievements;
+        Guides = document.Guides ?? [];
+        _guides = UniqueById(Guides, item => item.Id, "guide");
+        _guideContent = Guides.ToDictionary(
+            guide => guide.Id,
+            guide => ReadHandbook(guide.Id),
+            StringComparer.OrdinalIgnoreCase);
         _tracks = UniqueById(Tracks, item => item.Id, "track");
         _lessons = UniqueById(Tracks.SelectMany(item => item.Lessons), item => item.Id, "lesson");
         _concepts = UniqueById(Concepts, item => item.Id, "concept");
@@ -28,6 +37,9 @@ public sealed class AcademyCatalog
     public ConceptDefinition[] Concepts { get; }
 
     public AchievementDefinition[] Achievements { get; }
+
+    /// <summary>Handbook guides in reading order.</summary>
+    public GuideDefinition[] Guides { get; }
 
     public static AcademyCatalog LoadDefault()
     {
@@ -63,6 +75,38 @@ public sealed class AcademyCatalog
         _concepts.TryGetValue(id, out ConceptDefinition? concept)
             ? concept
             : throw new KeyNotFoundException($"Unknown Academy concept `{id}`.");
+
+    public GuideDefinition GetGuide(string id) =>
+        _guides.TryGetValue(id, out GuideDefinition? guide)
+            ? guide
+            : throw new KeyNotFoundException($"Unknown Academy guide `{id}`.");
+
+    /// <summary>The Markdown body of a Handbook guide.</summary>
+    public string GetGuideContent(string id) =>
+        _guideContent.TryGetValue(id, out string? content)
+            ? content
+            : throw new KeyNotFoundException($"Unknown Academy guide `{id}`.");
+
+    /// <summary>Guides that teach any of the given concepts, best matches first.</summary>
+    public IReadOnlyList<GuideDefinition> GuidesForConcepts(IEnumerable<string> conceptIds)
+    {
+        string[] wanted = conceptIds.ToArray();
+        return Guides
+            .Select(guide => (Guide: guide, Overlap: guide.ConceptIds.Count(id => wanted.Contains(id, StringComparer.OrdinalIgnoreCase))))
+            .Where(item => item.Overlap > 0)
+            .OrderByDescending(item => item.Overlap)
+            .ThenBy(item => Array.IndexOf(Guides, item.Guide))
+            .Select(item => item.Guide)
+            .ToArray();
+    }
+
+    private static string ReadHandbook(string guideId)
+    {
+        using Stream stream = typeof(AcademyCatalog).Assembly.GetManifestResourceStream($"{HandbookResourcePrefix}{guideId}.md")
+            ?? throw new InvalidDataException($"Academy guide `{guideId}` has no bundled Handbook page.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
 
     public AchievementDefinition GetAchievement(string id) =>
         _achievements.TryGetValue(id, out AchievementDefinition? achievement)
@@ -151,6 +195,17 @@ public sealed class AcademyCatalog
         if (Tracks.Length == 0 || Concepts.Length == 0 || Achievements.Length == 0)
         {
             throw new InvalidDataException("Academy catalog must contain tracks, concepts, and achievements.");
+        }
+        foreach (GuideDefinition guide in Guides)
+        {
+            if (string.IsNullOrWhiteSpace(guide.Title)
+                || string.IsNullOrWhiteSpace(guide.Summary)
+                || guide.Minutes <= 0
+                || guide.ConceptIds.Any(id => !_concepts.ContainsKey(id))
+                || string.IsNullOrWhiteSpace(_guideContent[guide.Id]))
+            {
+                throw new InvalidDataException($"Academy guide `{guide.Id}` is incomplete.");
+            }
         }
         foreach (TrackDefinition track in Tracks)
         {
@@ -268,5 +323,6 @@ public sealed class AcademyCatalog
     private sealed record AcademyCatalogDocument(
         TrackDefinition[] Tracks,
         ConceptDefinition[] Concepts,
-        AchievementDefinition[] Achievements);
+        AchievementDefinition[] Achievements,
+        GuideDefinition[]? Guides = null);
 }

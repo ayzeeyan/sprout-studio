@@ -1016,7 +1016,101 @@ public sealed class AcademyService
             XpTowardNextLevel: totalXp % 100,
             EarnedAchievements: achievements,
             CompletedLessonsToday: completedLessonsToday,
-            XpEarnedToday: xpEarnedToday);
+            XpEarnedToday: xpEarnedToday,
+            Habits: SummarizeHabits(state));
+    }
+
+    /// <summary>
+    /// Records that the learner finished reading a Handbook guide. Reading counts as practice
+    /// for streaks and can unlock reading achievements; re-reading changes nothing.
+    /// </summary>
+    public async Task<(AcademyState State, bool FirstRead, AchievementDefinition[] NewAchievements)> MarkGuideReadAsync(
+        string guideId,
+        CancellationToken cancellationToken = default)
+    {
+        GuideDefinition guide = Catalog.GetGuide(guideId);
+        bool firstRead = false;
+        AchievementDefinition[] earned = [];
+        AcademyState state = await ModifyAsync(current =>
+        {
+            if (current.HasReadGuide(guide.Id))
+            {
+                return current;
+            }
+            firstRead = true;
+            AcademyState updated = current with
+            {
+                GuideReads = [.. current.ReadGuides, new GuideReadRecord(guide.Id, DateTimeOffset.UtcNow)],
+            };
+            (AcademyState awarded, AchievementDefinition[] newlyEarned) = AwardAchievements(updated);
+            earned = newlyEarned;
+            return awarded;
+        }, cancellationToken).ConfigureAwait(false);
+        return (state, firstRead, earned);
+    }
+
+    /// <summary>
+    /// Whether the learner has completed a lesson teaching <paramref name="conceptId"/>, and the
+    /// next lesson that would teach it, preferring tracks for <paramref name="languageKey"/>.
+    /// </summary>
+    public ConceptLearningProgress GetConceptProgress(string conceptId, AcademyState state, string? languageKey = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(conceptId);
+        ArgumentNullException.ThrowIfNull(state);
+        var completed = state.CompletedLessonIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var candidates = Catalog.Tracks
+            .SelectMany(track => track.Lessons.Select(lesson => (Track: track, Lesson: lesson)))
+            .Where(item => item.Lesson.ConceptIds.Contains(conceptId, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        bool practiced = candidates.Any(item => completed.Contains(item.Lesson.Id));
+        string toolchain = string.Equals(languageKey, "sprout", StringComparison.OrdinalIgnoreCase) ? string.Empty : languageKey ?? string.Empty;
+        (TrackDefinition Track, LessonDefinition Lesson)? next = candidates
+            .Where(item => !completed.Contains(item.Lesson.Id))
+            .OrderByDescending(item => string.Equals(item.Track.RequiredToolchainId ?? string.Empty, toolchain, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(item => state.EnrolledTrackIds.Contains(item.Track.Id, StringComparer.OrdinalIgnoreCase))
+            .Cast<(TrackDefinition, LessonDefinition)?>()
+            .FirstOrDefault();
+        return new ConceptLearningProgress(conceptId, practiced, next?.Track, next?.Lesson);
+    }
+
+    /// <summary>Habit metrics for the local calendar: every attempt is practice, first passes earn XP.</summary>
+    public LearningHabitSummary SummarizeHabits(AcademyState state, DateOnly? today = null, TimeZoneInfo? zone = null)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        return LearningHabits.Summarize(
+            LearningEvents(state),
+            today ?? DateOnly.FromDateTime(DateTime.Now),
+            zone ?? TimeZoneInfo.Local);
+    }
+
+    private IEnumerable<LearningEvent> LearningEvents(AcademyState state)
+    {
+        foreach (GuideReadRecord read in state.ReadGuides)
+        {
+            yield return new LearningEvent(read.ReadAt, 0);
+        }
+        var passedLessons = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (SubmissionRecord submission in (state.Submissions ?? []).OrderBy(item => item.SubmittedAt))
+        {
+            int xp = 0;
+            if (submission.Passed && passedLessons.Add(submission.LessonId))
+            {
+                xp = LessonXpOrZero(submission.TrackId, submission.LessonId);
+            }
+            yield return new LearningEvent(submission.SubmittedAt, xp);
+        }
+    }
+
+    private int LessonXpOrZero(string trackId, string lessonId)
+    {
+        try
+        {
+            return GetActivity(trackId, lessonId).Xp;
+        }
+        catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+        {
+            return 0;
+        }
     }
 
     private static HintUsageState EnsureHintUsageReset(HintUsageState usage)
@@ -1151,6 +1245,32 @@ public sealed class AcademyService
         {
             eligible.Add("deep-roots");
         }
+        int longestStreak = LearningHabits.Summarize(
+            LearningEvents(state),
+            DateOnly.FromDateTime(DateTime.Now),
+            TimeZoneInfo.Local,
+            calendarDays: 0).LongestStreak;
+        if (longestStreak >= 3)
+        {
+            eligible.Add("steady-growth");
+        }
+        if (longestStreak >= 7)
+        {
+            eligible.Add("evergreen");
+        }
+        if (PassedAfterFailing())
+        {
+            eligible.Add("persistent-gardener");
+        }
+        int guidesRead = state.ReadGuides.Select(read => read.GuideId).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        if (guidesRead >= 1)
+        {
+            eligible.Add("curious-mind");
+        }
+        if (guidesRead >= 5)
+        {
+            eligible.Add("well-read");
+        }
 
         AchievementDefinition[] newlyEarned = eligible
             .Where(earnedIds.Add)
@@ -1168,6 +1288,15 @@ public sealed class AcademyService
                 .ToArray(),
         };
         return (updated, newlyEarned);
+
+        bool PassedAfterFailing() => (state.Submissions ?? [])
+            .GroupBy(submission => submission.LessonId, StringComparer.OrdinalIgnoreCase)
+            .Any(group =>
+            {
+                SubmissionRecord[] ordered = group.OrderBy(submission => submission.SubmittedAt).ToArray();
+                int firstPass = Array.FindIndex(ordered, submission => submission.Passed);
+                return firstPass > 0;
+            });
 
         bool TrackHasCompletedLesson(TrackDefinition track) =>
             CompletedAnyTrackLesson(track.Id);

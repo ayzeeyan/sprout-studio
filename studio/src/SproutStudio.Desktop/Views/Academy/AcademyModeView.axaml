@@ -222,6 +222,104 @@
           </Grid>
         </Grid>
 
+        <Grid Name="HandbookPanel" IsVisible="False" ColumnDefinitions="300,1,*">
+          <Grid RowDefinitions="Auto,*" Margin="8">
+            <StackPanel Margin="8,10,8,10" Spacing="6">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="icon accent" Text="&#xE82D;" FontSize="15" />
+                <TextBlock Text="HANDBOOK" Classes="panel-header" />
+              </StackPanel>
+              <TextBlock Text="Short, friendly guides to the ideas behind every lesson. Switch any guide to the full reference when you want every detail."
+                         TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+              <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                <ProgressBar Name="HandbookProgress" Height="4" Maximum="100" VerticalAlignment="Center" />
+                <TextBlock Name="HandbookProgressText" Grid.Column="1" FontSize="10.5" Margin="8,0,0,0"
+                           Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+              </Grid>
+            </StackPanel>
+            <ListBox Name="GuideList" Grid.Row="1" SelectionChanged="GuideList_SelectionChanged">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="local:HandbookGuideRow">
+                  <Grid ColumnDefinitions="Auto,*" Margin="6,8" ColumnSpacing="11">
+                    <Border Width="30" Height="30" CornerRadius="8" VerticalAlignment="Top"
+                            Background="{DynamicResource StudioRaisedBrush}" BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="1">
+                      <Grid>
+                        <TextBlock Classes="icon" Text="&#xE736;" FontSize="13" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource StudioTextSecondaryBrush}" IsVisible="{Binding !IsRead}" />
+                        <TextBlock Classes="icon" Text="&#xE73E;" FontSize="13" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource StudioAccentBrush}" IsVisible="{Binding IsRead}" />
+                      </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="3">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding MetaText}" FontSize="10.5" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+          <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
+          <ScrollViewer Name="GuideScroll" Grid.Column="2"
+                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                        SizeChanged="ConstrainedScroll_SizeChanged">
+            <StackPanel Spacing="14" MaxWidth="780" HorizontalAlignment="Stretch" Margin="28,20,32,48">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="4">
+                  <TextBlock Name="GuideEyebrow" Classes="eyebrow" />
+                  <TextBlock Name="GuideTitle" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"
+                             FontFamily="Segoe UI Variable Display, Segoe UI" />
+                  <TextBlock Name="GuideSummary" TextWrapping="Wrap" FontSize="13" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                </StackPanel>
+                <Border Grid.Column="1" Classes="segment" VerticalAlignment="Top">
+                  <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button Name="GuideEasyButton" Classes="toolbar segment-option selected" Click="GuideEasy_Click"
+                            ToolTip.Tip="A short, beginner-friendly explanation">
+                      <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon small" Text="&#xE736;" /><TextBlock Text="Easy guide" /></StackPanel>
+                    </Button>
+                    <Button Name="GuideFullButton" Classes="toolbar segment-option" Click="GuideFull_Click"
+                            ToolTip.Tip="The complete official documentation page">
+                      <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon small" Text="&#xE8A5;" /><TextBlock Text="Full reference" /></StackPanel>
+                    </Button>
+                  </StackPanel>
+                </Border>
+              </Grid>
+              <Border Classes="academy-row" Padding="22,18">
+                <ContentControl Name="GuideContentHost" />
+              </Border>
+              <Border Name="GuideFooter" Classes="academy-feature" Padding="18,16">
+                <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Name="GuideFooterTitle" FontWeight="SemiBold" FontSize="14" />
+                      <TextBlock Name="GuideFooterText" FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                    </StackPanel>
+                    <Button Name="GuideMarkReadButton" Grid.Column="1" Classes="accent" Click="GuideMarkRead_Click" Padding="16,0" VerticalAlignment="Center">
+                      <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon small" Text="&#xE73E;" /><TextBlock Text="Mark as read" /></StackPanel>
+                    </Button>
+                  </Grid>
+                  <ItemsControl Name="GuidePracticeList">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><WrapPanel ItemSpacing="8" LineSpacing="8" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="local:GuidePracticeRow">
+                        <Button Click="GuidePractice_Click" ToolTip.Tip="{Binding TrackTitle}">
+                          <StackPanel Orientation="Horizontal" Spacing="7">
+                            <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="15" Height="15" />
+                            <TextBlock Text="{Binding Label}" />
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button Name="GuideNextButton" Classes="hyperlink" Click="GuideNext_Click" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+
         <Grid Name="TracksPanel" IsVisible="False" ColumnDefinitions="300,1,*">
           <Grid RowDefinitions="42,*" Margin="8">
             <TextBlock Text="LEARNING TRACKS" Classes="panel-header" Margin="8,0" />
@@ -375,8 +473,7 @@
                           <TextBlock Text="{Binding Language}" FontWeight="SemiBold" />
                         </StackPanel>
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto">
-                          <SelectableTextBlock Text="{Binding Code}" Margin="12,9,12,12" FontFamily="Cascadia Mono, Consolas"
-                                               FontSize="12" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                          <shared:HighlightedCode Code="{Binding Code}" Language="{Binding LanguageKey}" Margin="12,9,12,12" FontSize="12" />
                         </ScrollViewer>
                       </Grid>
                     </Border>
@@ -464,7 +561,7 @@
         <ScrollViewer Name="ProfilePanel" IsVisible="False"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       SizeChanged="ConstrainedScroll_SizeChanged">
-          <Grid ColumnDefinitions="*,1,*" MaxWidth="900" ColumnSpacing="24" Margin="24,18,30,42">
+          <Grid ColumnDefinitions="*,1,1.15*" MaxWidth="980" ColumnSpacing="24" Margin="24,18,30,42">
             <StackPanel Spacing="9">
               <TextBlock Text="Learner Profile" FontSize="23" FontWeight="SemiBold" />
               <TextBlock Text="Used only for transparent local recommendations."
@@ -491,15 +588,73 @@
               </StackPanel>
             </StackPanel>
             <Border Grid.Column="1" Background="{DynamicResource StudioBorderBrush}" />
-            <StackPanel Grid.Column="2" Spacing="10">
-              <TextBlock Text="Achievements" FontSize="20" FontWeight="SemiBold" />
-              <TextBlock Name="AchievementEmpty" Text="Complete lessons to earn meaningful milestones."
-                         Classes="empty-state" Margin="0,20" />
+            <StackPanel Grid.Column="2" Spacing="12">
+              <TextBlock Text="Learning Activity" FontSize="20" FontWeight="SemiBold" />
+              <UniformGrid Columns="3">
+                <Border Classes="academy-row" Margin="0,0,6,0" Padding="10">
+                  <StackPanel Spacing="3">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Name="ProfileFlame" Classes="flame" Width="12" Height="15" />
+                      <TextBlock Name="ProfileStreakText" FontSize="18" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <TextBlock Text="Current streak" FontSize="10.5" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                </Border>
+                <Border Classes="academy-row" Margin="3,0" Padding="10">
+                  <StackPanel Spacing="3">
+                    <TextBlock Name="ProfileLongestText" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Longest streak" FontSize="10.5" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                </Border>
+                <Border Classes="academy-row" Margin="6,0,0,0" Padding="10">
+                  <StackPanel Spacing="3">
+                    <TextBlock Name="ProfileXpText" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource StudioAccentBrush}" />
+                    <TextBlock Name="ProfileLevelText" FontSize="10.5" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                </Border>
+              </UniformGrid>
+              <Border Classes="academy-row" Padding="14,12">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="LAST 12 WEEKS" Classes="panel-header" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Text="Less" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" Margin="0,0,3,0" />
+                      <Border Width="9" Height="9" CornerRadius="2" Background="#16FFFFFF" />
+                      <Border Width="9" Height="9" CornerRadius="2" Background="{DynamicResource StudioAccentBrush}" Opacity="0.35" />
+                      <Border Width="9" Height="9" CornerRadius="2" Background="{DynamicResource StudioAccentBrush}" Opacity="0.6" />
+                      <Border Width="9" Height="9" CornerRadius="2" Background="{DynamicResource StudioAccentBrush}" />
+                      <TextBlock Text="More" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" Margin="3,0,0,0" />
+                    </StackPanel>
+                  </Grid>
+                  <shared:ActivityHeatmap Name="ProfileHeatmap" CellSize="11" Gap="3" HorizontalAlignment="Left" />
+                  <TextBlock Name="ProfileActivitySummary" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                </StackPanel>
+              </Border>
+              <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                <TextBlock Text="Achievements" FontSize="20" FontWeight="SemiBold" />
+                <TextBlock Name="AchievementCountText" Grid.Column="1" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+              </Grid>
+              <TextBlock Name="AchievementEmpty" Text="Complete lessons to earn meaningful milestones." IsVisible="False"
+                         Classes="empty-state" Margin="0,4" />
               <ItemsControl Name="AchievementList">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Border Classes="academy-row" Margin="0,0,0,7">
-                      <TextBlock Text="{Binding}" Margin="12,9" TextWrapping="Wrap" />
+                  <DataTemplate DataType="local:AchievementBadgeRow">
+                    <Border Classes="badge-tile" Classes.earned="{Binding Earned}" Classes.locked="{Binding !Earned}"
+                            ToolTip.Tip="{Binding Description}">
+                      <StackPanel Spacing="6">
+                        <Border Width="34" Height="34" CornerRadius="17" HorizontalAlignment="Left"
+                                Background="{DynamicResource StudioAccentSoftBrush}">
+                          <TextBlock Classes="icon" Text="{Binding Glyph}" FontSize="15" HorizontalAlignment="Center"
+                                     Foreground="{DynamicResource StudioAccentBrush}" />
+                        </Border>
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Description}" FontSize="10" TextWrapping="Wrap" MaxLines="3"
+                                   Foreground="{DynamicResource StudioTextMutedBrush}" />
+                        <TextBlock Text="{Binding EarnedLabel}" FontSize="10" Foreground="{DynamicResource StudioAccentBrush}" />
+                      </StackPanel>
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -519,6 +674,21 @@
           <ProgressBar Name="LevelProgress" Height="6" Maximum="100" />
           <TextBlock Name="LessonCountText" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
           <TextBlock Name="ActiveTrackCountText" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+          <Border Name="ProgressHabitsPanel" Classes="academy-row" Padding="12,10" Margin="0,4,0,0">
+            <StackPanel Spacing="8">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Path Name="ProgressFlame" Classes="flame" Width="13" Height="16" />
+                <TextBlock Name="ProgressStreakText" FontWeight="SemiBold" VerticalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Daily goal" FontSize="11" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                  <TextBlock Name="ProgressGoalText" Grid.Column="1" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                </Grid>
+                <ProgressBar Name="ProgressGoalBar" Height="5" Maximum="100" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
           <TextBlock Text="TOOLCHAINS" Classes="panel-header" Margin="0,12,0,0" />
           <ItemsControl Name="AcademyToolchains">
             <ItemsControl.ItemTemplate>

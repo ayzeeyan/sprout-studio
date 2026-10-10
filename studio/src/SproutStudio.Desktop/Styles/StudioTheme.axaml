@@ -323,6 +323,14 @@
     <Setter Property="Height" Value="28" />
     <Setter Property="Margin" Value="0" />
   </Style>
+  <Style Selector="Button.segment-option.selected">
+    <Setter Property="Background" Value="{DynamicResource StudioAccentSoftBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource StudioAccentBrush}" />
+  </Style>
+  <Style Selector="Button.segment-option.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource StudioAccentSoftBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource StudioAccentBrush}" />
+  </Style>
   <Style Selector="Button.run-primary">
     <Setter Property="Height" Value="28" />
     <Setter Property="MinHeight" Value="0" />
@@ -726,6 +734,18 @@
     <Setter Property="Padding" Value="7,1" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+  <Style Selector="Border.lesson-chip">
+    <Setter Property="Background" Value="{DynamicResource StudioRaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StudioBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="7,1" />
+  </Style>
+  <Style Selector="Border.lesson-chip TextBlock">
+    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="Foreground" Value="{DynamicResource StudioTextSecondaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
   <Style Selector="Border.status-chip TextBlock">
     <Setter Property="FontSize" Value="10.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -1020,6 +1040,134 @@
     <Setter Property="OnContent" Value="" />
     <Setter Property="OffContent" Value="" />
     <Setter Property="MinWidth" Value="0" />
+  </Style>
+
+  <!-- ============================================================ Learning (0.2) -->
+  <!-- Streak flame: warm when a streak is alive, muted otherwise. -->
+  <Style Selector="Path.flame">
+    <Setter Property="Data" Value="M12,1.5 C13.2,5.6 18.5,8.2 18.5,14.2 A6.5,6.5 0 0 1 5.5,14.2 C5.5,10.4 7.6,9 8.8,6.2 C9.4,9 10.6,10.4 12,10.6 C12.2,7.4 11,4.8 12,1.5 Z" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="Fill">
+      <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+        <GradientStop Color="#FFD25A" Offset="0" />
+        <GradientStop Color="#FF8A3D" Offset="0.55" />
+        <GradientStop Color="#F2554B" Offset="1" />
+      </LinearGradientBrush>
+    </Setter>
+  </Style>
+  <Style Selector="Path.flame.cold">
+    <Setter Property="Fill" Value="{DynamicResource StudioTextMutedBrush}" />
+    <Setter Property="Opacity" Value="0.7" />
+  </Style>
+  <Style Selector="Arc.goal-ring">
+    <Setter Property="Stroke" Value="{DynamicResource StudioAccentBrush}" />
+    <Setter Property="StartAngle" Value="-90" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+  </Style>
+  <Style Selector="Ellipse.goal-track">
+    <Setter Property="Stroke" Value="#2A3430" />
+  </Style>
+  <Style Selector="Border.level-chip">
+    <Setter Property="Background" Value="{DynamicResource StudioAccentSoftBrush}" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="5,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.level-chip TextBlock">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource StudioAccentBrush}" />
+  </Style>
+
+  <!-- Toasts: slide in from the right; celebration toasts glow with the accent. -->
+  <Style Selector="Border.toast">
+    <Setter Property="Width" Value="340" />
+    <Setter Property="Margin" Value="0,8,0,0" />
+    <Setter Property="Padding" Value="12" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Background" Value="{DynamicResource StudioRaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StudioStrongBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="0 14 36 0 #A0000000" />
+    <Style.Animations>
+      <Animation Duration="0:0:0.32" Easing="CubicEaseOut" FillMode="Forward">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+          <Setter Property="Margin" Value="40,8,-40,0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+          <Setter Property="Margin" Value="0,8,0,0" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Border.toast.celebration">
+    <Setter Property="BorderBrush" Value="{DynamicResource StudioAccentBorderBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 28 0 #334CD484" />
+  </Style>
+  <Style Selector="Border.toast-icon">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="CornerRadius" Value="17" />
+    <Setter Property="Background" Value="{DynamicResource StudioInfoSoftBrush}" />
+  </Style>
+  <Style Selector="Border.toast-icon TextBlock">
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource StudioInfoBrush}" />
+  </Style>
+  <Style Selector="Border.toast.success Border.toast-icon, Border.toast.celebration Border.toast-icon">
+    <Setter Property="Background" Value="{DynamicResource StudioAccentSoftBrush}" />
+  </Style>
+  <Style Selector="Border.toast.success Border.toast-icon TextBlock, Border.toast.celebration Border.toast-icon TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource StudioAccentBrush}" />
+  </Style>
+  <Style Selector="Border.toast.warning Border.toast-icon">
+    <Setter Property="Background" Value="{DynamicResource StudioWarningSoftBrush}" />
+  </Style>
+  <Style Selector="Border.toast.warning Border.toast-icon TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource StudioWarningBrush}" />
+  </Style>
+
+  <!-- Learn inspector cards. -->
+  <Style Selector="Border.learn-card">
+    <Setter Property="Background" Value="{DynamicResource StudioRaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StudioBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="12" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </Style>
+  <Style Selector="Border.code-snippet">
+    <Setter Property="Background" Value="{DynamicResource StudioEditorBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StudioBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,6" />
+  </Style>
+  <Style Selector="Border.code-snippet TextBlock">
+    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource StudioTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Border.badge-tile">
+    <Setter Property="Width" Value="128" />
+    <Setter Property="Margin" Value="0,0,8,8" />
+    <Setter Property="Padding" Value="10,12" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource StudioRaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StudioBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.badge-tile.earned">
+    <Setter Property="Background" Value="{DynamicResource StudioAccentSofterBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StudioAccentBorderBrush}" />
+  </Style>
+  <Style Selector="Border.badge-tile.locked">
+    <Setter Property="Opacity" Value="0.55" />
   </Style>
 
   <!-- ============================================================ Focus, tooltips, scrollbars -->

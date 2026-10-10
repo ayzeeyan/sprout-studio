@@ -14,6 +14,25 @@
             <TextBlock Text="{Binding EngineArchitecture}" />
           </StackPanel>
         </Border>
+        <Button Classes="status-item" Command="{Binding ShowLearningProgressCommand}" Margin="0,0,4,0" IsVisible="{Binding ShowGamification}">
+          <ToolTip.Tip>
+            <StackPanel Spacing="3" MaxWidth="280">
+              <TextBlock Text="Learning progress" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding StreakTooltip}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding DailyGoalText}" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+            </StackPanel>
+          </ToolTip.Tip>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Classes="flame" Classes.cold="{Binding !HasStreak}" Width="10" Height="12" />
+            <TextBlock Text="{Binding AcademyStreakDays}" Classes="status-text" FontWeight="SemiBold" />
+            <Grid Width="12" Height="12" Margin="4,0,0,0" VerticalAlignment="Center">
+              <Ellipse Classes="goal-track" StrokeThickness="2" />
+              <Arc Classes="goal-ring" SweepAngle="{Binding DailyGoalSweep}" StrokeThickness="2" />
+            </Grid>
+            <TextBlock Text="{Binding DailyGoalText}" Classes="status-text" />
+            <Border Classes="level-chip"><TextBlock Text="{Binding LevelBadgeText}" /></Border>
+          </StackPanel>
+        </Button>
         <Button Classes="status-item" Command="{Binding ShowSourceControlCommand}" IsVisible="{Binding HasSourceControl}" ToolTip.Tip="Source Control">
           <StackPanel Orientation="Horizontal" Spacing="5">
             <TextBlock Classes="icon small" Text="&#xE8F0;" />

@@ -174,6 +174,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         ToggleBreakpointCommand = new RelayCommand(ToggleBreakpoint, () => SelectedDocument is not null);
         NavigateProblemCommand = new RelayCommand<ProblemItemViewModel>(NavigateToProblem);
         InitializeWorkbenchCommands();
+        InitializeLearningCommands();
 
         StudioLayoutState layout = _layoutStore.Load();
         _activityVisible = layout.ActivityVisible;
@@ -360,6 +361,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 ClearLanguageState();
             }
+            ScheduleLearnConcepts(immediate: true);
 
             OnPropertyChanged(nameof(HasDocuments));
             OnPropertyChanged(nameof(ShowWelcome));
@@ -486,7 +488,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public int SelectedInspectorTab
     {
         get => _selectedInspectorTab;
-        set => SetProperty(ref _selectedInspectorTab, Math.Clamp(value, 0, 4));
+        set => SetProperty(ref _selectedInspectorTab, Math.Clamp(value, 0, StudioLayoutState.InspectorTabCount - 1));
     }
 
     public ActivityDestination SelectedActivity
@@ -639,6 +641,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsAcademyMyLearningSection => IsAcademySection("my-learning");
     public bool IsAcademyTracksSection => IsAcademySection("tracks");
     public bool IsAcademyConceptsSection => IsAcademySection("concepts");
+    public bool IsAcademyProfileSection => IsAcademySection("profile");
     public bool IsAcademyChallengesSection => IsAcademySection("challenges");
     public bool IsAcademySubmissionsSection => IsAcademySection("submissions");
     public bool IsAcademyJavaTrack => IsAcademyLanguage("java");
@@ -655,7 +658,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public int AcademyTotalXp => _academyDashboard?.TotalXp ?? 0;
 
-    public int AcademyStreakDays => CalculateAcademyStreak(_academyDashboard?.State.Submissions ?? []);
+    public int AcademyStreakDays => Habits.CurrentStreak;
 
     public int AcademyXpProgress => _academyDashboard?.XpTowardNextLevel ?? 0;
 
@@ -1076,6 +1079,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             AcademyState state = await _academy.LoadStateAsync(cancellationToken);
+            AcademyDashboard? previous = _academyDashboard;
             _academyDashboard = _academy.CreateDashboard(state);
             AcademyRecentSubmissions.Clear();
             foreach (SubmissionRecord submission in _academyDashboard.RecentSubmissions.Take(5))
@@ -1087,6 +1091,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                     track?.RequiredToolchainId ?? "sprout"));
             }
             NotifyAcademyDashboardProperties();
+            NotifyLearningProperties();
+            CelebrateProgress(previous, _academyDashboard);
+            ScheduleLearnConcepts(immediate: true);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -1135,6 +1142,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsAcademyMyLearningSection));
         OnPropertyChanged(nameof(IsAcademyTracksSection));
         OnPropertyChanged(nameof(IsAcademyConceptsSection));
+        OnPropertyChanged(nameof(IsAcademyHandbookSection));
+        OnPropertyChanged(nameof(IsAcademyProfileSection));
         OnPropertyChanged(nameof(IsAcademyChallengesSection));
         OnPropertyChanged(nameof(IsAcademySubmissionsSection));
         OnPropertyChanged(nameof(IsAcademyJavaTrack));
@@ -1142,26 +1151,6 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsAcademyRustTrack));
         OnPropertyChanged(nameof(IsAcademyPythonTrack));
         OnPropertyChanged(nameof(IsAcademyGoTrack));
-    }
-
-    private static int CalculateAcademyStreak(IEnumerable<SubmissionRecord> submissions)
-    {
-        HashSet<DateOnly> successfulDays = submissions
-            .Where(submission => submission.Passed)
-            .Select(submission => DateOnly.FromDateTime(submission.SubmittedAt.LocalDateTime))
-            .ToHashSet();
-        DateOnly cursor = DateOnly.FromDateTime(DateTime.Now);
-        if (!successfulDays.Contains(cursor))
-        {
-            cursor = cursor.AddDays(-1);
-        }
-        int streak = 0;
-        while (successfulDays.Contains(cursor))
-        {
-            streak++;
-            cursor = cursor.AddDays(-1);
-        }
-        return streak;
     }
 
     public void UpdateCaret(int line, int column, int offset)
@@ -1412,6 +1401,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             ScheduleAnalysis(document);
             SaveDocumentCommand.NotifyCanExecuteChanged();
+            if (ReferenceEquals(document, SelectedDocument))
+            {
+                ScheduleLearnConcepts();
+            }
         }
     }
 
@@ -2442,7 +2435,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        string? id = await _dialogs.ShowCommandPaletteAsync(PaletteCommands);
+        string? id = await _dialogs.ShowCommandPaletteAsync([.. PaletteCommands, .. AcademyPaletteCommands()]);
         if (!string.IsNullOrWhiteSpace(id))
         {
             await ExecutePaletteCommandAsync(id);
@@ -2474,6 +2467,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         "editor.zoomOut" => RunCommandAsync(ZoomOutCommand),
         "editor.zoomReset" => RunCommandAsync(ResetZoomCommand),
         _ when id.StartsWith("theme.", StringComparison.Ordinal) => SetAccentThemeAsync(id["theme.".Length..]),
+        "academy.continue" => OpenAcademyNextTaskCommand.ExecuteAsync(null),
+        "academy.handbook" => RunCommandAsync(ShowHandbookCommand),
+        "academy.progress" => RunCommandAsync(ShowLearningProgressCommand),
+        _ when id.StartsWith("guide.", StringComparison.Ordinal) => RunGuideAsync(id["guide.".Length..]),
         "view.bottom" => RunCommandAsync(ToggleBottomPanelCommand),
         "view.academy" => ShowAcademyCommand.ExecuteAsync(null),
         "view.toolchains" => ShowToolchainsCommand.ExecuteAsync(null),

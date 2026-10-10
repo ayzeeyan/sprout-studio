@@ -1460,6 +1460,19 @@
       ]
     }
   ],
+  "guides": [
+    {"id": "start-here", "title": "Start Here: How the Academy Works", "summary": "The learning loop, requirements, hints, streaks, and where to begin.", "minutes": 3, "level": "Beginner", "conceptIds": [], "referenceDocId": "academy"},
+    {"id": "first-program", "title": "Your First Sprout Program", "summary": "Printing, variables with has, changing values, joining text, and comments.", "minutes": 5, "level": "Beginner", "conceptIds": ["variables"], "referenceDocId": "grammar"},
+    {"id": "decisions", "title": "Making Decisions with if", "summary": "Conditions, comparisons, else, and combining questions with and, or, and not.", "minutes": 5, "level": "Beginner", "conceptIds": ["conditions"], "referenceDocId": "grammar"},
+    {"id": "repetition", "title": "Repeating Work: repeat and while", "summary": "Counted loops, running totals, and loops that stop on a condition.", "minutes": 5, "level": "Beginner", "conceptIds": ["loops"], "referenceDocId": "grammar"},
+    {"id": "actions", "title": "Actions: Naming Reusable Steps", "summary": "Defining actions, parameters, and returning values.", "minutes": 5, "level": "Beginner", "conceptIds": ["functions"], "referenceDocId": "grammar"},
+    {"id": "classes", "title": "Classes: Grouping Related Actions", "summary": "Blueprints, objects, the dot, and why grouping behavior helps.", "minutes": 6, "level": "Beginner", "conceptIds": ["data-modeling", "oop-encapsulation", "oop-abstraction"], "referenceDocId": "grammar"},
+    {"id": "standard-library", "title": "Batteries Included: The Standard Library", "summary": "Using the math, string, io, and json modules.", "minutes": 5, "level": "Beginner", "conceptIds": ["collections", "functions"], "referenceDocId": "stdlib"},
+    {"id": "syntax-profiles", "title": "Three Ways to Write Sprout", "summary": "The same program in Guided, Structured, and Advanced style.", "minutes": 4, "level": "Intermediate", "conceptIds": ["variables", "functions", "loops"], "referenceDocId": "syntax-profiles"},
+    {"id": "reading-errors", "title": "Reading Errors and Debugging", "summary": "Problems, the Console, the recorded debugger, and a calm routine.", "minutes": 5, "level": "Beginner", "conceptIds": [], "referenceDocId": "advanced-ide"},
+    {"id": "projects", "title": "Projects in Plain English", "summary": "Project folders, sprout.toml, running, building, and packages.", "minutes": 4, "level": "Beginner", "conceptIds": [], "referenceDocId": "projects"},
+    {"id": "python-bridge", "title": "Borrowing Python Libraries", "summary": "Importing Python modules and using the values they return.", "minutes": 5, "level": "Intermediate", "conceptIds": ["collections"], "referenceDocId": "python-interop"}
+  ],
   "achievements": [
     { "id": "seedling-planted", "title": "Seedling Planted", "description": "Enroll in your first Academy track." },
     { "id": "first-execution", "title": "First Execution", "description": "Complete your first meaningful lesson." },
@@ -1467,6 +1480,11 @@
     { "id": "python-pioneer", "title": "Python Pioneer", "description": "Complete a Python Automation lesson." },
     { "id": "polyglot-explorer", "title": "Polyglot Explorer", "description": "Complete lessons in two different tracks." },
     { "id": "java-architect", "title": "Java Architect", "description": "Complete the Java: Object Oriented Programming course." },
-    { "id": "deep-roots", "title": "Deep Roots", "description": "Complete every lesson in a track." }
+    { "id": "deep-roots", "title": "Deep Roots", "description": "Complete every lesson in a track." },
+    { "id": "steady-growth", "title": "Steady Growth", "description": "Practice three days in a row." },
+    { "id": "evergreen", "title": "Evergreen", "description": "Keep a seven-day learning streak." },
+    { "id": "persistent-gardener", "title": "Persistent Gardener", "description": "Pass an exercise after a failed attempt." },
+    { "id": "curious-mind", "title": "Curious Mind", "description": "Read your first Handbook guide." },
+    { "id": "well-read", "title": "Well Read", "description": "Read five Handbook guides." }
   ]
 }

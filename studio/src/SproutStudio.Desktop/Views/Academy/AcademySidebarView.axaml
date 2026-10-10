@@ -8,18 +8,33 @@
     x:CompileBindings="False">
 
   <Border Classes="pane-surface" Background="{DynamicResource StudioPanelBrush}">
-    <Grid RowDefinitions="38,Auto,Auto,*,Auto">
+    <Grid RowDefinitions="38,Auto,Auto,Auto,*,Auto">
 
-      <!-- Header: ACADEMY with collapse button -->
+      <!-- Header: the button hides the whole sidebar; Ctrl+B or the title-bar toggle brings it back. -->
       <Grid ColumnDefinitions="*,Auto" Margin="14,0,8,0" VerticalAlignment="Center">
-        <TextBlock Classes="panel-header" Text="ACADEMY" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
-        <Button Grid.Column="1" Classes="icon-button" Command="{Binding ShowExplorerCommand}" ToolTip.Tip="Collapse / Show Explorer">
-          <TextBlock Classes="icon academy" Text="&#xE76B;" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <shared:SproutLogo Width="14" Height="14" />
+          <TextBlock Classes="panel-header" Text="ACADEMY" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="icon-button" Command="{Binding ToggleExplorerCommand}" ToolTip.Tip="Hide sidebar (Ctrl+B)">
+          <TextBlock Classes="icon" Text="&#xE89F;" FontSize="13" />
         </Button>
       </Grid>
 
-      <!-- Main Navigation Links -->
-      <StackPanel Grid.Row="1" Margin="6,4,6,8" Spacing="2">
+      <!-- Now practicing: the open lesson at a glance. -->
+      <Border Grid.Row="1" Classes="academy-feature" Margin="10,2,10,6" Padding="12,10"
+              IsVisible="{Binding SelectedDocument.IsAcademy}">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="eyebrow" Text="NOW PRACTICING" FontSize="9.5" />
+          <TextBlock Text="{Binding SelectedDocument.AcademyTab.Lesson.Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2"
+                     TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding SelectedDocument.AcademyTab.RequirementsSummaryText}" FontSize="10.5"
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Main navigation -->
+      <StackPanel Grid.Row="2" Margin="6,2,6,6" Spacing="2">
         <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyHomeSection}" Command="{Binding ShowAcademyHomeCommand}">
           <Grid ColumnDefinitions="24,*" Margin="6,4">
             <TextBlock Classes="icon academy-nav-icon" Text="&#xE80F;" />
@@ -36,6 +51,12 @@
           <Grid ColumnDefinitions="24,*" Margin="6,4">
             <TextBlock Classes="icon academy-nav-icon" Text="&#xE8F1;" />
             <TextBlock Grid.Column="1" Text="Tracks" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyHandbookSection}" Command="{Binding ShowHandbookCommand}">
+          <Grid ColumnDefinitions="24,*" Margin="6,4">
+            <TextBlock Classes="icon academy-nav-icon" Text="&#xE82D;" />
+            <TextBlock Grid.Column="1" Text="Handbook" VerticalAlignment="Center" />
           </Grid>
         </Button>
         <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyConceptsSection}" Command="{Binding ShowAcademyConceptsCommand}">
@@ -56,52 +77,49 @@
             <TextBlock Grid.Column="1" Text="Submissions" VerticalAlignment="Center" />
           </Grid>
         </Button>
+        <Button Classes="academy-nav-btn" Classes.selected="{Binding IsAcademyProfileSection}" Command="{Binding ShowLearningProgressCommand}">
+          <Grid ColumnDefinitions="24,*" Margin="6,4">
+            <TextBlock Classes="icon academy-nav-icon" Text="&#xE77B;" />
+            <TextBlock Grid.Column="1" Text="Progress" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
       </StackPanel>
 
-      <!-- LANGUAGES Section Header -->
-      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="14,12,8,4">
-        <TextBlock Classes="panel-header" Text="LANGUAGES" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
-        <Button Grid.Column="1" Classes="icon-button small" ToolTip.Tip="Add track">
-          <TextBlock Classes="icon academy" Text="&#xE710;" />
+      <!-- Languages header -->
+      <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="14,10,8,4">
+        <TextBlock Classes="panel-header" Text="LANGUAGES" />
+        <Button Grid.Column="1" Classes="icon-button small" Command="{Binding ShowAcademyTracksCommand}" ToolTip.Tip="Browse all tracks">
+          <TextBlock Classes="icon" Text="&#xE710;" FontSize="11" />
         </Button>
       </Grid>
 
-      <!-- Languages List -->
-      <ScrollViewer Grid.Row="3" Margin="6,2,6,8" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <!-- Languages list -->
+      <ScrollViewer Grid.Row="4" Margin="6,2,6,8" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="2">
-          <!-- Java (Selected) -->
-          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyJavaTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="java">
-            <Grid ColumnDefinitions="28,*" Margin="6,5">
-              <shared:LanguageIconView LanguageKey="java" Width="20" Height="20" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="Java" VerticalAlignment="Center" Margin="6,0,0,0" />
-            </Grid>
-          </Button>
-
-          <!-- Sprout -->
           <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademySproutTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="sprout">
             <Grid ColumnDefinitions="28,*" Margin="6,5">
               <shared:LanguageIconView LanguageKey="sprout" Width="20" Height="20" VerticalAlignment="Center" />
               <TextBlock Grid.Column="1" Text="Sprout" VerticalAlignment="Center" Margin="6,0,0,0" />
             </Grid>
           </Button>
-
-          <!-- Rust -->
-          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyRustTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="rust">
-            <Grid ColumnDefinitions="28,*" Margin="6,5">
-              <shared:LanguageIconView LanguageKey="rust" Width="20" Height="20" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="Rust" VerticalAlignment="Center" Margin="6,0,0,0" />
-            </Grid>
-          </Button>
-
-          <!-- Python -->
           <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyPythonTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="python">
             <Grid ColumnDefinitions="28,*" Margin="6,5">
               <shared:LanguageIconView LanguageKey="python" Width="20" Height="20" VerticalAlignment="Center" />
               <TextBlock Grid.Column="1" Text="Python" VerticalAlignment="Center" Margin="6,0,0,0" />
             </Grid>
           </Button>
-
-          <!-- Go -->
+          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyJavaTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="java">
+            <Grid ColumnDefinitions="28,*" Margin="6,5">
+              <shared:LanguageIconView LanguageKey="java" Width="20" Height="20" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Java" VerticalAlignment="Center" Margin="6,0,0,0" />
+            </Grid>
+          </Button>
+          <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyRustTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="rust">
+            <Grid ColumnDefinitions="28,*" Margin="6,5">
+              <shared:LanguageIconView LanguageKey="rust" Width="20" Height="20" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Rust" VerticalAlignment="Center" Margin="6,0,0,0" />
+            </Grid>
+          </Button>
           <Button Classes="academy-lang-btn" Classes.selected="{Binding IsAcademyGoTrack}" Command="{Binding SelectAcademyLanguageCommand}" CommandParameter="go">
             <Grid ColumnDefinitions="28,*" Margin="6,5">
               <shared:LanguageIconView LanguageKey="go" Width="20" Height="20" VerticalAlignment="Center" />
@@ -111,6 +129,19 @@
         </StackPanel>
       </ScrollViewer>
 
+      <!-- Habit footer -->
+      <Button Grid.Row="5" Classes="status-item" Height="40" Margin="8,0,8,8" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Stretch" Command="{Binding ShowLearningProgressCommand}"
+              IsVisible="{Binding ShowGamification}" ToolTip.Tip="{Binding StreakTooltip}">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+          <Path Classes="flame" Classes.cold="{Binding !HasStreak}" Width="12" Height="15" />
+          <TextBlock Grid.Column="1" Text="{Binding StreakText, StringFormat='{}{0} streak'}" FontSize="11.5" VerticalAlignment="Center" />
+          <Grid Grid.Column="2" Width="16" Height="16" ToolTip.Tip="{Binding DailyGoalText}">
+            <Ellipse Classes="goal-track" StrokeThickness="2.5" />
+            <Arc Classes="goal-ring" SweepAngle="{Binding DailyGoalSweep}" StrokeThickness="2.5" />
+          </Grid>
+        </Grid>
+      </Button>
     </Grid>
   </Border>
 </UserControl>

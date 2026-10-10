@@ -7,5 +7,8 @@
     <EmbeddedResource Include="..\..\..\academy\catalog.json"
                       Link="Content\catalog.json"
                       LogicalName="SproutStudio.Academy.Content.catalog.json" />
+    <EmbeddedResource Include="..\..\..\academy\handbook\*.md"
+                      Link="Content\Handbook\%(Filename)%(Extension)"
+                      LogicalName="SproutStudio.Academy.Content.Handbook.%(Filename).md" />
   </ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using SproutStudio.Academy;
@@ -36,16 +37,7 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
             _toolchains,
             Environment.GetEnvironmentVariable("SPROUT_STUDIO_TEST_ACADEMY_STATE"));
         InitializeComponent();
-        this.FindControl<ListBox>("AcademyNavigation")!.ItemsSource = new AcademySectionItem[]
-        {
-            new("Home", "\uE80F"),
-            new("My Learning", "\uE7BE"),
-            new("Learning Tracks", "\uE8F1"),
-            new("Concept Browser", "\uEA80"),
-            new("Challenges", "\uE7C1"),
-            new("Submissions", "\uF0E3"),
-            new("Profile & Progress", "\uE77B"),
-        };
+        this.FindControl<ListBox>("AcademyNavigation")!.ItemsSource = Sections;
         this.FindControl<ListBox>("AcademyNavigation")!.SelectedIndex = 0;
         this.FindControl<ComboBox>("ExperienceBox")!.ItemsSource = Enum.GetValues<ExperienceLevel>()
             .Select(value => new ExperienceOption(value, RecommendationEngine.DisplayExperience(value)))
@@ -96,20 +88,34 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
         await RefreshAsync(_selectedTrack?.Id, detectToolchains: _toolchainState is null, cancellationToken);
     }
 
+    /// <summary>Academy sections in navigation order; each key maps to one content panel.</summary>
+    private static readonly AcademySectionItem[] Sections =
+    [
+        new("home", "Home", "\uE80F", "HomePanel"),
+        new("my-learning", "My Learning", "\uE7BE", "MyLearningPanel"),
+        new("tracks", "Learning Tracks", "\uE8F1", "TracksPanel"),
+        new("handbook", "Handbook", "\uE82D", "HandbookPanel"),
+        new("concepts", "Concept Browser", "\uEA80", "ConceptsPanel"),
+        new("challenges", "Challenges", "\uE7C1", "ChallengesPanel"),
+        new("submissions", "Submissions", "\uF0E3", "SubmissionsPanel"),
+        new("profile", "Profile & Progress", "\uE77B", "ProfilePanel"),
+    ];
+
     public void SelectSection(string section)
     {
-        int index = section.Trim().ToLowerInvariant() switch
+        string key = section.Trim().ToLowerInvariant() switch
         {
-            "home" => 0,
-            "my-learning" or "learning" => 1,
-            "tracks" => 2,
-            "concepts" => 3,
-            "challenges" => 4,
-            "submissions" => 5,
-            "profile" => 6,
-            _ => 0,
+            "learning" => "my-learning",
+            "guides" or "docs" => "handbook",
+            string other => other,
         };
-        this.FindControl<ListBox>("AcademyNavigation")!.SelectedIndex = index;
+        int index = Array.FindIndex(Sections, item => item.Key == key);
+        this.FindControl<ListBox>("AcademyNavigation")!.SelectedIndex = Math.Max(0, index);
+    }
+
+    private void SelectSectionPanel(string key)
+    {
+        this.FindControl<ListBox>("AcademyNavigation")!.SelectedIndex = Array.FindIndex(Sections, item => item.Key == key);
     }
 
     public void SelectTrack(string trackId) => ShowTrack(trackId);
@@ -157,6 +163,7 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
             RenderProgress(dashboard, enrolled.Length);
             RenderToolchains();
             RenderAchievements(dashboard);
+            RenderHandbook();
             RefreshConceptSearch();
             if (!_profileInitialized)
             {
@@ -383,6 +390,18 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
             $"{_state.CompletedLessonIds.Length} lesson{(_state.CompletedLessonIds.Length == 1 ? string.Empty : "s")} complete";
         this.FindControl<TextBlock>("ActiveTrackCountText")!.Text =
             $"{enrolledCount} active track{(enrolledCount == 1 ? string.Empty : "s")}";
+
+        LearningHabitSummary habits = dashboard.HabitSummary;
+        this.FindControl<Border>("ProgressHabitsPanel")!.IsVisible = show;
+        this.FindControl<Avalonia.Controls.Shapes.Path>("ProgressFlame")!.Classes.Set("cold", habits.CurrentStreak == 0);
+        this.FindControl<TextBlock>("ProgressStreakText")!.Text = habits.CurrentStreak switch
+        {
+            0 => "Start a streak today",
+            1 => "1-day streak",
+            int days => $"{days}-day streak",
+        };
+        this.FindControl<TextBlock>("ProgressGoalText")!.Text = $"{habits.XpEarnedToday} / {habits.DailyXpGoal} XP";
+        this.FindControl<ProgressBar>("ProgressGoalBar")!.Value = habits.DailyGoalPercent;
     }
 
     private void RenderToolchains()
@@ -405,23 +424,66 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
 
     private void RenderAchievements(AcademyDashboard dashboard)
     {
-        string[] achievements = dashboard.EarnedAchievements
-            .Select(achievement => $"✓  {achievement.Title} — {achievement.Description}")
+        Dictionary<string, DateTimeOffset> earned = dashboard.State.AchievementAwards
+            .GroupBy(award => award.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Min(award => award.EarnedAt), StringComparer.OrdinalIgnoreCase);
+        // Earned badges first (newest first), then the locked ones in catalog order.
+        AchievementBadgeRow[] badges = _academy.Catalog.Achievements
+            .Select(achievement => new AchievementBadgeRow(
+                achievement,
+                earned.TryGetValue(achievement.Id, out DateTimeOffset at) ? at : null))
+            .OrderByDescending(badge => badge.Earned)
+            .ThenByDescending(badge => badge.EarnedAt)
             .ToArray();
-        this.FindControl<ItemsControl>("AchievementList")!.ItemsSource = achievements;
-        this.FindControl<TextBlock>("AchievementEmpty")!.IsVisible = achievements.Length == 0;
+        this.FindControl<ItemsControl>("AchievementList")!.ItemsSource = badges;
+        this.FindControl<TextBlock>("AchievementEmpty")!.IsVisible = badges.Length == 0;
+        this.FindControl<TextBlock>("AchievementCountText")!.Text = $"{earned.Count} of {badges.Length} earned";
+
+        LearningHabitSummary habits = dashboard.HabitSummary;
+        this.FindControl<TextBlock>("ProfileStreakText")!.Text = habits.CurrentStreak.ToString(CultureInfo.CurrentCulture);
+        this.FindControl<Avalonia.Controls.Shapes.Path>("ProfileFlame")!.Classes.Set("cold", habits.CurrentStreak == 0);
+        this.FindControl<TextBlock>("ProfileLongestText")!.Text = habits.LongestStreak == 1 ? "1 day" : $"{habits.LongestStreak} days";
+        this.FindControl<TextBlock>("ProfileXpText")!.Text = $"{dashboard.TotalXp} XP";
+        this.FindControl<TextBlock>("ProfileLevelText")!.Text = $"Level {dashboard.Level} · {dashboard.XpTowardNextLevel}/{AcademyDashboard.XpPerLevel} to next";
+        this.FindControl<ActivityHeatmap>("ProfileHeatmap")!.Days = habits.Calendar;
+        int activeDays = habits.Calendar.Count(day => day.Practiced);
+        int attempts = habits.Calendar.Sum(day => day.Attempts);
+        this.FindControl<TextBlock>("ProfileActivitySummary")!.Text = activeDays == 0
+            ? "No practice yet. Every submitted exercise or quiz lights up a day."
+            : $"{attempts} submission{(attempts == 1 ? string.Empty : "s")} across {activeDays} active day{(activeDays == 1 ? string.Empty : "s")}. "
+                + (habits.PracticedToday ? "You've practiced today." : "Practice today to keep your streak growing.");
+    }
+
+    /// <summary>Opens the Concept Browser focused on one concept (used by the Learn inspector).</summary>
+    public void SelectConcept(string conceptId)
+    {
+        SelectSection("concepts");
+        if (this.FindControl<TextBox>("ConceptSearchBox") is { } search)
+        {
+            search.Text = string.Empty;
+        }
+        RefreshConceptSearch();
+        if (this.FindControl<ListBox>("ConceptList") is { ItemsSource: IEnumerable<ConceptDefinition> concepts } list)
+        {
+            list.SelectedItem = concepts.FirstOrDefault(concept =>
+                string.Equals(concept.Id, conceptId, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     private void AcademyNavigation_SelectionChanged(object? sender, SelectionChangedEventArgs args)
     {
         int selected = Math.Max(0, this.FindControl<ListBox>("AcademyNavigation")!.SelectedIndex);
-        this.FindControl<ScrollViewer>("HomePanel")!.IsVisible = selected == 0;
-        this.FindControl<Grid>("MyLearningPanel")!.IsVisible = selected == 1;
-        this.FindControl<Grid>("TracksPanel")!.IsVisible = selected == 2;
-        this.FindControl<Grid>("ConceptsPanel")!.IsVisible = selected == 3;
-        this.FindControl<ScrollViewer>("ChallengesPanel")!.IsVisible = selected == 4;
-        this.FindControl<ScrollViewer>("SubmissionsPanel")!.IsVisible = selected == 5;
-        this.FindControl<ScrollViewer>("ProfilePanel")!.IsVisible = selected == 6;
+        foreach ((AcademySectionItem section, int index) in Sections.Select((item, index) => (item, index)))
+        {
+            if (this.FindControl<Control>(section.PanelName) is { } panel)
+            {
+                panel.IsVisible = index == selected;
+            }
+        }
+        if (Sections[selected].Key == "handbook")
+        {
+            EnsureGuideSelected();
+        }
     }
 
     private void TrackList_SelectionChanged(object? sender, SelectionChangedEventArgs args)
@@ -639,7 +701,7 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
 
     private void ShowTrack(string trackId)
     {
-        this.FindControl<ListBox>("AcademyNavigation")!.SelectedIndex = 2;
+        SelectSectionPanel("tracks");
         ListBox tracks = this.FindControl<ListBox>("TrackList")!;
         tracks.SelectedItem = (tracks.ItemsSource as IEnumerable<AcademyTrackRow>)?
             .FirstOrDefault(track => string.Equals(track.Id, trackId, StringComparison.OrdinalIgnoreCase));
@@ -832,7 +894,7 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
     };
 }
 
-public sealed record AcademySectionItem(string Title, string Glyph);
+public sealed record AcademySectionItem(string Key, string Title, string Glyph, string PanelName);
 
 public sealed record AcademyTaskRow(AcademyTask Task)
 {
@@ -968,4 +1030,17 @@ public sealed record AcademyToolchainRow(string LanguageKey, string Name, string
 public sealed record ExperienceOption(ExperienceLevel Value, string Label)
 {
     public override string ToString() => Label;
+}
+
+public sealed record AchievementBadgeRow(AchievementDefinition Achievement, DateTimeOffset? EarnedAt)
+{
+    public string Title => Achievement.Title;
+
+    public string Description => Achievement.Description;
+
+    public bool Earned => EarnedAt is not null;
+
+    public string Glyph => Earned ? "\uE735" : "\uE72E";
+
+    public string EarnedLabel => EarnedAt is { } at ? $"Earned {at.LocalDateTime:MMM d}" : "Locked";
 }

@@ -165,6 +165,16 @@ public sealed partial class MainWindow : Window
                     {
                         academy.SelectTrack(trackId);
                     }
+                    if (_viewModel.SelectedAcademyGuideId is { Length: > 0 } guideId)
+                    {
+                        academy.SelectGuide(guideId);
+                        _viewModel.SelectedAcademyGuideId = null;
+                    }
+                    if (_viewModel.SelectedAcademyConceptId is { Length: > 0 } conceptId)
+                    {
+                        academy.SelectConcept(conceptId);
+                        _viewModel.SelectedAcademyConceptId = null;
+                    }
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

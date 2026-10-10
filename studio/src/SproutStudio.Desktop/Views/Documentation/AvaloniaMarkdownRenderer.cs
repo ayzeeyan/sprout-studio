@@ -27,13 +27,14 @@ public sealed class AvaloniaMarkdownRenderer
         .UseAdvancedExtensions()
         .DisableHtml()
         .Build();
-    private static readonly IBrush TextPrimary = Brush("#EEF2EE");
-    private static readonly IBrush TextSecondary = Brush("#BAC2BB");
-    private static readonly IBrush TextMuted = Brush("#7E8980");
+    // Mirrors the StudioTheme tokens so rendered documents match the rest of the shell.
+    private static readonly IBrush TextPrimary = Brush("#E9EFEB");
+    private static readonly IBrush TextSecondary = Brush("#A8B4AE");
+    private static readonly IBrush TextMuted = Brush("#6C7973");
     private static IBrush Accent => SproutStudio.Services.StudioThemeService.AccentBrush;
-    private static readonly IBrush Panel = Brush("#171A18");
-    private static readonly IBrush Raised = Brush("#1D211E");
-    private static readonly IBrush Border = Brush("#313732");
+    private static readonly IBrush Panel = Brush("#111614");
+    private static readonly IBrush Raised = Brush("#0F1312");
+    private static readonly IBrush Border = Brush("#2E3834");
     private readonly Func<string, Task> _linkActivated;
 
     public AvaloniaMarkdownRenderer(Func<string, Task> linkActivated)
@@ -154,7 +155,7 @@ public sealed class AvaloniaMarkdownRenderer
         var header = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            Height = 34,
+            Height = 32,
             Background = Panel,
         };
         header.Children.Add(new TextBlock
@@ -169,22 +170,14 @@ public sealed class AvaloniaMarkdownRenderer
         Grid.SetColumn(copyButton, 1);
         copyButton.Margin = new Thickness(0, 4, 6, 4);
         header.Children.Add(copyButton);
-        var codeText = new SelectableTextBlock
-        {
-            Text = code,
-            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
-            FontSize = 12.5,
-            LineHeight = 20,
-            Foreground = TextPrimary,
-            TextWrapping = TextWrapping.NoWrap,
-            Margin = new Thickness(12, 10, 12, 12),
-        };
+        SelectableTextBlock codeText = SproutStudio.Views.Shared.CodeHighlighter.Create(code, language);
+        codeText.Margin = new Thickness(12, 10, 12, 12);
         var body = new ScrollViewer
         {
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             Content = codeText,
         };
-        var grid = new Grid { RowDefinitions = new RowDefinitions("34,Auto") };
+        var grid = new Grid { RowDefinitions = new RowDefinitions("32,Auto") };
         grid.Children.Add(header);
         Grid.SetRow(body, 1);
         grid.Children.Add(body);
@@ -193,7 +186,8 @@ public sealed class AvaloniaMarkdownRenderer
             Background = Raised,
             BorderBrush = Border,
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
+            CornerRadius = new CornerRadius(8),
+            ClipToBounds = true,
             Margin = new Thickness(0, 5, 0, 12),
             Child = grid,
         };

@@ -4,12 +4,76 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SproutStudio.ViewModels"
     xmlns:local="using:SproutStudio.Views.Inspector"
+    xmlns:shared="using:SproutStudio.Views.Shared"
     x:DataType="vm:MainWindowViewModel">
   <Border Classes="pane-surface" IsVisible="{Binding InspectorVisible}">
     <Grid>
       <!-- Standard Inspector TabControl -->
       <TabControl Classes="inspector-tabs" SelectedIndex="{Binding SelectedInspectorTab, Mode=TwoWay}"
                   IsVisible="{Binding !IsAcademySelected}">
+        <TabItem Header="Learn">
+          <Grid RowDefinitions="Auto,*">
+            <StackPanel Margin="14,12,14,8" Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <TextBlock Classes="icon accent" Text="&#xE7BE;" FontSize="14" />
+                <TextBlock Text="CONCEPTS IN THIS FILE" Classes="panel-header" />
+              </StackPanel>
+              <TextBlock Text="{Binding LearnHeaderText}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource StudioTextMutedBrush}" />
+            </StackPanel>
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding LearnConcepts}" Margin="12,0,12,12">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:LearnConceptViewModel">
+                    <Border Classes="learn-card">
+                      <StackPanel Spacing="7">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap" />
+                          <TextBlock Grid.Column="1" Text="{Binding UsageText}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+                        </Grid>
+                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="11.5" LineHeight="17" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                        <Border Classes="code-snippet" ClipToBounds="True">
+                          <shared:HighlightedCode Code="{Binding Evidence}" Language="{Binding LanguageKey}" />
+                        </Border>
+                        <ItemsControl ItemsSource="{Binding Examples}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:LearnExampleViewModel">
+                              <StackPanel Spacing="3" Margin="0,2,0,4">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="13" Height="13" />
+                                  <TextBlock Text="{Binding Language, StringFormat='In {0}'}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                                </StackPanel>
+                                <Border Classes="code-snippet">
+                                  <shared:HighlightedCode Code="{Binding Code}" Language="{Binding LanguageKey}" TextWrapping="Wrap" />
+                                </Border>
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7">
+                          <TextBlock Classes="icon small" Text="&#xE73E;" Foreground="{DynamicResource StudioSuccessBrush}" IsVisible="{Binding Practiced}" />
+                          <TextBlock Classes="icon small" Text="&#xE7BE;" Foreground="{DynamicResource StudioTextMutedBrush}" IsVisible="{Binding !Practiced}" />
+                          <TextBlock Grid.Column="1" Text="{Binding StatusText}" FontSize="10.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+                          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                            <Button Classes="hyperlink" FontSize="11" Content="Guide" IsVisible="{Binding HasGuide}" ToolTip.Tip="{Binding GuideTooltip}"
+                                    Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).OpenGuideCommand}"
+                                    CommandParameter="{Binding GuideId}" />
+                            <Button Classes="hyperlink" FontSize="11" Content="Concept"
+                                    Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).OpenConceptCommand}"
+                                    CommandParameter="{Binding ConceptId}" ToolTip.Tip="Open in the Academy Concept Browser" />
+                            <Button Classes="accent" Height="24" MinHeight="0" Padding="9,0" FontSize="11" Content="{Binding PracticeLabel}"
+                                    Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).PracticeConceptCommand}"
+                                    CommandParameter="{Binding}" />
+                          </StackPanel>
+                        </Grid>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Grid>
+        </TabItem>
         <TabItem Header="Variables">
           <Grid RowDefinitions="34,30,*,34,30,*">
             <TextBlock Classes="panel-header" Text="WATCH / VARIABLES" Margin="12,0" />
@@ -60,7 +124,7 @@
           </Grid>
         </TabItem>
 
-        <TabItem Header="Debugger">
+        <TabItem Header="Debug" ToolTip.Tip="Debugger: recorded snapshots and breakpoints">
           <Grid RowDefinitions="38,Auto,38,Auto,*">
             <Grid ColumnDefinitions="*,Auto" Margin="12,0">
               <TextBlock Classes="panel-header" Text="BREAKPOINTS" />
@@ -108,11 +172,11 @@
           </Grid>
         </TabItem>
 
-        <TabItem Header="AST Graph">
+        <TabItem Header="AST" ToolTip.Tip="Abstract syntax tree graph">
           <local:ASTGraphView DataContext="{Binding AstGraph}" />
         </TabItem>
 
-        <TabItem Header="Properties">
+        <TabItem Header="Info" ToolTip.Tip="Document properties">
           <Grid RowDefinitions="38,*">
             <TextBlock Classes="panel-header" Text="DOCUMENT" Margin="12,0" />
             <Grid Grid.Row="1" ColumnDefinitions="90,*" RowDefinitions="30,30,30,30,Auto" Margin="12,4">

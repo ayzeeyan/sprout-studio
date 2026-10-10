@@ -316,10 +316,11 @@ public sealed class AcademyDocumentTabViewModel : ObservableObject
         {
             foreach (string assertion in lesson.Exercise.Assertions)
             {
+                // Phrase the grader's assertions as plain-language goals.
                 string desc = assertion.StartsWith("contains:", StringComparison.OrdinalIgnoreCase)
-                    ? assertion["contains:".Length..].Trim()
+                    ? $"Uses  {assertion["contains:".Length..].Trim()}"
                     : assertion.StartsWith("not-contains:", StringComparison.OrdinalIgnoreCase)
-                        ? $"Avoid: {assertion["not-contains:".Length..].Trim()}"
+                        ? $"Leaves out  {assertion["not-contains:".Length..].Trim()}"
                         : assertion;
                 Requirements.Add(new RequirementItemViewModel(
                     assertion,
@@ -348,12 +349,35 @@ public sealed class AcademyDocumentTabViewModel : ObservableObject
         ToggleHintsCommand = new RelayCommand(() => IsHintsExpanded = !IsHintsExpanded);
         ToggleResultsCommand = new RelayCommand(() => IsResultsExpanded = !IsResultsExpanded);
         ToggleAttemptHistoryCommand = new RelayCommand(() => IsAttemptHistoryExpanded = !IsAttemptHistoryExpanded);
+        OpenGuideCommand = new RelayCommand<string>(guideId => _workspace.OpenGuide(guideId));
+        RelatedGuides = academy.Catalog.GuidesForConcepts(lesson.ConceptIds).Take(2).ToArray();
 
         _ = RefreshInitialStateAsync();
     }
 
     public TrackDefinition Track { get; }
     public LessonDefinition Lesson { get; }
+
+    /// <summary>Handbook guides that explain this lesson's concepts ("read first").</summary>
+    public IReadOnlyList<GuideDefinition> RelatedGuides { get; }
+
+    public bool HasRelatedGuides => RelatedGuides.Count > 0;
+
+    public IRelayCommand<string> OpenGuideCommand { get; }
+
+    /// <summary>Header chips: activity kind, estimated time, and XP.</summary>
+    public string ActivityKindText => Lesson.TaskType switch
+    {
+        TaskType.Checkpoint => "Checkpoint",
+        TaskType.CapstoneStep => "Capstone",
+        _ when HasExercise => "Coding exercise",
+        _ when HasQuiz => "Knowledge check",
+        _ => "Lesson",
+    };
+
+    public string EstimatedTimeText => $"~{Math.Max(1, Lesson.EstimatedMinutes)} min";
+
+    public string XpText => $"{Lesson.Xp} XP";
     public string? ModuleTitle { get; }
     public string LanguageKey => string.IsNullOrWhiteSpace(Track.RequiredToolchainId)
         ? "sprout"

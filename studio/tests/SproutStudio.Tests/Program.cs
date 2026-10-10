@@ -36,6 +36,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Editor coordinates normalize line endings", EditorCoordinatesNormalizeLineEndings),
     ("Editor breadcrumbs stay project relative", EditorBreadcrumbsStayProjectRelative),
     ("Editor toggles aligned line comments", EditorTogglesAlignedLineComments),
+    ("Learning habits compute streaks goals and calendar", LearningHabitsComputeStreaksGoalsAndCalendar),
+    ("Concept detector maps code to Academy concepts", ConceptDetectorMapsCodeToConcepts),
+    ("Syntax highlighting loads for every supported language", SyntaxHighlightingLoadsForEveryLanguage),
+    ("Academy Handbook guides are complete and reference real docs", AcademyHandbookGuidesAreComplete),
+    ("Academy Handbook code samples run on the native engine", AcademyHandbookSamplesRun),
+    ("Academy guide reading counts toward streaks and achievements", AcademyGuideReadingCountsTowardProgress),
     ("Language registry supplies shared product identities", LanguageRegistrySuppliesSharedIdentities),
     ("Project search filters source and ignores generated output", ProjectSearchFiltersAndIgnoresGeneratedOutput),
     ("Git status parser preserves branch and file state", GitStatusParserPreservesState),
@@ -345,6 +351,226 @@ static Task EditorCoordinatesNormalizeLineEndings()
         EditorTextCoordinates.NormalizedIndexToEditorIndex(EditorText, thirdNormalizedIndex)
             == thirdEditorIndex,
         "normalized source span did not map back to the editor");
+    return Task.CompletedTask;
+}
+
+static Task LearningHabitsComputeStreaksGoalsAndCalendar()
+{
+    TimeZoneInfo utc = TimeZoneInfo.Utc;
+    var today = new DateOnly(2026, 10, 11);
+    DateTimeOffset At(int daysAgo, int hour = 12) =>
+        new(today.AddDays(-daysAgo).ToDateTime(new TimeOnly(hour, 0)), TimeSpan.Zero);
+
+    LearningHabitSummary empty = LearningHabits.Summarize([], today, utc);
+    Assert(empty.CurrentStreak == 0 && empty.LongestStreak == 0 && !empty.PracticedToday, "empty history produced a streak");
+    Assert(empty.Calendar.Length == LearningHabits.DefaultCalendarDays && empty.Calendar[^1].Date == today,
+        "calendar does not end today");
+
+    // Practiced 5,4,3 days ago (run of 3), then yesterday and today (run of 2).
+    LearningEvent[] events =
+    [
+        new(At(5), 10), new(At(4), 0), new(At(3), 20),
+        new(At(1), 15), new(At(0, 9), 25), new(At(0, 18), 10),
+    ];
+    LearningHabitSummary summary = LearningHabits.Summarize(events, today, utc, dailyXpGoal: 30);
+    Assert(summary.CurrentStreak == 2, $"current streak was {summary.CurrentStreak}");
+    Assert(summary.LongestStreak == 3, $"longest streak was {summary.LongestStreak}");
+    Assert(summary.PracticedToday && summary.XpEarnedToday == 35, "today's practice or XP was not aggregated");
+    Assert(summary.DailyGoalMet && summary.DailyGoalPercent == 100, "daily goal progress was not capped at 100");
+    Assert(summary.Calendar[^1].Attempts == 2 && summary.Calendar[^3].Attempts == 0, "calendar attempts are misplaced");
+
+    // A streak stays alive until the end of today when only yesterday was practiced.
+    LearningHabitSummary alive = LearningHabits.Summarize([new(At(2), 5), new(At(1), 5)], today, utc);
+    Assert(alive.CurrentStreak == 2 && !alive.PracticedToday, "an unbroken streak from yesterday was dropped");
+    LearningHabitSummary broken = LearningHabits.Summarize([new(At(3), 5), new(At(2), 5)], today, utc);
+    Assert(broken.CurrentStreak == 0 && broken.LongestStreak == 2, "a missed day did not break the streak");
+
+    // Local midnight decides the day, not UTC.
+    TimeZoneInfo plusEight = TimeZoneInfo.CreateCustomTimeZone("plus8", TimeSpan.FromHours(8), "UTC+8", "UTC+8");
+    var lateUtc = new DateTimeOffset(today.AddDays(-1).ToDateTime(new TimeOnly(20, 0)), TimeSpan.Zero);
+    Assert(LearningHabits.Summarize([new(lateUtc, 5)], today, plusEight).PracticedToday,
+        "time zone conversion placed the event on the wrong day");
+    return Task.CompletedTask;
+}
+
+static Task AcademyHandbookGuidesAreComplete()
+{
+    AcademyCatalog catalog = AcademyCatalog.LoadDefault();
+    Assert(catalog.Guides.Length >= 10, $"expected at least 10 Handbook guides, found {catalog.Guides.Length}");
+    Assert(catalog.Guides[0].Id == "start-here", "the Handbook should open with the Start Here guide");
+    string docs = Path.Combine(FindRepositoryRoot(), "docs");
+    foreach (GuideDefinition guide in catalog.Guides)
+    {
+        string content = catalog.GetGuideContent(guide.Id);
+        Assert(content.StartsWith("# ", StringComparison.Ordinal), $"guide {guide.Id} does not start with a title heading");
+        Assert(guide.ReferenceDocId is null || File.Exists(Path.Combine(docs, guide.ReferenceDocId + ".md")),
+            $"guide {guide.Id} references missing documentation {guide.ReferenceDocId}");
+    }
+    // Every concept a lesson teaches should have a guide to read first.
+    foreach (string conceptId in catalog.Tracks.Single(track => track.Id == "sprout-fundamentals")
+        .Lessons.SelectMany(lesson => lesson.ConceptIds).Distinct())
+    {
+        Assert(catalog.GuidesForConcepts([conceptId]).Count > 0, $"no Handbook guide covers concept {conceptId}");
+    }
+    Assert(catalog.GuidesForConcepts(["loops"])[0].Id == "repetition", "the best guide for loops should be the repetition guide");
+    return Task.CompletedTask;
+}
+
+static async Task AcademyHandbookSamplesRun()
+{
+    // Guides teach real code, so every ```sprout sample must run cleanly in its profile.
+    AcademyCatalog catalog = AcademyCatalog.LoadDefault();
+    var engine = new NativeSproutEngineClient();
+    var fence = new System.Text.RegularExpressions.Regex("```sprout(?: (?<profile>\\w+))?\\r?\\n(?<code>.*?)```",
+        System.Text.RegularExpressions.RegexOptions.Singleline);
+    int samples = 0;
+    foreach (GuideDefinition guide in catalog.Guides)
+    {
+        foreach (System.Text.RegularExpressions.Match match in fence.Matches(catalog.GetGuideContent(guide.Id)))
+        {
+            SyntaxProfile profile = match.Groups["profile"].Value switch
+            {
+                "structured" => SyntaxProfile.Structured,
+                "advanced" => SyntaxProfile.Advanced,
+                _ => SyntaxProfile.Guided,
+            };
+            EngineResponse response = await engine.ExecuteAsync(new EngineRequest(
+                EngineOperation.Run, profile, $"{guide.Id}.spr", match.Groups["code"].Value));
+            Assert(response.Success,
+                $"guide {guide.Id} sample {samples + 1} failed: {string.Join("; ", response.Diagnostics.Select(d => d.Message))}");
+            samples++;
+        }
+    }
+    Assert(samples >= 25, $"expected the Handbook to contain at least 25 runnable samples, found {samples}");
+}
+
+static async Task AcademyGuideReadingCountsTowardProgress()
+{
+    string directory = TemporaryDirectory("academy-guide-reading");
+    var service = new AcademyService(
+        AcademyCatalog.LoadDefault(),
+        new AcademyStateStore(Path.Combine(directory, "academy.json")),
+        ToolchainManager.CreateDefault());
+
+    var first = await service.MarkGuideReadAsync("first-program");
+    Assert(first.FirstRead && first.State.HasReadGuide("first-program"), "the first read was not recorded");
+    Assert(first.NewAchievements.Any(achievement => achievement.Id == "curious-mind"), "reading a guide did not award Curious Mind");
+
+    var again = await service.MarkGuideReadAsync("first-program");
+    Assert(!again.FirstRead && again.State.ReadGuides.Length == 1 && again.NewAchievements.Length == 0,
+        "re-reading a guide changed progress");
+
+    LearningHabitSummary habits = service.SummarizeHabits(again.State);
+    Assert(habits.PracticedToday && habits.CurrentStreak == 1 && habits.XpEarnedToday == 0,
+        "reading should count as practice for the streak without awarding XP");
+
+    foreach (string id in new[] { "decisions", "repetition", "actions", "classes" })
+    {
+        await service.MarkGuideReadAsync(id);
+    }
+    AcademyState reloaded = await service.LoadStateAsync();
+    Assert(reloaded.ReadGuides.Length == 5, "guide reads did not persist");
+    Assert(reloaded.AchievementAwards.Any(award => award.Id == "well-read"), "reading five guides did not award Well Read");
+
+    bool rejected = false;
+    try
+    {
+        await service.MarkGuideReadAsync("no-such-guide");
+    }
+    catch (KeyNotFoundException)
+    {
+        rejected = true;
+    }
+    Assert(rejected, "an unknown guide id was accepted");
+}
+
+static Task SyntaxHighlightingLoadsForEveryLanguage()
+{
+    foreach (LanguageDescriptor language in LanguageRegistry.All.Where(item => item.Id != DocumentLanguage.PlainText))
+    {
+        AvaloniaEdit.Highlighting.IHighlightingDefinition? definition = SyntaxHighlightingRegistry.For(language.Id);
+        Assert(definition is not null, $"{language.DisplayName} has no syntax highlighting");
+        Assert(definition!.GetNamedColor("Comment") is not null || language.Id is DocumentLanguage.Json or DocumentLanguage.Markdown,
+            $"{language.DisplayName} highlighting has no comment color");
+        foreach (string extension in language.Extensions)
+        {
+            Assert(ReferenceEquals(SyntaxHighlightingRegistry.ForPath("file" + extension), definition),
+                $"{extension} did not resolve to {language.DisplayName} highlighting");
+        }
+    }
+    Assert(SyntaxHighlightingRegistry.For("python") is not null && SyntaxHighlightingRegistry.For("Python") is not null,
+        "highlighting lookup by key or display name failed");
+
+    // Every definition must actually highlight real code (a bad rule can silently swallow text).
+    var samples = new Dictionary<DocumentLanguage, string>
+    {
+        [DocumentLanguage.Sprout] = "has score = 10 # note\nprint(\"hi\")",
+        [DocumentLanguage.Python] = "def f(x):\n    return len(\"a\")  # c",
+        [DocumentLanguage.Java] = "int score = 10; // c\nSystem.out.println(\"x\");",
+        [DocumentLanguage.Rust] = "let mut score = 10;\nscore += 5; // c\nprintln!(\"{}\", score);",
+        [DocumentLanguage.Go] = "score := 10 // c\nfmt.Println(\"x\")",
+        [DocumentLanguage.C] = "#include <stdio.h>\nint main(void) { return 0; }",
+        [DocumentLanguage.Cpp] = "std::vector<int> v; // c",
+        [DocumentLanguage.CSharp] = "var x = 10; // c",
+        [DocumentLanguage.JavaScript] = "const x = `t`; // c",
+        [DocumentLanguage.TypeScript] = "let x: number = 1; // c",
+        [DocumentLanguage.Json] = "{\"a\": true, \"b\": 1}",
+        [DocumentLanguage.Toml] = "[project]\nname = \"x\" # c",
+        [DocumentLanguage.Markdown] = "# Title\nSome `code` and **bold**.",
+    };
+    foreach ((DocumentLanguage language, string code) in samples)
+    {
+        var document = new AvaloniaEdit.Document.TextDocument(code);
+        var highlighter = new AvaloniaEdit.Highlighting.DocumentHighlighter(document, SyntaxHighlightingRegistry.For(language)!);
+        int sections = 0;
+        for (int line = 1; line <= document.LineCount; line++)
+        {
+            AvaloniaEdit.Highlighting.HighlightedLine highlighted = highlighter.HighlightLine(line);
+            foreach (AvaloniaEdit.Highlighting.HighlightedSection section in highlighted.Sections)
+            {
+                Assert(section.Offset >= highlighted.DocumentLine.Offset
+                    && section.Offset + section.Length <= highlighted.DocumentLine.EndOffset,
+                    $"{language} produced a section outside its line");
+                sections++;
+            }
+        }
+        Assert(sections > 0, $"{language} highlighting produced no colored sections for its sample");
+    }
+    Assert(SyntaxHighlightingRegistry.For(DocumentLanguage.PlainText) is null && SyntaxHighlightingRegistry.ForPath("notes.txt") is null,
+        "plain text unexpectedly received highlighting");
+    return Task.CompletedTask;
+}
+
+static Task ConceptDetectorMapsCodeToConcepts()
+{
+    string sprout = """
+        # repeat is mentioned in a comment, which must not count
+        has plants = ["fern", "moss"]
+        class Garden
+            action water(times)
+                repeat times times
+                    if times > 1
+                        print("watering while it rains")
+                    end
+                end
+            end
+        end
+        """;
+    string[] ids = ConceptDetector.Detect(sprout, "sprout").Select(match => match.ConceptId).ToArray();
+    foreach (string expected in new[] { "variables", "collections", "data-modeling", "functions", "loops", "conditions", "oop-encapsulation" })
+    {
+        Assert(ids.Contains(expected), $"Sprout concept {expected} was not detected");
+    }
+    ConceptMatch loops = ConceptDetector.Detect(sprout, "sprout").Single(match => match.ConceptId == "loops");
+    Assert(loops.FirstLine == 5 && loops.Occurrences == 1, $"loop detection used comments or strings (line {loops.FirstLine}, {loops.Occurrences}x)");
+
+    string[] python = ConceptDetector.Detect("def greet(name):\n    for c in name:\n        print(c)\n", "python")
+        .Select(match => match.ConceptId).ToArray();
+    Assert(python.SequenceEqual(["functions", "loops"]), $"Python concepts were {string.Join(",", python)}");
+    Assert(ConceptDetector.Detect("fn main() { let v = vec![1]; }", "rust").Any(match => match.ConceptId == "collections"),
+        "Rust vec! was not detected as a collection");
+    Assert(ConceptDetector.Detect("{\"a\": 1}", "json").Count == 0 && !ConceptDetector.Supports("json"),
+        "unsupported languages produced concepts");
     return Task.CompletedTask;
 }
 

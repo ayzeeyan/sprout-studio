@@ -20,6 +20,11 @@
     <Compile Include="..\..\src\SproutStudio.Desktop\Services\UpdateService.cs" Link="Services\UpdateService.cs" />
     <Compile Include="..\..\src\SproutStudio.Desktop\Services\StudioLog.cs" Link="Services\StudioLog.cs" />
     <Compile Include="..\..\src\SproutStudio.Desktop\Services\AcademyExecutionService.cs" Link="Services\AcademyExecutionService.cs" />
+    <Compile Include="..\..\src\SproutStudio.Desktop\Services\SyntaxHighlightingRegistry.cs" Link="Services\SyntaxHighlightingRegistry.cs" />
+    <EmbeddedResource Include="..\..\src\SproutStudio.Desktop\Content\Syntax\*.xshd" LogicalName="SproutStudio.Content.Syntax.%(Filename).xshd" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
   </ItemGroup>
   <Target Name="BuildSproutNativeForTests"
           BeforeTargets="Build"

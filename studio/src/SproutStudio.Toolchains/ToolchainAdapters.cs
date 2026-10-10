@@ -6,7 +6,7 @@ namespace SproutStudio.Toolchains;
 public sealed partial class RustToolchainAdapter : IToolchainAdapter
 {
     private static readonly Version MinimumVersion = new(1, 95, 0);
-    private static readonly TimeSpan ValidationTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ValidationTimeout = ToolchainValidation.VersionProbeTimeout;
     private readonly IProcessRunner _processRunner;
 
     public RustToolchainAdapter(IProcessRunner processRunner)
@@ -212,7 +212,7 @@ public sealed partial class RustToolchainAdapter : IToolchainAdapter
 public sealed partial class GoToolchainAdapter : IToolchainAdapter
 {
     private static readonly Version MinimumVersion = new(1, 22, 0);
-    private static readonly TimeSpan ValidationTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ValidationTimeout = ToolchainValidation.VersionProbeTimeout;
     private readonly IProcessRunner _processRunner;
 
     public GoToolchainAdapter(IProcessRunner processRunner)
@@ -391,7 +391,7 @@ public sealed partial class GoToolchainAdapter : IToolchainAdapter
 public sealed partial class PythonToolchainAdapter : IToolchainAdapter
 {
     private static readonly Version MinimumVersion = new(3, 10, 0);
-    private static readonly TimeSpan ValidationTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ValidationTimeout = ToolchainValidation.VersionProbeTimeout;
     private readonly IProcessRunner _processRunner;
 
     public PythonToolchainAdapter(IProcessRunner processRunner)
@@ -539,7 +539,7 @@ public sealed partial class PythonToolchainAdapter : IToolchainAdapter
 public sealed partial class JavaToolchainAdapter : IToolchainAdapter
 {
     private static readonly Version MinimumVersion = new(17, 0, 0);
-    private static readonly TimeSpan ValidationTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ValidationTimeout = ToolchainValidation.VersionProbeTimeout;
     private readonly IProcessRunner _processRunner;
 
     public JavaToolchainAdapter(IProcessRunner processRunner)
@@ -758,6 +758,13 @@ internal static class ToolchainCandidateResolver
 
 internal static class ToolchainValidation
 {
+    /// <summary>
+    /// Upper bound for a toolchain's `--version` probe. Probes normally return in milliseconds,
+    /// but a cold start (antivirus scanning, an empty disk cache) can take several seconds, and a
+    /// too-tight limit misreports a healthy toolchain as broken.
+    /// </summary>
+    public static readonly TimeSpan VersionProbeTimeout = TimeSpan.FromSeconds(15);
+
     public static async Task<ToolchainComponent> ValidateVersionComponentAsync(
         IProcessRunner processRunner,
         string name,
