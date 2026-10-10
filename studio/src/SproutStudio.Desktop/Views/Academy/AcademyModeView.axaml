@@ -228,15 +228,18 @@
             <ListBox Name="TrackList" Grid.Row="1" SelectionChanged="TrackList_SelectionChanged">
               <ListBox.ItemTemplate>
                 <DataTemplate DataType="local:AcademyTrackRow">
-                  <Grid ColumnDefinitions="Auto,*" Margin="8,7" ColumnSpacing="9">
-                    <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" />
-                    <StackPanel Grid.Column="1" Spacing="3">
-                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                      <ProgressBar Maximum="100" Value="{Binding CompletionPercent}" Height="4" />
-                      <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="{Binding ToolchainLabel}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="1" Text="{Binding ProgressLabel}" FontSize="10" Foreground="{DynamicResource StudioAccentBrush}" />
+                  <Grid ColumnDefinitions="Auto,*" Margin="6,8" ColumnSpacing="11">
+                    <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource StudioRaisedBrush}"
+                            BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="1" VerticalAlignment="Top">
+                      <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="22" Height="22" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="4">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBlock Text="{Binding ToolchainLabel}" FontSize="10.5" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="1" Text="{Binding ProgressLabel}" FontSize="10.5" Foreground="{DynamicResource StudioAccentBrush}" />
                       </Grid>
+                      <ProgressBar Maximum="100" Value="{Binding CompletionPercent}" Height="3" Margin="0,1,0,0" />
                     </StackPanel>
                   </Grid>
                 </DataTemplate>
@@ -248,19 +251,24 @@
                         HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                         SizeChanged="ConstrainedScroll_SizeChanged">
             <StackPanel Spacing="12" MaxWidth="760" HorizontalAlignment="Stretch" Margin="22,18,28,42">
-              <StackPanel Orientation="Horizontal" Spacing="12">
-                <shared:LanguageIconView Name="TrackLanguageIcon" Width="44" Height="44" />
-                <StackPanel>
-                  <TextBlock Name="SelectedTrackTitle" FontSize="22" FontWeight="SemiBold" />
-                  <TextBlock Name="SelectedTrackStatus" Foreground="{DynamicResource StudioAccentBrush}" />
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                <Border Width="56" Height="56" CornerRadius="14" Background="{DynamicResource StudioRaisedBrush}"
+                        BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="1">
+                  <shared:LanguageIconView Name="TrackLanguageIcon" Width="36" Height="36" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Name="SelectedTrackTitle" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <Border Classes="status-badge" HorizontalAlignment="Left">
+                    <TextBlock Name="SelectedTrackStatus" />
+                  </Border>
                 </StackPanel>
-              </StackPanel>
-              <TextBlock Name="SelectedTrackSummary" TextWrapping="Wrap" FontSize="13.5"
+                <Button Name="EnrollButton" Grid.Column="2" Classes="accent" Click="Enroll_Click" VerticalAlignment="Center" Padding="16,0" />
+              </Grid>
+              <TextBlock Name="SelectedTrackSummary" TextWrapping="Wrap" FontSize="13.5" LineHeight="20"
                          Foreground="{DynamicResource StudioTextSecondaryBrush}" />
-              <ProgressBar Name="SelectedTrackProgress" Height="6" Maximum="100" />
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Name="SelectedTrackProgressText" Foreground="{DynamicResource StudioTextMutedBrush}" />
-                <Button Name="EnrollButton" Grid.Column="1" Classes="accent" Click="Enroll_Click" />
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <ProgressBar Name="SelectedTrackProgress" Height="6" Maximum="100" VerticalAlignment="Center" />
+                <TextBlock Name="SelectedTrackProgressText" Grid.Column="1" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
               </Grid>
               <Border Name="PrerequisitePanel" Classes="academy-prerequisite" IsVisible="False">
                 <Grid ColumnDefinitions="*,Auto" Margin="12">

@@ -2,6 +2,7 @@
     x:Class="SproutStudio.Views.About.AboutWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shared="using:SproutStudio.Views.Shared"
     Width="610"
     Height="500"
     MinWidth="560"
@@ -12,9 +13,9 @@
     Title="About Sprout Studio">
   <Grid RowDefinitions="Auto,*,Auto" Margin="24" RowSpacing="16">
     <StackPanel Orientation="Horizontal" Spacing="14">
-      <Border Width="54" Height="54" Background="{DynamicResource StudioSelectedBrush}" CornerRadius="12">
-        <Path Width="28" Height="34" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
-              Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
+      <Border Width="54" Height="54" Background="{DynamicResource StudioRaisedBrush}" BorderBrush="{DynamicResource StudioStrongBorderBrush}"
+              BorderThickness="1" CornerRadius="14">
+        <shared:SproutLogo Width="34" Height="34" />
       </Border>
       <StackPanel VerticalAlignment="Center" Spacing="3">
         <TextBlock Text="Sprout Studio" Classes="dialog-title" />

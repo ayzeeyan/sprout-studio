@@ -179,7 +179,7 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
     {
         LanguageDescriptor language = LanguageRegistry.ForAcademyTrack(progress.Track.Id);
         string toolchainLabel = progress.Track.RequiredToolchainId is null
-            ? "No external prerequisite"
+            ? "Sprout: Built in"
             : _toolchainState?.GetValueOrDefault(progress.Track.RequiredToolchainId) is { } toolchain
                 ? $"{toolchain.DisplayName}: {StatusLabel(toolchain.Status)}"
                 : $"Requires {progress.Track.RequiredToolchainId}";
@@ -440,6 +440,7 @@ public sealed partial class AcademyModeView : UserControl, IStudioModeView
         Button enroll = this.FindControl<Button>("EnrollButton")!;
         enroll.Content = track.Enrolled ? "Enrolled" : "Enroll";
         enroll.IsEnabled = !track.Enrolled;
+        enroll.IsVisible = !track.Enrolled;
         bool hasPrerequisite = track.Definition.RequiredToolchainId is not null;
         this.FindControl<Border>("PrerequisitePanel")!.IsVisible = hasPrerequisite;
         this.FindControl<TextBlock>("PrerequisiteText")!.Text = hasPrerequisite
@@ -837,7 +838,8 @@ public sealed record AcademyTaskRow(AcademyTask Task)
 {
     public string Title => Task.Title;
     public string Subtitle => $"{Task.TrackTitle} · {Task.ModuleTitle}";
-    public string TypeLabel => Task.Type.ToString();
+    // "CodingExercise" -> "Coding Exercise"
+    public string TypeLabel => System.Text.RegularExpressions.Regex.Replace(Task.Type.ToString(), "(?<=[a-z])(?=[A-Z])", " ");
     public string RequirementText => Task.CompletionRequirement;
     public string StatusGlyph => Task.Status switch
     {

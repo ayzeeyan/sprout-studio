@@ -275,14 +275,30 @@ public sealed partial class MainWindow : Window
         Width = Math.Min(Width, maximumWidth);
         Height = Math.Min(Height, maximumHeight);
         _viewModel.CompactToolbar = Width < 1600;
+        UpdateCommandCenterWidth(Width);
     }
 
     private void MainWindow_SizeChanged(object? sender, SizeChangedEventArgs args)
     {
+        UpdateCommandCenterWidth(args.NewSize.Width);
         _viewModel.CompactToolbar = args.NewSize.Width < 1600;
         if (RecalculateResponsivePaneVisibility(args.NewSize.Width))
         {
             ApplyPaneVisibility();
+        }
+    }
+
+    // The command center sits in the middle column of the title bar; shrink it on narrow windows
+    // so it never covers the product name and the file context on the left.
+    private void UpdateCommandCenterWidth(double windowWidth)
+    {
+        if (this.FindControl<Button>("CommandCenter") is { } commandCenter)
+        {
+            commandCenter.Width = Math.Clamp(windowWidth - 900, 220, 440);
+            if (this.FindControl<Border>("CommandCenterHint") is { } hint)
+            {
+                hint.IsVisible = commandCenter.Width >= 340;
+            }
         }
     }
 

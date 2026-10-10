@@ -1,0 +1,38 @@
+<UserControl
+    x:Class="SproutStudio.Views.Shared.SproutLogo"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Focusable="False"
+    IsHitTestVisible="False">
+  <!-- The Sprout mark: a seedling with two gradient leaves on a curved stem (64×64 design grid). -->
+  <Viewbox Stretch="Uniform">
+    <Canvas Width="64" Height="64">
+      <Path Data="M31,60 C31,50 30,42 33,31" StrokeThickness="4.2" StrokeLineCap="Round">
+        <Path.Stroke>
+          <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
+            <GradientStop Color="#1E8A4C" Offset="0" />
+            <GradientStop Color="#3CC37A" Offset="1" />
+          </LinearGradientBrush>
+        </Path.Stroke>
+      </Path>
+      <Path Data="M31.5,39 C30,28 20,20 6,21.5 C7,34 17.5,41.5 31.5,39 Z">
+        <Path.Fill>
+          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Color="#58D18A" Offset="0" />
+            <GradientStop Color="#1F9254" Offset="1" />
+          </LinearGradientBrush>
+        </Path.Fill>
+      </Path>
+      <Path Data="M33,31 C33.5,15 45,5 60,4 C60.5,20 50,32 33,31 Z">
+        <Path.Fill>
+          <LinearGradientBrush StartPoint="100%,0%" EndPoint="0%,100%">
+            <GradientStop Color="#9AF2BD" Offset="0" />
+            <GradientStop Color="#2DB368" Offset="1" />
+          </LinearGradientBrush>
+        </Path.Fill>
+      </Path>
+      <Path Data="M35,29 C41,21 47,14 55,9" Stroke="#D9FBE6" StrokeThickness="1.6" StrokeLineCap="Round" Opacity="0.75" />
+      <Path Data="M29.5,37 C24,32 17,27.5 11,25.5" Stroke="#C3F2D4" StrokeThickness="1.4" StrokeLineCap="Round" Opacity="0.6" />
+    </Canvas>
+  </Viewbox>
+</UserControl>

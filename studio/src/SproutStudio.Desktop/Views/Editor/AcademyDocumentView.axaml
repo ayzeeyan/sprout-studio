@@ -13,11 +13,11 @@
     <StackPanel Name="LessonContent" Margin="20,16,20,32" Spacing="16" MaxWidth="400" HorizontalAlignment="Stretch">
 
       <!-- Breadcrumbs: Java OOP › Module 2 › Encapsulation -->
-      <Grid ColumnDefinitions="*,Auto,*,Auto,*" ColumnSpacing="7" VerticalAlignment="Center">
-        <TextBlock Text="{Binding Track.Title}" Foreground="{DynamicResource StudioTextSecondaryBrush}" FontSize="12"
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="7" VerticalAlignment="Center">
+        <TextBlock Text="{Binding Track.Title}" Foreground="{DynamicResource StudioTextSecondaryBrush}" FontSize="12" MaxWidth="130"
                    TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Track.Title}" />
         <TextBlock Grid.Column="1" Text="›" Foreground="{DynamicResource StudioTextMutedBrush}" FontSize="12" />
-        <TextBlock Grid.Column="2" Text="{Binding ModuleTitle}" Foreground="{DynamicResource StudioTextSecondaryBrush}" FontSize="12"
+        <TextBlock Grid.Column="2" Text="{Binding ModuleTitle}" Foreground="{DynamicResource StudioTextSecondaryBrush}" FontSize="12" MaxWidth="110"
                    TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ModuleTitle}" />
         <TextBlock Grid.Column="3" Text="›" Foreground="{DynamicResource StudioTextMutedBrush}" FontSize="12" />
         <TextBlock Grid.Column="4" Text="{Binding Lesson.Title}" Foreground="{DynamicResource StudioTextPrimaryBrush}"

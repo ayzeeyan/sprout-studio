@@ -2,19 +2,26 @@
     x:Class="SproutStudio.Views.Shared.LanguageIconView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shared="using:SproutStudio.Views.Shared"
     Width="28"
     Height="28"
     Focusable="False">
-  <Border Name="IconSurface" CornerRadius="6" Padding="3">
-    <Grid>
-      <Path Name="IconPath"
-            Stretch="Uniform"
-            IsVisible="False" />
-      <TextBlock Name="IconGlyph"
-                 HorizontalAlignment="Center"
-                 VerticalAlignment="Center"
-                 FontFamily="Segoe UI Variable Text, Segoe UI"
-                 FontWeight="SemiBold" />
-    </Grid>
-  </Border>
+  <Grid>
+    <!-- Brand logo artwork (bundled PNG) or the vector Sprout mark. -->
+    <Image Name="IconImage" Stretch="Uniform" IsVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality" />
+    <shared:SproutLogo Name="SproutMark" IsVisible="False" />
+    <!-- Fallback tile for languages without logo artwork. -->
+    <Border Name="IconSurface" CornerRadius="6" Padding="3">
+      <Grid>
+        <Path Name="IconPath"
+              Stretch="Uniform"
+              IsVisible="False" />
+        <TextBlock Name="IconGlyph"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   FontFamily="Segoe UI Variable Text, Segoe UI"
+                   FontWeight="SemiBold" />
+      </Grid>
+    </Border>
+  </Grid>
 </UserControl>

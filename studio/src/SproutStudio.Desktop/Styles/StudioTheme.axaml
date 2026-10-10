@@ -853,8 +853,14 @@
   </Style>
   <Style Selector="ProgressBar">
     <Setter Property="Foreground" Value="{DynamicResource StudioAccentBrush}" />
-    <Setter Property="Background" Value="{DynamicResource StudioControlBrush}" />
+    <Setter Property="Background" Value="#29332F" />
     <Setter Property="CornerRadius" Value="3" />
+  </Style>
+  <!-- Fluent gives horizontal progress bars MinWidth=200, which made bars placed in narrow
+       columns overflow into neighbouring text and buttons. Let layout decide the width. -->
+  <Style Selector="ProgressBar:horizontal">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
   </Style>
   <Style Selector="Button.update-pill">
     <Setter Property="Background" Value="{DynamicResource StudioAccentSoftBrush}" />

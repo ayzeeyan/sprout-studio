@@ -2,6 +2,7 @@
     x:Class="SproutStudio.Views.Shell.StatusBarView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shared="using:SproutStudio.Views.Shared"
     xmlns:vm="using:SproutStudio.ViewModels"
     x:DataType="vm:MainWindowViewModel">
   <Border Classes="status-surface">
@@ -9,8 +10,7 @@
       <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
         <Border Classes="status-chip" Margin="0,0,6,0" ToolTip.Tip="{Binding EngineSummary}">
           <StackPanel Orientation="Horizontal" Spacing="6">
-            <Path Width="8" Height="10" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
-                  Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
+            <shared:SproutLogo Width="11" Height="11" />
             <TextBlock Text="{Binding EngineArchitecture}" />
           </StackPanel>
         </Border>

@@ -51,14 +51,14 @@
             </Grid>
           </Grid>
         </Border>
-        <Grid Grid.Row="2" RowDefinitions="32,Auto" ColumnDefinitions="145,*,190,Auto,Auto" ColumnSpacing="8" RowSpacing="7">
-          <ComboBox Name="KindBox" SelectedIndex="1" HorizontalContentAlignment="Stretch">
+        <Grid Grid.Row="2" RowDefinitions="32,Auto" ColumnDefinitions="110,*,150,Auto,Auto" ColumnSpacing="8" RowSpacing="7">
+          <ComboBox Name="KindBox" SelectedIndex="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
             <ComboBoxItem Content="Sprout" />
             <ComboBoxItem Content="Python" />
           </ComboBox>
           <TextBox Name="NameBox" Grid.Column="1" PlaceholderText="Package name" />
           <TextBox Name="RequirementBox" Grid.Column="2" PlaceholderText="Version, e.g. &gt;=2.0" />
-          <Button Name="SaveButton" Grid.Column="3" Classes="accent" Content="Add or update" Click="Save_Click" />
+          <Button Name="SaveButton" Grid.Column="3" Classes="accent" Content="Add / Update" Click="Save_Click" />
           <Button Name="RemoveButton" Grid.Column="4" Content="Remove" Click="Remove_Click" />
           <TextBlock Name="StatusText" Grid.Row="1" Grid.ColumnSpan="5" Foreground="{DynamicResource StudioTextSecondaryBrush}" TextWrapping="Wrap" />
         </Grid>

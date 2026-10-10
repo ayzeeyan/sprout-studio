@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <Content Include="..\..\..\docs\*.md" Link="Content\Docs\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <AvaloniaResource Include="Assets\**\*.png" />
     <EmbeddedResource Include="Content\Sprout.xshd" LogicalName="SproutStudio.Content.Sprout.xshd" />
   </ItemGroup>
 

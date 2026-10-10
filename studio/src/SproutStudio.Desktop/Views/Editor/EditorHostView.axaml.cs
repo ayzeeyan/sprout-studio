@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -191,6 +192,31 @@ public sealed partial class EditorHostView : UserControl
         }
         _editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
         _companionEditor?.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+    }
+
+    // Lay the quick-action cards out on star columns (three per row, or two on narrow editors)
+    // so they always share the available width instead of overflowing the welcome page.
+    private void WelcomeScroll_SizeChanged(object? sender, SizeChangedEventArgs args)
+    {
+        if (this.FindControl<Grid>("WelcomeCards") is not { } cards)
+        {
+            return;
+        }
+        int columns = args.NewSize.Width - 56 >= 690 ? 3 : 2;
+        if (cards.ColumnDefinitions.Count != columns)
+        {
+            cards.ColumnDefinitions = new ColumnDefinitions(string.Join(',', Enumerable.Repeat("*", columns)));
+        }
+        int rows = (cards.Children.Count + columns - 1) / columns;
+        if (cards.RowDefinitions.Count != rows)
+        {
+            cards.RowDefinitions = new RowDefinitions(string.Join(',', Enumerable.Repeat("Auto", rows)));
+        }
+        for (int index = 0; index < cards.Children.Count; index++)
+        {
+            Grid.SetColumn(cards.Children[index], index % columns);
+            Grid.SetRow(cards.Children[index], index / columns);
+        }
     }
 
     private void Editor_PointerWheelChanged(object? sender, PointerWheelEventArgs args)

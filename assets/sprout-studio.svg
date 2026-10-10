@@ -5,12 +5,26 @@
       <stop offset="0" stop-color="#202621" />
       <stop offset="1" stop-color="#101411" />
     </linearGradient>
-    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#67df94" />
-      <stop offset="1" stop-color="#34b96b" />
+    <linearGradient id="stem" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#1E8A4C" />
+      <stop offset="1" stop-color="#3CC37A" />
+    </linearGradient>
+    <linearGradient id="leftLeaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#58D18A" />
+      <stop offset="1" stop-color="#1F9254" />
+    </linearGradient>
+    <linearGradient id="rightLeaf" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9AF2BD" />
+      <stop offset="1" stop-color="#2DB368" />
     </linearGradient>
   </defs>
   <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#surface)" stroke="#3b463e" stroke-width="8" />
-  <path d="M190 49C112 54 64 95 64 154c0 25 10 42 29 53 2-48 24-87 67-118-31 31-50 69-57 116 57-5 91-44 91-99 0-22-2-41-4-57Z" fill="url(#leaf)" />
-  <path d="M73 213c16-54 45-99 91-132" fill="none" stroke="#9cf0b9" stroke-width="9" stroke-linecap="round" />
+  <!-- Seedling mark on a 64x64 grid, matching Views/Shared/SproutLogo.axaml. -->
+  <g transform="translate(26 26) scale(3.2)">
+    <path d="M31,60 C31,50 30,42 33,31" fill="none" stroke="url(#stem)" stroke-width="4.2" stroke-linecap="round" />
+    <path d="M31.5,39 C30,28 20,20 6,21.5 C7,34 17.5,41.5 31.5,39 Z" fill="url(#leftLeaf)" />
+    <path d="M33,31 C33.5,15 45,5 60,4 C60.5,20 50,32 33,31 Z" fill="url(#rightLeaf)" />
+    <path d="M35,29 C41,21 47,14 55,9" fill="none" stroke="#D9FBE6" stroke-width="1.6" stroke-linecap="round" opacity="0.75" />
+    <path d="M29.5,37 C24,32 17,27.5 11,25.5" fill="none" stroke="#C3F2D4" stroke-width="1.4" stroke-linecap="round" opacity="0.6" />
+  </g>
 </svg>
