@@ -57,18 +57,22 @@ public sealed partial class SourceControlModeView : UserControl, IStudioModeView
 
     private async Task LoadStateCoreAsync(string root, CancellationToken cancellationToken = default)
     {
-        _state = await _git.GetStatusAsync(root, cancellationToken);
+        // RenderState clears _state for non-repositories, so keep a local reference.
+        GitRepositoryState state = await _git.GetStatusAsync(root, cancellationToken);
+        _state = state;
         ResetDiff();
-        RenderState(_state);
+        RenderState(state);
         await _workspace!.RefreshSourceControlStateAsync(cancellationToken);
-        ShowStatus(_state.Message);
+        ShowStatus(state.IsRepository ? state.Message : string.Empty);
     }
 
     private void RenderState(GitRepositoryState state)
     {
         if (!state.IsRepository)
         {
-            RenderNoRepository(state.Message);
+            RenderNoRepository(state.Message.Contains("not a git repository", StringComparison.OrdinalIgnoreCase)
+                ? "This project is not a Git repository yet. Run git init in the project folder to start tracking changes."
+                : state.Message);
             return;
         }
         this.FindControl<TextBlock>("RepositoryText")!.Text = state.RepositoryRoot;

@@ -34,6 +34,8 @@ public sealed partial class EditorHostView : UserControl
     private FoldingManager? _foldingManager;
     private CompletionWindow? _completionWindow;
     private readonly DiagnosticBackgroundRenderer _diagnosticRenderer = new();
+    private readonly IndentGuideRenderer _indentGuides = new();
+    private readonly IndentGuideRenderer _companionIndentGuides = new();
     private CancellationTokenSource? _hoverCancellation;
     private bool _synchronizingText;
     private bool _completionRequested;
@@ -58,6 +60,9 @@ public sealed partial class EditorHostView : UserControl
             _editor.TextArea.TextView.PointerHover += TextView_PointerHover;
             _editor.TextArea.TextView.PointerHoverStopped += TextView_PointerHoverStopped;
             _editor.TextArea.TextView.BackgroundRenderers.Add(_diagnosticRenderer);
+            _editor.TextArea.TextView.BackgroundRenderers.Add(_indentGuides);
+            _editor.AddHandler(PointerWheelChangedEvent, Editor_PointerWheelChanged, RoutingStrategies.Tunnel);
+            _editor.AddHandler(KeyDownEvent, LineCommand_KeyDown, RoutingStrategies.Tunnel);
             _foldingManager = FoldingManager.Install(_editor.TextArea);
             _editor.TextArea.Options.ConvertTabsToSpaces = true;
             _editor.TextArea.Options.IndentationSize = 4;
@@ -65,8 +70,6 @@ public sealed partial class EditorHostView : UserControl
             _editor.TextArea.Options.ShowTabs = false;
             _editor.TextArea.Options.ShowSpaces = false;
             _editor.TextArea.TextView.Margin = new Thickness(8, 0, 0, 0);
-            _editor.TextArea.TextView.CurrentLineBackground = new SolidColorBrush(
-                Color.FromArgb(38, 255, 255, 255));
         }
 
         _companionEditor = this.FindControl<TextEditor>("AcademyCompanionEditor");
@@ -77,8 +80,9 @@ public sealed partial class EditorHostView : UserControl
             _companionEditor.TextArea.Options.IndentationSize = 4;
             _companionEditor.TextArea.Options.EnableRectangularSelection = true;
             _companionEditor.TextArea.TextView.Margin = new Thickness(8, 0, 0, 0);
-            _companionEditor.TextArea.TextView.CurrentLineBackground = new SolidColorBrush(
-                Color.FromArgb(38, 255, 255, 255));
+            _companionEditor.TextArea.TextView.BackgroundRenderers.Add(_companionIndentGuides);
+            _companionEditor.AddHandler(PointerWheelChangedEvent, Editor_PointerWheelChanged, RoutingStrategies.Tunnel);
+            _companionEditor.AddHandler(KeyDownEvent, LineCommand_KeyDown, RoutingStrategies.Tunnel);
         }
 
         AttachViewModel(DataContext as MainWindowViewModel);
@@ -95,6 +99,9 @@ public sealed partial class EditorHostView : UserControl
             _editor.TextArea.TextView.PointerHover -= TextView_PointerHover;
             _editor.TextArea.TextView.PointerHoverStopped -= TextView_PointerHoverStopped;
             _editor.TextArea.TextView.BackgroundRenderers.Remove(_diagnosticRenderer);
+            _editor.TextArea.TextView.BackgroundRenderers.Remove(_indentGuides);
+            _editor.RemoveHandler(PointerWheelChangedEvent, Editor_PointerWheelChanged);
+            _editor.RemoveHandler(KeyDownEvent, LineCommand_KeyDown);
             if (_foldingManager is not null)
             {
                 FoldingManager.Uninstall(_foldingManager);
@@ -124,6 +131,7 @@ public sealed partial class EditorHostView : UserControl
             _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
             _viewModel.DiagnosticsChanged -= ViewModel_DiagnosticsChanged;
             _viewModel.LanguageAnalysisUpdated -= ViewModel_LanguageAnalysisUpdated;
+            _viewModel.GoToLineRequested -= ViewModel_GoToLineRequested;
         }
         _viewModel = viewModel;
         if (_viewModel is not null)
@@ -132,6 +140,7 @@ public sealed partial class EditorHostView : UserControl
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             _viewModel.DiagnosticsChanged += ViewModel_DiagnosticsChanged;
             _viewModel.LanguageAnalysisUpdated += ViewModel_LanguageAnalysisUpdated;
+            _viewModel.GoToLineRequested += ViewModel_GoToLineRequested;
         }
         SynchronizeSelectedDocument();
     }
@@ -143,7 +152,9 @@ public sealed partial class EditorHostView : UserControl
             SynchronizeSelectedDocument();
         }
         else if (args.PropertyName is nameof(MainWindowViewModel.EditorWordWrap)
-            or nameof(MainWindowViewModel.ShowEditorWhitespace))
+            or nameof(MainWindowViewModel.ShowEditorWhitespace)
+            or nameof(MainWindowViewModel.EditorHighlightCurrentLine)
+            or nameof(MainWindowViewModel.EditorShowIndentGuides))
         {
             ApplyEditorSettings();
         }
@@ -158,6 +169,118 @@ public sealed partial class EditorHostView : UserControl
         _editor.WordWrap = _viewModel.EditorWordWrap;
         _editor.TextArea.Options.ShowSpaces = _viewModel.ShowEditorWhitespace;
         _editor.TextArea.Options.ShowTabs = _viewModel.ShowEditorWhitespace;
+
+        IBrush currentLine = this.TryFindResource("StudioCurrentLineBrush", ActualThemeVariant, out object? brush)
+            && brush is IBrush resolved
+                ? resolved
+                : new SolidColorBrush(Color.FromArgb(14, 255, 255, 255));
+        IBrush guide = this.TryFindResource("StudioIndentGuideBrush", ActualThemeVariant, out object? guideBrush)
+            && guideBrush is IBrush guideResolved
+                ? guideResolved
+                : new SolidColorBrush(Color.FromArgb(28, 255, 255, 255));
+        foreach (TextEditor editor in new[] { _editor, _companionEditor }.OfType<TextEditor>())
+        {
+            editor.TextArea.Options.HighlightCurrentLine = _viewModel.EditorHighlightCurrentLine;
+            editor.TextArea.TextView.CurrentLineBackground = currentLine;
+            editor.TextArea.TextView.CurrentLineBorder = new Pen(Brushes.Transparent, 0);
+        }
+        foreach (IndentGuideRenderer renderer in new[] { _indentGuides, _companionIndentGuides })
+        {
+            renderer.IsEnabled = _viewModel.EditorShowIndentGuides;
+            renderer.Pen = new Pen(guide, 1);
+        }
+        _editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+        _companionEditor?.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+    }
+
+    private void Editor_PointerWheelChanged(object? sender, PointerWheelEventArgs args)
+    {
+        if (_viewModel is null || !args.KeyModifiers.HasFlag(KeyModifiers.Control) || args.Delta.Y == 0)
+        {
+            return;
+        }
+        _viewModel.SetEditorFontSize(_viewModel.EditorFontSize + Math.Sign(args.Delta.Y));
+        args.Handled = true;
+    }
+
+    private void ViewModel_GoToLineRequested(object? sender, EventArgs args)
+    {
+        if (_editor is null || _viewModel?.SelectedDocument?.IsSource != true)
+        {
+            return;
+        }
+        HideFind();
+        Border panel = this.FindControl<Border>("GoToLinePanel")!;
+        TextBox input = this.FindControl<TextBox>("GoToLineTextBox")!;
+        this.FindControl<TextBlock>("GoToLineHint")!.Text =
+            $"Current line {_editor.TextArea.Caret.Line} of {_editor.Document.LineCount}. Type a line, or line:column.";
+        input.Text = string.Empty;
+        panel.IsVisible = true;
+        input.Focus();
+    }
+
+    private void GoToLineTextBox_KeyDown(object? sender, KeyEventArgs args)
+    {
+        if (args.Key == Key.Escape)
+        {
+            HideGoToLine();
+            _editor?.Focus();
+            args.Handled = true;
+        }
+        else if (args.Key == Key.Enter && _editor is not null && sender is TextBox input)
+        {
+            string[] parts = (input.Text ?? string.Empty).Split(':', 2, StringSplitOptions.TrimEntries);
+            if (int.TryParse(parts[0], out int line))
+            {
+                int column = parts.Length > 1 && int.TryParse(parts[1], out int parsedColumn) ? parsedColumn : 1;
+                HideGoToLine();
+                EditorLineCommands.GoToLine(_editor, line, column);
+            }
+            args.Handled = true;
+        }
+    }
+
+    private void GoToLineTextBox_LostFocus(object? sender, RoutedEventArgs args) => HideGoToLine();
+
+    private void HideGoToLine()
+    {
+        if (this.FindControl<Border>("GoToLinePanel") is { } panel)
+        {
+            panel.IsVisible = false;
+        }
+    }
+
+    // Runs in the tunnel phase: AvaloniaEdit's TextArea binds Ctrl+D to DeleteLine and would
+    // otherwise consume it before the editor's bubbling KeyDown handler sees the key.
+    private void LineCommand_KeyDown(object? sender, KeyEventArgs args)
+    {
+        if (sender is TextEditor editor && HandleLineCommand(editor, args))
+        {
+            args.Handled = true;
+        }
+    }
+
+    private bool HandleLineCommand(TextEditor editor, KeyEventArgs args)
+    {
+        bool control = args.KeyModifiers.HasFlag(KeyModifiers.Control);
+        bool shift = args.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        bool alt = args.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        if (control && !shift && args.Key is Key.Oem2 or Key.Divide)
+        {
+            DocumentLanguage language = _viewModel?.SelectedDocument?.Model.Language.Id ?? DocumentLanguage.Sprout;
+            return EditorLineCommands.ToggleComment(editor, language);
+        }
+        if ((control && !shift && args.Key == Key.D) || (shift && alt && args.Key == Key.Down))
+        {
+            EditorLineCommands.DuplicateLines(editor);
+            return true;
+        }
+        if (alt && !shift && !control && args.Key is Key.Up or Key.Down)
+        {
+            EditorLineCommands.MoveLines(editor, args.Key == Key.Up ? -1 : 1);
+            return true;
+        }
+        return false;
     }
 
     private void SynchronizeSelectedDocument()

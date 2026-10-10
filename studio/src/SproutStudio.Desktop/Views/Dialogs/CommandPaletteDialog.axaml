@@ -4,26 +4,42 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:model="using:SproutStudio.Models"
     Width="650"
-    Height="440"
+    Height="480"
     CanResize="False"
     WindowStartupLocation="CenterOwner"
     ShowInTaskbar="False"
     WindowDecorations="None"
     Title="Command Palette">
   <Border Classes="palette-surface">
-    <Grid RowDefinitions="52,*">
-      <TextBox Name="QueryBox" Margin="10" FontSize="15" PlaceholderText=">  Type a command" TextChanged="QueryBox_TextChanged" KeyDown="QueryBox_KeyDown" />
-      <ListBox Name="CommandList" Grid.Row="1" DoubleTapped="CommandList_DoubleTapped">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <Grid ColumnDefinitions="Auto,*" Margin="14,12,14,8" ColumnSpacing="10">
+        <TextBlock Classes="icon accent" Text="&#xE721;" FontSize="16" />
+        <TextBox Grid.Column="1" Name="QueryBox" FontSize="14" PlaceholderText="Type a command, view, or setting"
+                 TextChanged="QueryBox_TextChanged" KeyDown="QueryBox_KeyDown" />
+      </Grid>
+      <ListBox Name="CommandList" Grid.Row="1" Margin="4,0,4,4" DoubleTapped="CommandList_DoubleTapped">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="model:CommandPaletteItem">
-            <Grid ColumnDefinitions="90,*,Auto" Margin="10,7">
-              <TextBlock Text="{Binding Category}" Foreground="{DynamicResource StudioAccentBrush}" FontSize="11" />
-              <TextBlock Grid.Column="1" Text="{Binding Label}" />
-              <TextBlock Grid.Column="2" Text="{Binding Shortcut}" Foreground="{DynamicResource StudioTextMutedBrush}" />
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="8,5">
+              <Border Background="{DynamicResource StudioAccentSofterBrush}" CornerRadius="5" Padding="7,1" MinWidth="78">
+                <TextBlock Text="{Binding Category}" Foreground="{DynamicResource StudioAccentBrush}" FontSize="10.5"
+                           FontWeight="SemiBold" HorizontalAlignment="Center" />
+              </Border>
+              <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              <Border Grid.Column="2" Classes="kbd" IsVisible="{Binding Shortcut, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Text="{Binding Shortcut}" />
+              </Border>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
+      <Border Grid.Row="2" BorderBrush="{DynamicResource StudioBorderBrush}" BorderThickness="0,1,0,0" Padding="14,7">
+        <StackPanel Orientation="Horizontal" Spacing="14">
+          <StackPanel Orientation="Horizontal" Spacing="5"><Border Classes="kbd"><TextBlock Text="↑↓" /></Border><TextBlock Text="navigate" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" /></StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="5"><Border Classes="kbd"><TextBlock Text="Enter" /></Border><TextBlock Text="run" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" /></StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="5"><Border Classes="kbd"><TextBlock Text="Esc" /></Border><TextBlock Text="close" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" /></StackPanel>
+        </StackPanel>
+      </Border>
     </Grid>
   </Border>
 </Window>

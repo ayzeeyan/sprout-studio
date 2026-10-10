@@ -35,6 +35,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Editor workspace supports tabs and additional languages", EditorWorkspaceSupportsAdditionalLanguages),
     ("Editor coordinates normalize line endings", EditorCoordinatesNormalizeLineEndings),
     ("Editor breadcrumbs stay project relative", EditorBreadcrumbsStayProjectRelative),
+    ("Editor toggles aligned line comments", EditorTogglesAlignedLineComments),
     ("Language registry supplies shared product identities", LanguageRegistrySuppliesSharedIdentities),
     ("Project search filters source and ignores generated output", ProjectSearchFiltersAndIgnoresGeneratedOutput),
     ("Git status parser preserves branch and file state", GitStatusParserPreservesState),
@@ -344,6 +345,27 @@ static Task EditorCoordinatesNormalizeLineEndings()
         EditorTextCoordinates.NormalizedIndexToEditorIndex(EditorText, thirdNormalizedIndex)
             == thirdEditorIndex,
         "normalized source span did not map back to the editor");
+    return Task.CompletedTask;
+}
+
+static Task EditorTogglesAlignedLineComments()
+{
+    Assert(EditorLineEditing.LineCommentPrefix(DocumentLanguage.Sprout) == "#", "Sprout comment prefix changed");
+    Assert(EditorLineEditing.LineCommentPrefix(DocumentLanguage.Rust) == "//", "Rust comment prefix changed");
+    Assert(EditorLineEditing.LineCommentPrefix(DocumentLanguage.Json) is null, "JSON unexpectedly has comments");
+
+    string[] source = ["    has x = 1", "", "        print(x)"];
+    IReadOnlyList<string> commented = EditorLineEditing.ToggleLineComment(source, "#");
+    Assert(
+        commented.SequenceEqual(["    # has x = 1", "", "    #     print(x)"]),
+        "comments were not aligned at the smallest indentation");
+    IReadOnlyList<string> restored = EditorLineEditing.ToggleLineComment(commented, "#");
+    Assert(restored.SequenceEqual(source), "toggling twice did not restore the original lines");
+
+    IReadOnlyList<string> mixed = EditorLineEditing.ToggleLineComment(["# done", "todo"], "#");
+    Assert(mixed.SequenceEqual(["# # done", "# todo"]), "a partially commented block was not fully commented");
+    IReadOnlyList<string> blank = EditorLineEditing.ToggleLineComment(["", "  "], "//");
+    Assert(blank.SequenceEqual(["", "  "]), "blank lines were modified");
     return Task.CompletedTask;
 }
 

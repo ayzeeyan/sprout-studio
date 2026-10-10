@@ -21,11 +21,12 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate DataType="vm:DocumentTabViewModel">
-              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7" MinWidth="128" MaxWidth="240">
-                <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="18" Height="18" />
-                <TextBlock Grid.Column="1" Text="{Binding TabTitle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Classes="tab-close" Command="{Binding CloseCommand}" ToolTip.Tip="Close (Ctrl+W)">
-                  <TextBlock Classes="icon small" Text="&#xE711;" />
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="7" MinWidth="120" MaxWidth="240">
+                <shared:LanguageIconView LanguageKey="{Binding LanguageKey}" Width="16" Height="16" />
+                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <Ellipse Grid.Column="2" Classes="dirty-dot" IsVisible="{Binding IsDirty}" ToolTip.Tip="Unsaved changes" />
+                <Button Grid.Column="3" Classes="tab-close" Command="{Binding CloseCommand}" ToolTip.Tip="Close (Ctrl+W)">
+                  <TextBlock Classes="icon small" Text="&#xE711;" FontSize="10" />
                 </Button>
               </Grid>
             </DataTemplate>
@@ -33,7 +34,7 @@
         </ListBox>
       </Border>
 
-      <Border Grid.Row="1" Classes="breadcrumb-surface" Height="28" IsVisible="{Binding SelectedDocument.IsSource}">
+      <Border Grid.Row="1" Classes="breadcrumb-surface" Height="26" IsVisible="{Binding SelectedDocument.IsSource}">
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="7" Margin="12,0" VerticalAlignment="Center">
           <shared:LanguageIconView LanguageKey="{Binding SelectedDocument.LanguageKey}" Width="16" Height="16" />
           <TextBlock Grid.Column="1" Text="{Binding SelectedDocument.Breadcrumb}" Foreground="{DynamicResource StudioTextSecondaryBrush}"
@@ -122,6 +123,18 @@
             </StackPanel>
           </Border>
 
+          <Border Name="GoToLinePanel" Classes="palette-surface" IsVisible="False" HorizontalAlignment="Center"
+                  VerticalAlignment="Top" Margin="0,10,0,0" Width="380" Padding="10">
+            <StackPanel Spacing="7">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <TextBlock Classes="icon accent" Text="&#xE8AD;" />
+                <TextBox Grid.Column="1" Name="GoToLineTextBox" PlaceholderText="Go to line (e.g. 42 or 42:7)"
+                         KeyDown="GoToLineTextBox_KeyDown" LostFocus="GoToLineTextBox_LostFocus" />
+              </Grid>
+              <TextBlock Name="GoToLineHint" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+            </StackPanel>
+          </Border>
+
           <Border Name="HoverPanel" Classes="editor-hover" IsVisible="False" IsHitTestVisible="False"
                   HorizontalAlignment="Left" VerticalAlignment="Top" MaxWidth="420">
             <StackPanel Spacing="4">
@@ -133,72 +146,124 @@
       </Grid>
     </Grid>
 
-    <ScrollViewer IsVisible="{Binding ShowWelcome}" Margin="30"
-                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="560">
-        <Path Width="42" Height="48" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
-              Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
-        <TextBlock Text="Start growing something" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,6,0,0" />
-        <TextBlock Text="Create a Sprout project or open an existing one. The editor, diagnostics, runtime, and debugger will appear here."
-                   TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource StudioTextSecondaryBrush}" />
-        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,10,0,0">
-          <Button Classes="accent" Command="{Binding NewProjectCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon small" Text="&#xE8F1;" /><TextBlock Text="New Project" FontWeight="SemiBold" /></StackPanel>
-          </Button>
-          <Button Command="{Binding OpenProjectCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon small" Text="&#xE8E5;" /><TextBlock Text="Open Project" /></StackPanel>
-          </Button>
-          <Button Command="{Binding NewDocumentCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon small" Text="&#xE710;" /><TextBlock Text="New File" /></StackPanel>
-          </Button>
-        </StackPanel>
-        <Border IsVisible="{Binding HasRecentProjects}" Classes="dialog-card" Width="500" MaxWidth="500" Margin="0,6,0,0">
-          <Grid RowDefinitions="34,*" Margin="10,4,10,8">
-            <TextBlock Text="RECENT PROJECTS" Classes="panel-header" />
-            <ScrollViewer Grid.Row="1" MaxHeight="166" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-              <ItemsControl ItemsSource="{Binding RecentProjects}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate DataType="vm:RecentProjectViewModel">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="0,2" Opacity="{Binding RowOpacity}">
-                      <Button Classes="recent-project" Command="{Binding $parent[UserControl].DataContext.OpenRecentProjectCommand}"
-                              CommandParameter="{Binding}" ToolTip.Tip="{Binding ToolTip}">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
-                          <TextBlock Classes="icon accent" Text="&#xE8B7;" />
-                          <StackPanel Grid.Column="1">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding RootPath}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
-                          </StackPanel>
-                          <TextBlock Grid.Column="2" Text="{Binding Status}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+    <Grid IsVisible="{Binding ShowWelcome}" ClipToBounds="True">
+      <!-- Soft accent glow behind the hero. -->
+      <Ellipse Width="760" Height="460" Fill="{DynamicResource StudioAccentGlowBrush}" Opacity="0.55"
+               HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-250,0,0" IsHitTestVisible="False" />
+      <ScrollViewer Padding="28,0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0" MaxWidth="760" Margin="0,36">
+          <!-- Hero -->
+          <Border Width="64" Height="64" CornerRadius="18" HorizontalAlignment="Center"
+                  Background="{DynamicResource StudioAccentGradientBrush}" BoxShadow="0 12 36 0 #66000000">
+            <Path Width="30" Height="36" Stretch="Uniform" Fill="{DynamicResource StudioAccentForegroundBrush}"
+                  Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
+          </Border>
+          <TextBlock Classes="eyebrow" Text="SPROUT STUDIO · WINDOWS X64" HorizontalAlignment="Center" Margin="0,20,0,6" />
+          <TextBlock Classes="hero-title" Text="Start growing something" HorizontalAlignment="Center" />
+          <TextBlock Text="Create a project, open an existing one, or learn the language in Academy. Diagnostics, a recorded debugger, and the Sprout runtime are built in."
+                     TextWrapping="Wrap" TextAlignment="Center" MaxWidth="520" Margin="0,8,0,0" LineHeight="19"
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+
+          <!-- Quick actions -->
+          <UniformGrid Columns="3" Margin="0,26,0,0">
+            <Button Classes="quick-card primary" Command="{Binding NewProjectCommand}">
+              <StackPanel Spacing="8">
+                <Border Classes="card-icon" HorizontalAlignment="Left"><TextBlock Classes="icon" Text="&#xE8F4;" /></Border>
+                <TextBlock Classes="card-title" Text="New project" />
+                <TextBlock Classes="card-text" Text="Guided, Structured, or Advanced templates." />
+              </StackPanel>
+            </Button>
+            <Button Classes="quick-card" Command="{Binding OpenProjectCommand}">
+              <StackPanel Spacing="8">
+                <Border Classes="card-icon" HorizontalAlignment="Left"><TextBlock Classes="icon" Text="&#xE838;" /></Border>
+                <TextBlock Classes="card-title" Text="Open project" />
+                <TextBlock Classes="card-text" Text="Pick a folder containing sprout.toml." />
+              </StackPanel>
+            </Button>
+            <Button Classes="quick-card" Command="{Binding NewDocumentCommand}">
+              <StackPanel Spacing="8">
+                <Border Classes="card-icon" HorizontalAlignment="Left"><TextBlock Classes="icon" Text="&#xE710;" /></Border>
+                <TextBlock Classes="card-title" Text="Scratch file" />
+                <TextBlock Classes="card-text" Text="Try an idea in a new untitled file. Ctrl+N" />
+              </StackPanel>
+            </Button>
+            <Button Classes="quick-card" Command="{Binding ShowAcademyCommand}">
+              <StackPanel Spacing="8">
+                <Border Classes="card-icon" HorizontalAlignment="Left"><TextBlock Classes="icon" Text="&#xE7BE;" /></Border>
+                <TextBlock Classes="card-title" Text="Learn in Academy" />
+                <TextBlock Classes="card-text" Text="Lessons, challenges, and progress tracking." />
+              </StackPanel>
+            </Button>
+            <Button Classes="quick-card" Command="{Binding ShowDocumentationCommand}">
+              <StackPanel Spacing="8">
+                <Border Classes="card-icon" HorizontalAlignment="Left"><TextBlock Classes="icon" Text="&#xE82D;" /></Border>
+                <TextBlock Classes="card-title" Text="Documentation" />
+                <TextBlock Classes="card-text" Text="Grammar, stdlib, and Studio guides offline. F1" />
+              </StackPanel>
+            </Button>
+            <Button Classes="quick-card" Command="{Binding OpenReplCommand}">
+              <StackPanel Spacing="8">
+                <Border Classes="card-icon" HorizontalAlignment="Left"><TextBlock Classes="icon" Text="&#xE756;" /></Border>
+                <TextBlock Classes="card-title" Text="Sprout REPL" />
+                <TextBlock Classes="card-text" Text="Evaluate expressions interactively." />
+              </StackPanel>
+            </Button>
+          </UniformGrid>
+
+          <!-- Recent projects + shortcuts -->
+          <Grid ColumnDefinitions="3*,2*" ColumnSpacing="10" Margin="5,16,5,0">
+            <Border Classes="dialog-card" Padding="12,10">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="RECENT PROJECTS" Classes="panel-header" />
+                  <Button Grid.Column="1" Classes="hyperlink" Command="{Binding OpenProjectCommand}" FontSize="11" Content="Browse…" />
+                </Grid>
+                <TextBlock IsVisible="{Binding !HasRecentProjects}" Text="Projects you open will appear here for quick access."
+                           TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" Margin="0,8" />
+                <ScrollViewer IsVisible="{Binding HasRecentProjects}" MaxHeight="190"
+                              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl ItemsSource="{Binding RecentProjects}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="vm:RecentProjectViewModel">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4" Margin="0,1" Opacity="{Binding RowOpacity}">
+                          <Button Classes="recent-project" Command="{Binding $parent[UserControl].DataContext.OpenRecentProjectCommand}"
+                                  CommandParameter="{Binding}" ToolTip.Tip="{Binding ToolTip}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                              <Border Classes="card-icon" Width="30" Height="30" CornerRadius="8">
+                                <TextBlock Classes="icon" Text="&#xE8B7;" FontSize="13" />
+                              </Border>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding RootPath}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="PathSegmentEllipsis" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="2" Text="{Binding Status}" FontSize="10" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+                            </Grid>
+                          </Button>
+                          <Button Grid.Column="1" Classes="icon-button small" Command="{Binding $parent[UserControl].DataContext.RemoveRecentProjectCommand}"
+                                  CommandParameter="{Binding}" ToolTip.Tip="Remove from recent projects">
+                            <TextBlock Classes="icon small" Text="&#xE711;" FontSize="9" />
+                          </Button>
                         </Grid>
-                      </Button>
-                      <Button Grid.Column="1" Classes="icon-button" Command="{Binding $parent[UserControl].DataContext.RemoveRecentProjectCommand}"
-                              CommandParameter="{Binding}" ToolTip.Tip="Remove from recent projects">
-                        <TextBlock Classes="icon small" Text="&#xE711;" />
-                      </Button>
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Classes="dialog-card" Padding="12,10">
+              <StackPanel Spacing="8">
+                <TextBlock Text="KEYBOARD" Classes="panel-header" Margin="0,0,0,4" />
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Command palette" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" /><Border Grid.Column="1" Classes="kbd"><TextBlock Text="Ctrl+Shift+P" /></Border></Grid>
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Run / Debug" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" /><Border Grid.Column="1" Classes="kbd"><TextBlock Text="F5 / F6" /></Border></Grid>
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Go to line" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" /><Border Grid.Column="1" Classes="kbd"><TextBlock Text="Ctrl+G" /></Border></Grid>
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Toggle comment" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" /><Border Grid.Column="1" Classes="kbd"><TextBlock Text="Ctrl+/" /></Border></Grid>
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Zoom editor" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" /><Border Grid.Column="1" Classes="kbd"><TextBlock Text="Ctrl+= / Ctrl+-" /></Border></Grid>
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Zen mode" FontSize="11.5" Foreground="{DynamicResource StudioTextSecondaryBrush}" /><Border Grid.Column="1" Classes="kbd"><TextBlock Text="F11" /></Border></Grid>
+              </StackPanel>
+            </Border>
           </Grid>
-        </Border>
-        <TextBlock IsVisible="{Binding !HasRecentProjects}" Text="Recent projects will appear here once you open them."
-                   FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" HorizontalAlignment="Center" />
-        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,14,0,0">
-          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <Border Classes="kbd"><TextBlock Text="Ctrl+Shift+P" /></Border>
-            <TextBlock Text="Command palette" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <Border Classes="kbd"><TextBlock Text="F5" /></Border>
-            <TextBlock Text="Run" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <Border Classes="kbd"><TextBlock Text="Ctrl+B" /></Border>
-            <TextBlock Text="Explorer" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
-          </StackPanel>
         </StackPanel>
-      </StackPanel>
-    </ScrollViewer>
+      </ScrollViewer>
+    </Grid>
   </Grid>
 </UserControl>

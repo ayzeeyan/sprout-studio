@@ -18,7 +18,9 @@ The empty editor lists up to ten recently opened projects without scanning their
 
 ## Layout and keyboard workflow
 
-Drag the dividers beside Explorer and Inspector or above the bottom tools to resize those panes. Use the pane header controls to hide Explorer, Inspector, or bottom tools; hidden panes do not reserve blank space. The shell remembers sizes, visibility, selected tabs, and the selected activity destination for the next launch.
+Drag the dividers beside Explorer and Inspector or above the bottom tools to resize those panes. Use the layout buttons in the title bar to hide Explorer, Inspector, or bottom tools; hidden panes do not reserve blank space. The shell remembers sizes, visibility, selected tabs, and the selected activity destination for the next launch.
+
+The title bar's command center opens the command palette. The status bar shows the loaded engine version and architecture (for example `Sprout 0.1.0 · x64`), the Git branch, error and warning counts (select them to open **Problems**), the caret position (select it to go to a line), and the editor zoom level (select it to reset).
 
 - `Ctrl+Shift+P` opens the command palette.
 - `Ctrl+B` toggles Explorer.
@@ -28,6 +30,13 @@ Drag the dividers beside Explorer and Inspector or above the bottom tools to res
 - `F5` runs the active supported document.
 - `Ctrl+Shift+B` builds the active project or supported source.
 - `Ctrl+Space` requests Sprout completion and `F12` navigates to a definition.
+- `Ctrl+/` toggles line comments, `Ctrl+D` (or `Shift+Alt+Down`) duplicates the current line or selection, and `Alt+Up` / `Alt+Down` move lines.
+- `Ctrl+G` goes to a line (`42` or `42:7` for line and column).
+- `Ctrl+=`, `Ctrl+-`, and `Ctrl+0` zoom the editor in, out, and back to 100%; `Ctrl` + mouse wheel also zooms.
+- `Ctrl+Shift+E`, `Ctrl+Shift+F`, and `Ctrl+Shift+G` open Explorer, Search, and Source Control; `Ctrl+Shift+M` opens Problems; `F1` opens Documentation.
+- `Ctrl+Alt+B` toggles the Inspector, `Ctrl+,` opens Settings, and `F11` toggles Zen mode, which hides every pane around the editor.
+
+**Settings** offers five accent themes (Sprout, Ocean, Amethyst, Ember, and Rose) that recolor the whole shell instantly, plus editor font size, current-line highlighting, indent guides, word wrap, and whitespace rendering.
 
 At narrower widths the Inspector collapses first so the editor remains usable. The toolbar replaces the labeled New/Open Project group with compact icon commands and tooltips rather than clipping or silently removing it.
 

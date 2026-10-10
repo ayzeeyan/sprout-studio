@@ -3,36 +3,105 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Settings — Sprout Studio"
-    Width="560"
-    Height="390"
-    MinWidth="500"
-    MinHeight="340"
+    Width="620"
+    Height="640"
+    MinWidth="540"
+    MinHeight="480"
     WindowStartupLocation="CenterOwner">
-  <Grid RowDefinitions="Auto,*,Auto" Margin="22" RowSpacing="16">
-    <StackPanel Spacing="5">
-      <TextBlock Text="Settings" Classes="dialog-title" />
-      <TextBlock Text="Personalize the editor. Settings are stored for this Windows account."
-                 Foreground="{DynamicResource StudioTextSecondaryBrush}" />
-    </StackPanel>
-    <Border Grid.Row="1" Classes="dialog-card">
-      <StackPanel Margin="16" Spacing="14">
-        <TextBlock Text="EDITOR" Classes="panel-header" />
-        <Grid ColumnDefinitions="*,150">
-          <StackPanel>
-            <TextBlock Text="Font size" FontWeight="SemiBold" />
-            <TextBlock Text="Applies to every code document." FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
-          </StackPanel>
-          <NumericUpDown Name="FontSizeBox" Grid.Column="1" Minimum="11" Maximum="24" Increment="1" FormatString="0" />
-        </Grid>
-        <CheckBox Name="WordWrapBox" Content="Wrap long editor lines" />
-        <CheckBox Name="WhitespaceBox" Content="Show spaces and tab markers" />
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Classes="dialog-header" Padding="24,20,24,16">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+        <Border Classes="card-icon" Width="40" Height="40" CornerRadius="11">
+          <TextBlock Classes="icon" Text="&#xE713;" FontSize="18" />
+        </Border>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="Settings" Classes="dialog-title" />
+          <TextBlock Text="Personalize Studio. Settings are stored for this Windows account."
+                     Foreground="{DynamicResource StudioTextSecondaryBrush}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="24,18" Spacing="18">
+        <StackPanel Spacing="10">
+          <TextBlock Text="APPEARANCE" Classes="panel-header" />
+          <Border Classes="dialog-card" Padding="14">
+            <StackPanel Spacing="12">
+              <StackPanel Spacing="2">
+                <TextBlock Text="Accent theme" FontWeight="SemiBold" />
+                <TextBlock Text="Colors buttons, selection, indicators, and highlights. Previews instantly."
+                           FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+              </StackPanel>
+              <WrapPanel Name="SwatchPanel" Orientation="Horizontal" ItemSpacing="10" LineSpacing="10" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <StackPanel Spacing="10">
+          <TextBlock Text="EDITOR" Classes="panel-header" />
+          <Border Classes="dialog-card">
+            <StackPanel>
+              <Border Classes="settings-row">
+                <Grid ColumnDefinitions="*,140">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Font size" FontWeight="SemiBold" />
+                    <TextBlock Text="Also adjustable with Ctrl+= / Ctrl+- and Ctrl+mouse wheel."
+                               FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                  <NumericUpDown Name="FontSizeBox" Grid.Column="1" Minimum="9" Maximum="32" Increment="1" FormatString="0" />
+                </Grid>
+              </Border>
+              <Border Classes="settings-row">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Highlight current line" FontWeight="SemiBold" />
+                    <TextBlock Text="Tint the line that holds the caret." FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                  <ToggleSwitch Name="CurrentLineBox" Grid.Column="1" />
+                </Grid>
+              </Border>
+              <Border Classes="settings-row">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Indent guides" FontWeight="SemiBold" />
+                    <TextBlock Text="Draw faint vertical guides at each indentation level." FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                  <ToggleSwitch Name="IndentGuidesBox" Grid.Column="1" />
+                </Grid>
+              </Border>
+              <Border Classes="settings-row">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Word wrap" FontWeight="SemiBold" />
+                    <TextBlock Text="Wrap long lines to the editor width." FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                  <ToggleSwitch Name="WordWrapBox" Grid.Column="1" />
+                </Grid>
+              </Border>
+              <Border Classes="settings-row" BorderThickness="0">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Render whitespace" FontWeight="SemiBold" />
+                    <TextBlock Text="Show spaces and tab markers." FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
+                  </StackPanel>
+                  <ToggleSwitch Name="WhitespaceBox" Grid.Column="1" />
+                </Grid>
+              </Border>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
         <TextBlock Text="Layout dimensions and pane visibility are saved automatically when the main window closes."
                    TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource StudioTextMutedBrush}" />
       </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Classes="mode-footer" Padding="24,12">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Content="Cancel" MinWidth="84" Click="Cancel_Click" />
+        <Button Content="Save settings" MinWidth="110" Classes="accent" Click="Save_Click" />
+      </StackPanel>
     </Border>
-    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-      <Button Content="Cancel" MinWidth="84" Click="Cancel_Click" />
-      <Button Content="Save settings" MinWidth="110" Classes="accent" Click="Save_Click" />
-    </StackPanel>
   </Grid>
 </Window>

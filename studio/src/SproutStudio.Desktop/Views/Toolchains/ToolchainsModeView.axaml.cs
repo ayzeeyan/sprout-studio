@@ -30,7 +30,11 @@ public sealed partial class ToolchainsModeView : UserControl, IStudioModeView
         DataContext = workspace;
         if (this.FindControl<ItemsControl>("ToolchainList")!.ItemsSource is null)
         {
-            await RefreshAsync(cancellationToken);
+            // Detection is bounded by per-tool timeouts, so let it finish even if a newer mode
+            // activation supersedes this one; cancelling it mid-flight left the page stuck on
+            // "The operation was canceled." because the newer activation saw it still loading.
+            cancellationToken.ThrowIfCancellationRequested();
+            await RefreshAsync(CancellationToken.None);
         }
     }
 

@@ -6,8 +6,15 @@ public sealed record StudioSettingsState(
     int SchemaVersion = 1,
     double EditorFontSize = 14,
     bool WordWrap = false,
-    bool ShowWhitespace = false)
+    bool ShowWhitespace = false,
+    string AccentTheme = "sprout",
+    bool HighlightCurrentLine = true,
+    bool ShowIndentGuides = true)
 {
+    public const double MinimumFontSize = 9;
+
+    public const double MaximumFontSize = 32;
+
     public const int CurrentSchemaVersion = 1;
 
     public static StudioSettingsState Sanitize(StudioSettingsState? value)
@@ -16,7 +23,11 @@ public sealed record StudioSettingsState(
         {
             return new StudioSettingsState();
         }
-        return value with { EditorFontSize = Math.Clamp(value.EditorFontSize, 11, 24) };
+        return value with
+        {
+            EditorFontSize = Math.Clamp(value.EditorFontSize, MinimumFontSize, MaximumFontSize),
+            AccentTheme = string.IsNullOrWhiteSpace(value.AccentTheme) ? "sprout" : value.AccentTheme,
+        };
     }
 }
 

@@ -5,46 +5,56 @@
     xmlns:vm="using:SproutStudio.ViewModels"
     x:DataType="vm:MainWindowViewModel">
   <Border Classes="toolbar-surface">
-    <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" VerticalAlignment="Center" Margin="8,0">
+    <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" VerticalAlignment="Center" Margin="4,0">
 
-      <!-- Left: File & History Navigation Actions -->
-      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+      <!-- File actions -->
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
+        <Button Classes="toolbar" Command="{Binding NewProjectCommand}" ToolTip.Tip="New project">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE8F4;" /><TextBlock Text="New Project" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+        </Button>
+        <Button Classes="toolbar" Command="{Binding OpenProjectCommand}" ToolTip.Tip="Open project folder">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE838;" /><TextBlock Text="Open" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+        </Button>
         <Button Classes="toolbar" Command="{Binding NewDocumentCommand}" ToolTip.Tip="New file (Ctrl+N)">
-          <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE710;" /><TextBlock Text="New" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+          <TextBlock Classes="icon" Text="&#xE710;" />
         </Button>
         <Button Classes="toolbar" Command="{Binding OpenDocumentCommand}" ToolTip.Tip="Open file (Ctrl+O)">
-          <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE8E5;" /><TextBlock Text="Open" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+          <TextBlock Classes="icon" Text="&#xE8E5;" />
         </Button>
         <Button Classes="toolbar" Command="{Binding SaveDocumentCommand}" ToolTip.Tip="Save (Ctrl+S)">
-          <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE74E;" /><TextBlock Text="Save" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+          <TextBlock Classes="icon" Text="&#xE74E;" />
+        </Button>
+        <Button Classes="toolbar" Command="{Binding FormatDocumentCommand}" ToolTip.Tip="Format document (Shift+Alt+F)">
+          <TextBlock Classes="icon" Text="&#xE8E4;" />
         </Button>
       </StackPanel>
 
-      <!-- Center-Left: Execution & Build Controls -->
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0">
-        <Button Classes="toolbar" Command="{Binding RunCommand}" ToolTip.Tip="Run (F5)">
-          <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon accent" Text="&#xE768;" /><TextBlock Text="Run" Foreground="{DynamicResource StudioAccentBrush}" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
-        </Button>
-        <Button Classes="toolbar" Command="{Binding DebugCommand}" ToolTip.Tip="Debug (F6)">
-          <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE8A7;" /><TextBlock Text="Debug" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
-        </Button>
-        <Button Classes="toolbar" Command="{Binding BuildCommand}" ToolTip.Tip="Build (Ctrl+Shift+B)">
-          <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE90F;" /><TextBlock Text="Build" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
-        </Button>
-      </StackPanel>
+      <Border Grid.Column="1" Classes="toolbar-separator" />
 
-      <!-- Right: Mode Selector, Check, Submit, Settings & Profile Avatar -->
-      <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-        <TextBlock Text="Mode" Classes="toolbar-caption" VerticalAlignment="Center" IsVisible="{Binding ShowProjectToolbarGroup}" />
-        <ComboBox Width="110" Height="32" Margin="0,0,4,0"
-                  ItemsSource="{Binding SyntaxProfiles}"
-                  SelectedItem="{Binding SelectedProfile}" />
+      <!-- Run group: one capsule for execution -->
+      <Border Grid.Column="2" Classes="segment">
+        <StackPanel Orientation="Horizontal" Spacing="2">
+          <Button Classes="run-primary" Command="{Binding RunCommand}" ToolTip.Tip="Run (F5)">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <TextBlock Classes="icon small" Text="&#xE768;" FontSize="12" />
+              <TextBlock Text="Run" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="toolbar" Command="{Binding DebugCommand}" ToolTip.Tip="Debug with recorded snapshots (F6)">
+            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xEBE8;" /><TextBlock Text="Debug" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+          </Button>
+          <Button Classes="toolbar" Command="{Binding BuildCommand}" ToolTip.Tip="Build bundle (Ctrl+Shift+B)">
+            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE7B8;" /><TextBlock Text="Build" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+          </Button>
+          <Button Classes="toolbar" Command="{Binding CheckCommand}" ToolTip.Tip="Check for problems (Ctrl+F5)">
+            <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE73E;" /><TextBlock Text="Check" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+          </Button>
+        </StackPanel>
+      </Border>
 
-        <Button Classes="toolbar" Command="{Binding CheckCommand}" ToolTip.Tip="Check requirements (Ctrl+F5)">
-          <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon accent" Text="&#xE73E;" /><TextBlock Text="Check" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
-        </Button>
-
-        <Button Classes="accent" Command="{Binding SubmitCommand}" Height="32" Padding="12,0"
+      <!-- Right: profile, contextual submit, REPL -->
+      <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <Button Classes="accent" Command="{Binding SubmitCommand}" Height="30" Padding="12,0"
                 IsVisible="{Binding IsContextualSubmitVisible}"
                 IsEnabled="{Binding !IsSubmitting}"
                 ToolTip.Tip="{Binding ContextualSubmitLabel}">
@@ -53,12 +63,15 @@
             <TextBlock Text="{Binding ContextualSubmitLabel}" FontWeight="SemiBold" />
           </StackPanel>
         </Button>
-
-        <Border Classes="toolbar-separator" Margin="4,4" />
-
-        <Button Classes="icon-button" Command="{Binding ShowSettingsCommand}" ToolTip.Tip="Settings">
-          <TextBlock Classes="icon" Text="&#xE713;" />
+        <Button Classes="toolbar" Command="{Binding OpenReplCommand}" ToolTip.Tip="Open the Sprout REPL">
+          <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Classes="icon" Text="&#xE756;" /><TextBlock Text="REPL" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
         </Button>
+        <Border Classes="toolbar-separator" Margin="4,0" />
+        <TextBlock Text="SYNTAX" Classes="toolbar-caption" LetterSpacing="0.8" IsVisible="{Binding ShowProjectToolbarGroup}" />
+        <ComboBox Width="118" Height="30" MinHeight="0"
+                  ItemsSource="{Binding SyntaxProfiles}"
+                  SelectedItem="{Binding SelectedProfile}"
+                  ToolTip.Tip="Syntax profile for Sprout files" />
       </StackPanel>
 
     </Grid>

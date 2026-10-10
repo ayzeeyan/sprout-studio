@@ -15,7 +15,7 @@ using SproutStudio.Toolchains;
 
 namespace SproutStudio.ViewModels;
 
-public sealed class MainWindowViewModel : ObservableObject, IDisposable
+public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     private static readonly IReadOnlyList<CommandPaletteItem> PaletteCommands =
     [
@@ -32,14 +32,23 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         new("editor.format", "Editor: Format Document", "Editor", "Shift+Alt+F"),
         new("sprout.repl", "Sprout: Open REPL", "Sprout"),
         new("view.explorer", "View: Toggle Explorer", "View", "Ctrl+B"),
-        new("view.sourceControl", "View: Source Control", "View"),
-        new("view.inspector", "View: Toggle Inspector", "View"),
+        new("view.sourceControl", "View: Source Control", "View", "Ctrl+Shift+G"),
+        new("view.search", "View: Search Project", "View", "Ctrl+Shift+F"),
+        new("view.problems", "View: Problems", "View", "Ctrl+Shift+M"),
+        new("view.inspector", "View: Toggle Inspector", "View", "Ctrl+Alt+B"),
+        new("view.zen", "View: Toggle Zen Mode", "View", "F11"),
+        new("editor.goToLine", "Editor: Go to Line…", "Editor", "Ctrl+G"),
+        new("editor.zoomIn", "Editor: Zoom In", "Editor", "Ctrl+="),
+        new("editor.zoomOut", "Editor: Zoom Out", "Editor", "Ctrl+-"),
+        new("editor.zoomReset", "Editor: Reset Zoom", "Editor", "Ctrl+0"),
         new("view.bottom", "View: Toggle Bottom Panel", "View", "Ctrl+J"),
         new("view.academy", "Academy: Open", "View"),
         new("view.toolchains", "Toolchains: Open", "View"),
         new("view.docs", "Documentation: Open", "View"),
         new("project.packages", "Project: Open Package Hub", "Project"),
-        new("view.settings", "Preferences: Open Settings", "Preferences"),
+        new("view.settings", "Preferences: Open Settings", "Preferences", "Ctrl+,"),
+        .. StudioThemeService.Themes.Select(theme => new CommandPaletteItem(
+            $"theme.{theme.Id}", $"Preferences: Accent Theme — {theme.DisplayName}", "Preferences")),
         new("help.about", "Help: About Sprout Studio", "Help"),
         new("help.update", "Help: Check for Updates…", "Help"),
     ];
@@ -105,6 +114,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         _academyExecution = new AcademyExecutionService(_toolchains);
         _projects = new ProjectWorkspace(_engine);
         _settings = _settingsStore.Load();
+        StudioThemeService.Apply(_settings.AccentTheme);
 
         NewDocumentCommand = new RelayCommand(CreateNewDocument, () => !IsBusy);
         OpenDocumentCommand = new AsyncRelayCommand(OpenDocumentFromPickerAsync, () => !IsBusy);
@@ -163,6 +173,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         NextDebugSnapshotCommand = new RelayCommand(NextDebugSnapshot, CanMoveDebugNext);
         ToggleBreakpointCommand = new RelayCommand(ToggleBreakpoint, () => SelectedDocument is not null);
         NavigateProblemCommand = new RelayCommand<ProblemItemViewModel>(NavigateToProblem);
+        InitializeWorkbenchCommands();
 
         StudioLayoutState layout = _layoutStore.Load();
         _activityVisible = layout.ActivityVisible;
@@ -353,6 +364,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(HasDocuments));
             OnPropertyChanged(nameof(ShowWelcome));
             OnPropertyChanged(nameof(WindowContext));
+            OnPropertyChanged(nameof(CommandCenterText));
             OnPropertyChanged(nameof(CaretStatus));
             OnPropertyChanged(nameof(CurrentLanguage));
             OnPropertyChanged(nameof(IsContextualSubmitVisible));
@@ -378,6 +390,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(ProjectSelectorText));
             OnPropertyChanged(nameof(ProjectHeader));
             OnPropertyChanged(nameof(WindowContext));
+            OnPropertyChanged(nameof(CommandCenterText));
             OnPropertyChanged(nameof(HasProject));
             OnPropertyChanged(nameof(ShowProjectEmptyState));
             NotifyCommandState();
@@ -1005,6 +1018,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             _engineAvailable = true;
             OnPropertyChanged(nameof(EngineAvailable));
             OnPropertyChanged(nameof(EngineVersion));
+            OnPropertyChanged(nameof(EngineArchitecture));
+            OnPropertyChanged(nameof(EngineSummary));
             StudioLog.Information(
                 $"Loaded Sprout engine {_engineInfo.EngineVersion} (ABI {_engineInfo.AbiVersion}, {_engineInfo.Architecture}, {_engineInfo.BuildConfiguration}).");
             NotifyCommandState();
@@ -1440,6 +1455,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             }
             document.RefreshMetadata();
             OnPropertyChanged(nameof(WindowContext));
+            OnPropertyChanged(nameof(CommandCenterText));
             StatusText = "Saved";
             StudioLog.Information($"Saved document {document.DisplayName}.");
         }
@@ -2162,6 +2178,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasProblems));
         OnPropertyChanged(nameof(NoProblems));
         OnPropertyChanged(nameof(ProblemCount));
+        NotifyProblemCounts();
         DiagnosticsChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -2264,6 +2281,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasProblems));
         OnPropertyChanged(nameof(NoProblems));
         OnPropertyChanged(nameof(ProblemCount));
+        NotifyProblemCounts();
         DiagnosticsChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -2448,6 +2466,14 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         "view.explorer" => RunCommandAsync(ToggleExplorerCommand),
         "view.sourceControl" => ShowSourceControlCommand.ExecuteAsync(null),
         "view.inspector" => RunCommandAsync(ToggleInspectorCommand),
+        "view.search" => RunCommandAsync(ShowSearchCommand),
+        "view.problems" => RunCommandAsync(ShowProblemsCommand),
+        "view.zen" => RunCommandAsync(ToggleZenModeCommand),
+        "editor.goToLine" => RunCommandAsync(GoToLineCommand),
+        "editor.zoomIn" => RunCommandAsync(ZoomInCommand),
+        "editor.zoomOut" => RunCommandAsync(ZoomOutCommand),
+        "editor.zoomReset" => RunCommandAsync(ResetZoomCommand),
+        _ when id.StartsWith("theme.", StringComparison.Ordinal) => SetAccentThemeAsync(id["theme.".Length..]),
         "view.bottom" => RunCommandAsync(ToggleBottomPanelCommand),
         "view.academy" => ShowAcademyCommand.ExecuteAsync(null),
         "view.toolchains" => ShowToolchainsCommand.ExecuteAsync(null),
@@ -2568,6 +2594,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(EditorFontSize));
                 OnPropertyChanged(nameof(EditorWordWrap));
                 OnPropertyChanged(nameof(ShowEditorWhitespace));
+                StudioThemeService.Apply(_settings.AccentTheme);
+                NotifyEditorSettings();
                 StatusText = "Settings saved";
             }
         }
@@ -2737,6 +2765,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private void NotifyCommandState()
     {
+        GoToLineCommand?.NotifyCanExecuteChanged();
         NewDocumentCommand.NotifyCanExecuteChanged();
         OpenDocumentCommand.NotifyCanExecuteChanged();
         SaveDocumentCommand.NotifyCanExecuteChanged();

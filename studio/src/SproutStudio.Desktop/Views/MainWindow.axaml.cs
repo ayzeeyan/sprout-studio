@@ -22,6 +22,7 @@ namespace SproutStudio.Views;
 
 public sealed partial class MainWindow : Window
 {
+    private const double ActivityRailWidth = 56;
     private readonly IReadOnlyList<string> _arguments;
     private readonly MainWindowViewModel _viewModel;
     private readonly Dictionary<ActivityDestination, Control> _modeViews = [];
@@ -231,7 +232,7 @@ public sealed partial class MainWindow : Window
             _lastBottomHeight = bottom.ActualHeight;
         }
 
-        activity.Width = new GridLength(_viewModel.ActivityVisible ? 88 : 0);
+        activity.Width = new GridLength(_viewModel.ActivityVisible ? ActivityRailWidth : 0);
         explorer.Width = new GridLength(_viewModel.ExplorerVisible ? _lastExplorerWidth : 0);
         explorerSplitter.Width = new GridLength(_viewModel.ExplorerVisible ? 4 : 0);
         bool showInspector = _viewModel.InspectorVisible && !_responsiveInspectorCollapsed;
@@ -287,7 +288,7 @@ public sealed partial class MainWindow : Window
 
     private bool RecalculateResponsivePaneVisibility(double windowWidth)
     {
-        double activityWidth = _viewModel.ActivityVisible ? 88 : 0;
+        double activityWidth = _viewModel.ActivityVisible ? ActivityRailWidth : 0;
         double explorerWidth = _viewModel.ExplorerVisible ? _lastExplorerWidth + 4 : 0;
         double inspectorWidth = _viewModel.InspectorVisible ? _lastInspectorWidth + 4 : 0;
         double centerWidthWithInspector = windowWidth - activityWidth - explorerWidth - inspectorWidth;
@@ -306,8 +307,57 @@ public sealed partial class MainWindow : Window
     {
         bool control = args.KeyModifiers.HasFlag(KeyModifiers.Control);
         bool shift = args.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        bool alt = args.KeyModifiers.HasFlag(KeyModifiers.Alt);
 
-        if (control && shift && args.Key == Key.P)
+        if (args.Key == Key.F11)
+        {
+            Execute(_viewModel.ToggleZenModeCommand);
+        }
+        else if (args.Key == Key.F1)
+        {
+            Execute(_viewModel.ShowDocumentationCommand);
+        }
+        else if (control && !shift && args.Key is Key.OemPlus or Key.Add)
+        {
+            Execute(_viewModel.ZoomInCommand);
+        }
+        else if (control && !shift && args.Key is Key.OemMinus or Key.Subtract)
+        {
+            Execute(_viewModel.ZoomOutCommand);
+        }
+        else if (control && !shift && args.Key is Key.D0 or Key.NumPad0)
+        {
+            Execute(_viewModel.ResetZoomCommand);
+        }
+        else if (control && !shift && args.Key == Key.OemComma)
+        {
+            Execute(_viewModel.ShowSettingsCommand);
+        }
+        else if (control && !shift && args.Key == Key.G)
+        {
+            Execute(_viewModel.GoToLineCommand);
+        }
+        else if (control && shift && args.Key == Key.E)
+        {
+            Execute(_viewModel.ShowExplorerCommand);
+        }
+        else if (control && shift && args.Key == Key.F)
+        {
+            Execute(_viewModel.ShowSearchCommand);
+        }
+        else if (control && shift && args.Key == Key.G)
+        {
+            Execute(_viewModel.ShowSourceControlCommand);
+        }
+        else if (control && shift && args.Key == Key.M)
+        {
+            Execute(_viewModel.ShowProblemsCommand);
+        }
+        else if (control && alt && args.Key == Key.B)
+        {
+            Execute(_viewModel.ToggleInspectorCommand);
+        }
+        else if (control && shift && args.Key == Key.P)
         {
             Execute(_viewModel.CommandPaletteCommand);
         }

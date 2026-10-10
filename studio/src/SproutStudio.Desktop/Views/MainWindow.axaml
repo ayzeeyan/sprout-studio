@@ -21,32 +21,52 @@
     Closing="MainWindow_Closing"
     SizeChanged="MainWindow_SizeChanged">
 
-  <Grid RowDefinitions="38,48,*,26" Background="{DynamicResource StudioBackgroundBrush}">
+  <Grid RowDefinitions="38,46,*,26" Background="{DynamicResource StudioBackgroundBrush}">
     <Border Name="TitleBar" Grid.Row="0" Classes="title-surface" PointerPressed="TitleBar_PointerPressed" DoubleTapped="TitleBar_DoubleTapped">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,46,46,46" Margin="14,0,0,0">
-        <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-          <Path Width="17" Height="21" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
-                Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
-          <TextBlock Text="Sprout Studio" FontSize="16" FontWeight="SemiBold" />
+      <Grid ColumnDefinitions="*,Auto,*,Auto,46,46,46">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="16,0,12,0">
+          <Border Width="22" Height="22" CornerRadius="6" Background="{DynamicResource StudioAccentSoftBrush}">
+            <Path Width="12" Height="15" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
+                  Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
+          </Border>
+          <TextBlock Text="Sprout Studio" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Border Classes="title-separator" />
+          <TextBlock Text="{Binding WindowContext}" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" MaxWidth="320" />
         </StackPanel>
-        <Border Grid.Column="1" Classes="ready-pill" Margin="12,0,0,0">
-          <TextBlock Text="Sprout · READY" FontSize="11" Foreground="{DynamicResource StudioSuccessBrush}" />
-        </Border>
-        <Border Grid.Column="2" Classes="title-separator" Margin="12,0" />
-        <TextBlock Grid.Column="3" Text="{Binding WindowContext}" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-        <StackPanel Grid.Column="4" Orientation="Horizontal">
+
+        <Button Grid.Column="1" Classes="command-center" Width="440" Command="{Binding CommandPaletteCommand}"
+                ToolTip.Tip="Search commands and files (Ctrl+Shift+P)">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+            <TextBlock Classes="icon small" Text="&#xE721;" />
+            <TextBlock Grid.Column="1" Text="{Binding CommandCenterText}" FontSize="11.5" TextTrimming="CharacterEllipsis"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Border Grid.Column="2" Classes="kbd" Padding="5,0"><TextBlock Text="Ctrl+Shift+P" FontSize="9" /></Border>
+          </Grid>
+        </Button>
+
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="0,0,6,0">
+          <Button Classes="title-command" Command="{Binding ToggleExplorerCommand}" ToolTip.Tip="Toggle primary sidebar (Ctrl+B)">
+            <TextBlock Classes="icon" Text="&#xE89F;" FontSize="14" />
+          </Button>
+          <Button Classes="title-command" Command="{Binding ToggleBottomPanelCommand}" ToolTip.Tip="Toggle panel (Ctrl+J)">
+            <TextBlock Classes="icon" Text="&#xE8A0;" FontSize="14" RenderTransformOrigin="50%,50%">
+              <TextBlock.RenderTransform><RotateTransform Angle="90" /></TextBlock.RenderTransform>
+            </TextBlock>
+          </Button>
+          <Button Classes="title-command" Command="{Binding ToggleInspectorCommand}" ToolTip.Tip="Toggle inspector (Ctrl+Alt+B)">
+            <TextBlock Classes="icon" Text="&#xE8A0;" FontSize="14" />
+          </Button>
+          <Border Classes="title-separator" Margin="6,0" />
           <Button Classes="title-command" Command="{Binding ShowAboutCommand}" ToolTip.Tip="About Sprout Studio">
-            <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE946;" /><TextBlock Text="About" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
-          </Button>
-          <Button Classes="title-command" Command="{Binding CommandPaletteCommand}" ToolTip.Tip="Command palette (Ctrl+Shift+P)">
-            <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Classes="icon" Text="&#xE945;" /><TextBlock Text="Commands" IsVisible="{Binding ShowProjectToolbarGroup}" /></StackPanel>
+            <TextBlock Classes="icon" Text="&#xE946;" FontSize="14" />
           </Button>
         </StackPanel>
-        <Button Grid.Column="5" Classes="caption" Click="Minimize_Click" ToolTip.Tip="Minimize"><TextBlock Classes="caption-icon" Text="&#xE921;" /></Button>
-        <Button Name="MaximizeButton" Grid.Column="6" Classes="caption" Click="Maximize_Click" ToolTip.Tip="Maximize">
+        <Button Grid.Column="4" Classes="caption" Click="Minimize_Click" ToolTip.Tip="Minimize"><TextBlock Classes="caption-icon" Text="&#xE921;" /></Button>
+        <Button Name="MaximizeButton" Grid.Column="5" Classes="caption" Click="Maximize_Click" ToolTip.Tip="Maximize">
           <TextBlock Name="MaximizeIcon" Classes="caption-icon" Text="&#xE922;" />
         </Button>
-        <Button Grid.Column="7" Classes="caption close" Click="Close_Click" ToolTip.Tip="Close"><TextBlock Classes="caption-icon" Text="&#xE8BB;" /></Button>
+        <Button Grid.Column="6" Classes="caption close" Click="Close_Click" ToolTip.Tip="Close"><TextBlock Classes="caption-icon" Text="&#xE8BB;" /></Button>
       </Grid>
     </Border>
 
@@ -54,7 +74,7 @@
 
     <Grid Name="ShellBodyGrid" Grid.Row="2">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="88" />
+        <ColumnDefinition Width="56" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 

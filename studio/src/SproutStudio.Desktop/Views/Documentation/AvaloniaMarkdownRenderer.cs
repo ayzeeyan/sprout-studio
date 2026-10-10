@@ -30,7 +30,7 @@ public sealed class AvaloniaMarkdownRenderer
     private static readonly IBrush TextPrimary = Brush("#EEF2EE");
     private static readonly IBrush TextSecondary = Brush("#BAC2BB");
     private static readonly IBrush TextMuted = Brush("#7E8980");
-    private static readonly IBrush Accent = Brush("#49C979");
+    private static IBrush Accent => SproutStudio.Services.StudioThemeService.AccentBrush;
     private static readonly IBrush Panel = Brush("#171A18");
     private static readonly IBrush Raised = Brush("#1D211E");
     private static readonly IBrush Border = Brush("#313732");

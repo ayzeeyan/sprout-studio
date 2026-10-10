@@ -5,11 +5,33 @@
     xmlns:vm="using:SproutStudio.ViewModels"
     x:DataType="vm:MainWindowViewModel">
   <Border Classes="status-surface">
-    <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,0">
-      <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-        <TextBlock Text="●" Foreground="{DynamicResource StudioAccentBrush}" FontSize="8" />
-        <TextBlock Text="READY" Foreground="{DynamicResource StudioSuccessBrush}" Classes="status-text" />
-        <TextBlock Text="{Binding TaskText}" Foreground="{DynamicResource StudioTextSecondaryBrush}" Classes="status-text" />
+    <Grid ColumnDefinitions="Auto,*,Auto" Margin="6,0">
+      <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+        <Border Classes="status-chip" Margin="0,0,6,0" ToolTip.Tip="{Binding EngineSummary}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Width="8" Height="10" Stretch="Uniform" Fill="{DynamicResource StudioAccentBrush}"
+                  Data="M18,2 C9,3 4,8 4,15 C4,18 5,20 7,22 C7,16 10,10 17,6 C12,11 9,17 8,23 C15,22 20,16 20,9 C20,6 19,4 18,2 Z" />
+            <TextBlock Text="{Binding EngineArchitecture}" />
+          </StackPanel>
+        </Border>
+        <Button Classes="status-item" Command="{Binding ShowSourceControlCommand}" IsVisible="{Binding HasSourceControl}" ToolTip.Tip="Source Control">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <TextBlock Classes="icon small" Text="&#xE8F0;" />
+            <TextBlock Text="{Binding GitBranch}" Classes="status-text" />
+          </StackPanel>
+        </Button>
+        <Button Classes="status-item" Command="{Binding ShowProblemsCommand}" ToolTip.Tip="Show problems">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <TextBlock Classes="icon small error" Text="&#xEA39;" />
+            <TextBlock Text="{Binding ErrorCount}" Classes="status-text" />
+            <TextBlock Classes="icon small warning" Text="&#xE7BA;" Margin="4,0,0,0" />
+            <TextBlock Text="{Binding WarningCount}" Classes="status-text" />
+          </StackPanel>
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="7" Margin="8,0,0,0" VerticalAlignment="Center">
+          <Ellipse Classes="status-dot" Classes.busy="{Binding IsBusy}" />
+          <TextBlock Text="{Binding TaskText}" Classes="status-text" TextTrimming="CharacterEllipsis" MaxWidth="360" />
+        </StackPanel>
       </StackPanel>
       <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
         <Button
@@ -18,18 +40,28 @@
             Command="{Binding ShowUpdateDialogCommand}"
             ToolTip.Tip="Click to view update details and install">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="▲" FontSize="9" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding UpdateBadgeText}" Classes="status-text" VerticalAlignment="Center" />
+            <TextBlock Classes="icon small" Text="&#xE896;" />
+            <TextBlock Text="{Binding UpdateBadgeText}" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
       </StackPanel>
-      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-        <TextBlock Text="{Binding CaretStatus}" Classes="status-text" />
-        <TextBlock Text="Spaces: 4" Classes="status-text" />
-        <TextBlock Text="UTF-8" Classes="status-text" />
-        <TextBlock Text="LF" Classes="status-text" />
-        <TextBlock Text="{Binding CurrentLanguage}" Classes="status-text" />
-        <TextBlock Text="{Binding CurrentProfile}" Classes="status-text accent" />
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+        <Button Classes="status-item" Command="{Binding GoToLineCommand}" ToolTip.Tip="Go to line (Ctrl+G)">
+          <TextBlock Text="{Binding CaretStatus}" Classes="status-text" />
+        </Button>
+        <Button Classes="status-item" Command="{Binding ResetZoomCommand}" ToolTip.Tip="Editor zoom — click to reset (Ctrl+0)">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <TextBlock Classes="icon small" Text="&#xE71E;" />
+            <TextBlock Text="{Binding ZoomText}" Classes="status-text" />
+          </StackPanel>
+        </Button>
+        <TextBlock Text="Spaces: 4" Classes="status-text" Margin="7,0" />
+        <TextBlock Text="UTF-8" Classes="status-text" Margin="7,0" />
+        <TextBlock Text="LF" Classes="status-text" Margin="7,0" />
+        <TextBlock Text="{Binding CurrentLanguage}" Classes="status-text" Margin="7,0" />
+        <Border Classes="status-chip" Margin="4,0,2,0">
+          <TextBlock Text="{Binding CurrentProfile}" />
+        </Border>
       </StackPanel>
     </Grid>
   </Border>
