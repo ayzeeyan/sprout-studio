@@ -22,7 +22,7 @@
         <Button Content="Open Project" Click="OpenProject_Click" />
       </StackPanel>
 
-      <Grid Name="PackageContent" IsVisible="False" RowDefinitions="Auto,*,Auto" Margin="22" RowSpacing="14" MaxWidth="980" HorizontalAlignment="Center">
+      <Grid Name="PackageContent" IsVisible="False" RowDefinitions="Auto,*,Auto" Margin="22" RowSpacing="14" MaxWidth="980" HorizontalAlignment="Stretch">
         <StackPanel Spacing="4">
           <TextBlock Text="PROJECT DEPENDENCIES" Classes="panel-header" />
           <TextBlock Text="Sprout and Python requirements are updated through the validated native project API."

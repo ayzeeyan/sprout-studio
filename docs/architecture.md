@@ -1,4 +1,4 @@
-# Phase 9 Architecture
+# Architecture
 
 ## Implemented pipeline
 

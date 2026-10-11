@@ -24,9 +24,9 @@ target = "windows-x86_64"
 
 `manifest_version` is required and currently accepts only `1`. Project names start with an ASCII letter and contain letters, numbers, `-`, or `_`. Versions use numeric `major.minor.patch` form. The entry must be a relative `.spr` path without parent traversal and must resolve inside the project root. Syntax is `guided`, `structured`, or `advanced`.
 
-Dependency names must start and end with a letter or number and may contain letters, numbers, `-`, `_`, or `.`. Requirements must be non-empty. Phase 6 installs Python requirements into the current project's `.sprout/python` directory only; dependencies are never installed into a shared global project directory or the user's system Python.
+Dependency names must start and end with a letter or number and may contain letters, numbers, `-`, `_`, or `.`. Requirements must be non-empty. Studio installs Python requirements into the current project's `.sprout/python` directory only; dependencies are never installed into a shared global project directory or the user's system Python.
 
-Phase 9 Package Hub updates `[dependencies]` and `[python]` through the shared Rust project service. It validates each entry, stages a sibling manifest, restores the original on activation failure, and preserves existing TOML comments.
+The Packages hub updates `[dependencies]` and `[python]` through the shared Rust project service. It validates each entry, stages a sibling manifest, restores the original on activation failure, and preserves existing TOML comments.
 
 Synchronize the manifest after editing `[python]`:
 
@@ -69,4 +69,4 @@ The CLI loads the manifest entry and syntax profile through `sprout-project`, th
 
 ## Build from Studio
 
-The graphical **Build** command validates the current entry and writes a unique directory under `build/` with a `.sproutbundle` suffix. It contains the validated manifest, discovered Sprout sources, and a disclosure file. This artifact is portable source for a compatible Sprout runtime; Phase 9 does not claim native compilation or a standalone executable. The CLI `build` command remains deferred.
+The graphical **Build** command validates the current entry and writes a unique directory under `build/` with a `.sproutbundle` suffix. It contains the validated manifest, discovered Sprout sources, and a disclosure file. This artifact is portable source for a compatible Sprout runtime; Studio does not claim native compilation or a standalone executable. The CLI `build` command remains deferred.

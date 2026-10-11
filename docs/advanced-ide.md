@@ -1,4 +1,4 @@
-# Phase 9 Advanced IDE
+# Advanced IDE Features
 
 ## IDE shell and layout
 

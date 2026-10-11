@@ -84,7 +84,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "math.min(a: Number, b: Number) -> Number",
         description: "Returns the smaller of two numbers.",
-        params: &[("a", "Number", "First number."), ("b", "Number", "Second number.")],
+        params: &[
+            ("a", "Number", "First number."),
+            ("b", "Number", "Second number."),
+        ],
         returns: Some(("Number", "The minimum value.")),
         example: "math.min(10, 20) # -> 10",
     },
@@ -94,7 +97,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "math.max(a: Number, b: Number) -> Number",
         description: "Returns the larger of two numbers.",
-        params: &[("a", "Number", "First number."), ("b", "Number", "Second number.")],
+        params: &[
+            ("a", "Number", "First number."),
+            ("b", "Number", "Second number."),
+        ],
         returns: Some(("Number", "The maximum value.")),
         example: "math.max(10, 20) # -> 20",
     },
@@ -128,7 +134,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "math.pow(base: Number, exp: Number) -> Number",
         description: "Computes base raised to the power of integer exp.",
-        params: &[("base", "Number", "Base value."), ("exp", "Number", "Integer exponent.")],
+        params: &[
+            ("base", "Number", "Base value."),
+            ("exp", "Number", "Integer exponent."),
+        ],
         returns: Some(("Number", "base raised to exp.")),
         example: "math.pow(2, 8) # -> 256",
     },
@@ -232,11 +241,13 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "math.hypot(a: Number, b: Number) -> Number",
         description: "Calculates the Euclidean hypotenuse sqrt(a^2 + b^2).",
-        params: &[("a", "Number", "First leg length."), ("b", "Number", "Second leg length.")],
+        params: &[
+            ("a", "Number", "First leg length."),
+            ("b", "Number", "Second leg length."),
+        ],
         returns: Some(("Number", "Hypotenuse length.")),
         example: "math.hypot(3, 4) # -> 5.0",
     },
-
     // --- STRING MODULE ---
     StdlibSymbolDoc {
         module: "string",
@@ -264,7 +275,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "string.char_at(text: String, index: Number) -> String",
         description: "Returns the single character at the specified zero-based index.",
-        params: &[("text", "String", "Source string."), ("index", "Number", "Zero-based character index.")],
+        params: &[
+            ("text", "String", "Source string."),
+            ("index", "Number", "Zero-based character index."),
+        ],
         returns: Some(("String", "Character substring.")),
         example: "string.char_at(\"Sprout\", 0) # -> \"S\"",
     },
@@ -308,7 +322,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "string.starts_with(text: String, prefix: String) -> Boolean",
         description: "Determines whether a string starts with the given prefix.",
-        params: &[("text", "String", "Input string."), ("prefix", "String", "Prefix substring.")],
+        params: &[
+            ("text", "String", "Input string."),
+            ("prefix", "String", "Prefix substring."),
+        ],
         returns: Some(("Boolean", "True if prefix matches.")),
         example: "string.starts_with(\"main.spr\", \"main\") # -> true",
     },
@@ -318,7 +335,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "string.ends_with(text: String, suffix: String) -> Boolean",
         description: "Determines whether a string ends with the given suffix.",
-        params: &[("text", "String", "Input string."), ("suffix", "String", "Suffix substring.")],
+        params: &[
+            ("text", "String", "Input string."),
+            ("suffix", "String", "Suffix substring."),
+        ],
         returns: Some(("Boolean", "True if suffix matches.")),
         example: "string.ends_with(\"main.spr\", \".spr\") # -> true",
     },
@@ -328,7 +348,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "string.contains(text: String, search: String) -> Boolean",
         description: "Returns true if text contains the search substring.",
-        params: &[("text", "String", "Source string."), ("search", "String", "Substring to locate.")],
+        params: &[
+            ("text", "String", "Source string."),
+            ("search", "String", "Substring to locate."),
+        ],
         returns: Some(("Boolean", "True if found.")),
         example: "string.contains(\"apple pie\", \"pie\") # -> true",
     },
@@ -338,7 +361,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "string.index_of(text: String, search: String) -> Number",
         description: "Returns the zero-based index of the first occurrence of search, or -1 if not found.",
-        params: &[("text", "String", "Source string."), ("search", "String", "Target substring.")],
+        params: &[
+            ("text", "String", "Source string."),
+            ("search", "String", "Target substring."),
+        ],
         returns: Some(("Number", "Zero-based index or -1.")),
         example: "string.index_of(\"banana\", \"na\") # -> 2",
     },
@@ -378,7 +404,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "string.repeat_str(text: String, count: Number) -> String",
         description: "Constructs a new string by repeating text count times.",
-        params: &[("text", "String", "String to repeat."), ("count", "Number", "Number of repetitions.")],
+        params: &[
+            ("text", "String", "String to repeat."),
+            ("count", "Number", "Number of repetitions."),
+        ],
         returns: Some(("String", "Repeated string.")),
         example: "string.repeat_str(\"ab\", 3) # -> \"ababab\"",
     },
@@ -424,7 +453,6 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         returns: Some(("String", "Right-padded string.")),
         example: "string.pad_end(\"42\", 5, \"0\") # -> \"42000\"",
     },
-
     // --- IO MODULE ---
     StdlibSymbolDoc {
         module: "io",
@@ -442,7 +470,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "io.write_file(path: String, content: String) -> Boolean",
         description: "Writes content to a file at path, overwriting any existing file.",
-        params: &[("path", "String", "Destination file path."), ("content", "String", "Text content to write.")],
+        params: &[
+            ("path", "String", "Destination file path."),
+            ("content", "String", "Text content to write."),
+        ],
         returns: Some(("Boolean", "True on success.")),
         example: "io.write_file(\"output.txt\", \"Hello World\")",
     },
@@ -452,7 +483,10 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         kind: "action",
         signature: "io.append_file(path: String, content: String) -> Boolean",
         description: "Appends text content to the end of a file at path.",
-        params: &[("path", "String", "Destination file path."), ("content", "String", "Text content to append.")],
+        params: &[
+            ("path", "String", "Destination file path."),
+            ("content", "String", "Text content to append."),
+        ],
         returns: Some(("Boolean", "True on success.")),
         example: "io.append_file(\"log.txt\", \"New log entry\\n\")",
     },
@@ -476,7 +510,6 @@ pub static STDLIB_DOCS: &[StdlibSymbolDoc] = &[
         returns: None,
         example: "io.print_line(\"Operation complete\")",
     },
-
     // --- JSON MODULE ---
     StdlibSymbolDoc {
         module: "json",
@@ -536,8 +569,14 @@ pub fn get_stdlib_docs_json() -> String {
         json.push_str(&format!("    \"module\": \"{}\",\n", doc.module));
         json.push_str(&format!("    \"name\": \"{}\",\n", doc.name));
         json.push_str(&format!("    \"kind\": \"{}\",\n", doc.kind));
-        json.push_str(&format!("    \"signature\": \"{}\",\n", doc.signature.replace('\"', "\\\"")));
-        json.push_str(&format!("    \"description\": \"{}\",\n", doc.description.replace('\"', "\\\"")));
+        json.push_str(&format!(
+            "    \"signature\": \"{}\",\n",
+            doc.signature.replace('\"', "\\\"")
+        ));
+        json.push_str(&format!(
+            "    \"description\": \"{}\",\n",
+            doc.description.replace('\"', "\\\"")
+        ));
         json.push_str("    \"params\": [\n");
         for (j, (pname, ptype, pdesc)) in doc.params.iter().enumerate() {
             if j > 0 {
@@ -545,19 +584,25 @@ pub fn get_stdlib_docs_json() -> String {
             }
             json.push_str(&format!(
                 "      {{\"name\": \"{}\", \"type\": \"{}\", \"description\": \"{}\"}}",
-                pname, ptype, pdesc.replace('\"', "\\\"")
+                pname,
+                ptype,
+                pdesc.replace('\"', "\\\"")
             ));
         }
         json.push_str("\n    ],\n");
         if let Some((rtype, rdesc)) = doc.returns {
             json.push_str(&format!(
                 "    \"returns\": {{\"type\": \"{}\", \"description\": \"{}\"}},\n",
-                rtype, rdesc.replace('\"', "\\\"")
+                rtype,
+                rdesc.replace('\"', "\\\"")
             ));
         } else {
             json.push_str("    \"returns\": null,\n");
         }
-        json.push_str(&format!("    \"example\": \"{}\"\n", doc.example.replace('\"', "\\\"").replace('\n', "\\n")));
+        json.push_str(&format!(
+            "    \"example\": \"{}\"\n",
+            doc.example.replace('\"', "\\\"").replace('\n', "\\n")
+        ));
         json.push_str("  }");
     }
     json.push_str("\n]");
@@ -582,7 +627,10 @@ mod tests {
 
     #[test]
     fn stdlib_docs_metadata_is_complete() {
-        assert!(STDLIB_DOCS.len() >= 25, "Expected at least 25 documented stdlib symbols");
+        assert!(
+            STDLIB_DOCS.len() >= 25,
+            "Expected at least 25 documented stdlib symbols"
+        );
         let sqrt_doc = get_stdlib_symbol_doc("math", "sqrt");
         assert!(sqrt_doc.is_some(), "math.sqrt doc should exist");
         let doc = sqrt_doc.unwrap();

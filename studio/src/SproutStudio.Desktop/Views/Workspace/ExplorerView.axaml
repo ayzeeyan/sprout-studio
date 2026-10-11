@@ -40,14 +40,17 @@
           </TreeView.ItemTemplate>
         </TreeView>
       </Grid>
-      <Expander Grid.Row="4" IsVisible="{Binding HasSourceControl}" IsExpanded="{Binding IsSourceControlSelected}" Background="{DynamicResource StudioPanelBrush}">
+      <Expander Grid.Row="4" IsVisible="{Binding HasSourceControl}" IsExpanded="{Binding IsSourceControlSelected}" Background="{DynamicResource StudioPanelBrush}"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
         <Expander.Header>
-          <Grid ColumnDefinitions="*,Auto" Height="32">
-            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-              <TextBlock Classes="panel-header" Text="SOURCE CONTROL" />
-              <TextBlock Text="{Binding GitBranch}" Foreground="{DynamicResource StudioTextMutedBrush}" TextTrimming="CharacterEllipsis" />
+          <Grid ColumnDefinitions="Auto,Auto,Auto" Height="32">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" ToolTip.Tip="Source Control">
+              <TextBlock Classes="icon small" Text="&#xE8F0;" Foreground="{DynamicResource StudioTextMutedBrush}" VerticalAlignment="Center" />
+              <TextBlock Classes="panel-header" Text="GIT" VerticalAlignment="Center" />
             </StackPanel>
-            <Button Grid.Column="1" Classes="icon-button small" Command="{Binding RefreshSourceControlCommand}" ToolTip.Tip="Refresh source control">
+            <TextBlock Grid.Column="1" Margin="8,0,6,0" MaxWidth="96" Text="{Binding GitBranch}" Foreground="{DynamicResource StudioTextMutedBrush}" FontSize="11.5"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding GitBranch}" />
+            <Button Grid.Column="2" Classes="icon-button small" Command="{Binding RefreshSourceControlCommand}" ToolTip.Tip="Refresh source control">
               <TextBlock Classes="icon small" Text="&#xE72C;" />
             </Button>
           </Grid>

@@ -395,10 +395,8 @@ impl<'a> Interpreter<'a> {
         }
 
         let source_content = self.resolve_module_source(module_name, span)?;
-        let source_file = crate::source::SourceFile::new(
-            format!("<module:{module_name}>"),
-            source_content,
-        );
+        let source_file =
+            crate::source::SourceFile::new(format!("<module:{module_name}>"), source_content);
 
         let parsed = crate::parser::parse(&source_file);
         if let Some(first_error) = parsed.diagnostics.into_iter().next() {
@@ -447,7 +445,8 @@ impl<'a> Interpreter<'a> {
             exports,
         }));
 
-        self.modules.insert(module_name.to_string(), module_val.clone());
+        self.modules
+            .insert(module_name.to_string(), module_val.clone());
         Ok(module_val)
     }
 
@@ -469,10 +468,10 @@ impl<'a> Interpreter<'a> {
         }
 
         for candidate in candidates {
-            if candidate.is_file() {
-                if let Ok(content) = std::fs::read_to_string(&candidate) {
-                    return Ok(content);
-                }
+            if candidate.is_file()
+                && let Ok(content) = std::fs::read_to_string(&candidate)
+            {
+                return Ok(content);
             }
         }
 
@@ -1056,7 +1055,11 @@ impl<'a> Interpreter<'a> {
                 let path = arguments[0].render(span)?;
                 let content = arguments[1].render(span)?;
                 use std::io::Write;
-                match std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+                match std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&path)
+                {
                     Ok(mut file) => match file.write_all(content.as_bytes()) {
                         Ok(()) => Ok(Value::Bool(true)),
                         Err(err) => Err(error(

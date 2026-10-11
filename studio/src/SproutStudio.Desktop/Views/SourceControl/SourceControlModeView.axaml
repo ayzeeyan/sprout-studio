@@ -13,8 +13,11 @@
             <TextBlock Name="RepositoryText" Text="Open a Git project to begin"
                        Foreground="{DynamicResource StudioTextSecondaryBrush}" />
           </StackPanel>
-          <Border Name="BranchBadge" Classes="status-badge" IsVisible="False">
-            <TextBlock Name="BranchText" />
+          <Border Name="BranchBadge" Classes="status-badge" IsVisible="False" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <TextBlock Classes="icon small" Text="&#xE8F0;" VerticalAlignment="Center" />
+              <TextBlock Name="BranchText" VerticalAlignment="Center" />
+            </StackPanel>
           </Border>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">

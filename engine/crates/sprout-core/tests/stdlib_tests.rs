@@ -37,26 +37,8 @@ print(math.lerp(0.0, 100.0, 0.25))
     assert_eq!(
         result.output,
         vec![
-            "42",
-            "15",
-            "10",
-            "20",
-            "10",
-            "20",
-            "15",
-            "-1",
-            "1",
-            "0",
-            "8",
-            "1",
-            "true",
-            "false",
-            "true",
-            "3",
-            "4",
-            "4",
-            "3",
-            "25",
+            "42", "15", "10", "20", "10", "20", "15", "-1", "1", "0", "8", "1", "true", "false",
+            "true", "3", "4", "4", "3", "25",
         ]
     );
 }
@@ -222,7 +204,11 @@ print(m.abs(-100))
 "#,
     );
     let guided_res = execute_profile(&guided_source, SyntaxProfile::Guided);
-    assert!(guided_res.diagnostics.is_empty(), "{:?}", guided_res.diagnostics);
+    assert!(
+        guided_res.diagnostics.is_empty(),
+        "{:?}",
+        guided_res.diagnostics
+    );
     assert_eq!(guided_res.output, vec!["100"]);
 
     let structured_source = SourceFile::new(

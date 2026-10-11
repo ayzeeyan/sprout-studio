@@ -537,7 +537,14 @@ mod tests {
         }
     }
 
+    /// The embedded interpreter, `sys.path`, and `sys.modules` are process-wide, so tests
+    /// that run Sprout through it take turns, just as Studio runs one program at a time.
+    static INTERPRETER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     fn execute(source: &str, packages: Option<PathBuf>) -> sprout_core::ExecutionResult {
+        let _turn = INTERPRETER
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut python = EmbeddedPythonHost::new(packages).expect("Python host can start");
         execute_profile_with_python(
             &SourceFile::new("python.spr", source),

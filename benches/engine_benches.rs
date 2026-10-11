@@ -1,10 +1,8 @@
-use criterion::{
-    black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput,
-};
-use sprout_core::lexer::lex;
-use sprout_core::parser::{parse, parse_profile, SyntaxProfile};
-use sprout_core::source::SourceFile;
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use sprout_core::execute;
+use sprout_core::lexer::lex;
+use sprout_core::parser::{SyntaxProfile, parse, parse_profile};
+use sprout_core::source::SourceFile;
 
 const SAMPLE_SMALL: &str = include_str!("samples/small.spr");
 const SAMPLE_MEDIUM: &str = include_str!("samples/medium.spr");
@@ -60,7 +58,8 @@ fn bench_parsing(c: &mut Criterion) {
     }
 
     // Benchmark different syntax profiles
-    let guided_text = "has a = 10\nhas b = 20\naction sum(x, y)\n    return x + y\nend\nprint(sum(a, b))\n";
+    let guided_text =
+        "has a = 10\nhas b = 20\naction sum(x, y)\n    return x + y\nend\nprint(sum(a, b))\n";
     let structured_text = "int a = 10;\nint b = 20;\nint sum(int x, int y) {\n    return x + y;\n}\nprint(sum(a, b));\n";
     let advanced_text = "a := 10\nb := 20\nsum(x, y) =>\n    x + y\nprint(sum(a, b))\n";
 
@@ -117,5 +116,10 @@ fn bench_runtime_execution(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_lexing, bench_parsing, bench_runtime_execution);
+criterion_group!(
+    benches,
+    bench_lexing,
+    bench_parsing,
+    bench_runtime_execution
+);
 criterion_main!(benches);

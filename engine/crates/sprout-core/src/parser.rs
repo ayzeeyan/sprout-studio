@@ -38,7 +38,9 @@ pub fn parse_profile(source: &SourceFile, profile: SyntaxProfile) -> ParseResult
     let needs_indentation = profile == SyntaxProfile::Advanced
         || lexed.tokens.iter().enumerate().any(|(i, t)| {
             matches!(&t.kind, TokenKind::Identifier(name) if name == "advanced")
-                && lexed.tokens.get(i + 1).is_some_and(|next| matches!(next.kind, TokenKind::LeftBrace | TokenKind::Newline))
+                && lexed.tokens.get(i + 1).is_some_and(|next| {
+                    matches!(next.kind, TokenKind::LeftBrace | TokenKind::Newline)
+                })
         });
     let tokens = if needs_indentation {
         match add_indentation(lexed.tokens) {
@@ -137,7 +139,10 @@ impl Parser {
         }
     }
 
-    fn profile_block_statement(&mut self, target_profile: SyntaxProfile) -> Result<Statement, Diagnostic> {
+    fn profile_block_statement(
+        &mut self,
+        target_profile: SyntaxProfile,
+    ) -> Result<Statement, Diagnostic> {
         let start = self.advance().span.clone();
         self.skip_newlines();
         self.expect(
@@ -1130,7 +1135,8 @@ impl Parser {
     fn skip_newlines(&mut self) {
         while self.take(&TokenKind::Newline).is_some()
             || (self.current_profile() != SyntaxProfile::Advanced
-                && (self.take(&TokenKind::Indent).is_some() || self.take(&TokenKind::Dedent).is_some()))
+                && (self.take(&TokenKind::Indent).is_some()
+                    || self.take(&TokenKind::Dedent).is_some()))
         {}
     }
 

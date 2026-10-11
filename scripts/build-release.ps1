@@ -58,9 +58,13 @@ function Find-MakeNsis {
     $candidates = @(
         (Join-Path ${env:ProgramFiles(x86)} 'NSIS\makensis.exe'),
         (Join-Path $env:ProgramFiles 'NSIS\makensis.exe'),
-        (Join-Path $env:LOCALAPPDATA 'Programs\NSIS\makensis.exe')
+        (Join-Path $env:LOCALAPPDATA 'Programs\NSIS\makensis.exe'),
+        (Join-Path $env:USERPROFILE 'scoop\apps\nsis\current\makensis.exe')
     )
     $candidate = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    if (-not $candidate) {
+        $candidate = (Get-Command 'makensis.exe' -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+    }
     if (-not $candidate) {
         throw 'NSIS 3 is required. Install NSIS, then rerun this script.'
     }

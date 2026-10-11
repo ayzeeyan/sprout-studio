@@ -363,23 +363,34 @@ pub unsafe extern "C" fn sprout_get_ast_json(source: *const std::os::raw::c_char
         let c_str = unsafe { std::ffi::CStr::from_ptr(source) };
         let text = c_str.to_str().map_err(|e| format!("Invalid UTF-8: {e}"))?;
         let source_file = sprout_core::source::SourceFile::new("input.spr", text);
-        let parsed = sprout_core::parser::parse_profile(&source_file, sprout_core::parser::SyntaxProfile::Guided);
+        let parsed = sprout_core::parser::parse_profile(
+            &source_file,
+            sprout_core::parser::SyntaxProfile::Guided,
+        );
         Ok::<String, String>(ast_to_json(&parsed.program, &parsed.diagnostics))
     })) {
         Ok(Ok(response)) => response,
         Ok(Err(message)) => {
-            let mut s = String::from("{\"program\":null,\"diagnostics\":[{\"code\":\"SPT500\",\"severity\":\"Error\",\"title\":\"AST Error\",\"message\":");
+            let mut s = String::from(
+                "{\"program\":null,\"diagnostics\":[{\"code\":\"SPT500\",\"severity\":\"Error\",\"title\":\"AST Error\",\"message\":",
+            );
             push_json_string(&mut s, &message);
             s.push_str("}]}");
             s
         }
-        Err(_) => String::from("{\"program\":null,\"diagnostics\":[{\"code\":\"SPT500\",\"severity\":\"Error\",\"title\":\"AST Error\",\"message\":\"AST generation panicked.\"}]}"),
+        Err(_) => String::from(
+            "{\"program\":null,\"diagnostics\":[{\"code\":\"SPT500\",\"severity\":\"Error\",\"title\":\"AST Error\",\"message\":\"AST generation panicked.\"}]}",
+        ),
     };
     SproutBuffer::from_string(response)
 }
 
 /// Returns the serialized JSON string of all standard library documentation metadata.
-/// The returned buffer must be freed with `sprout_buffer_free`.
+///
+/// # Safety
+///
+/// The function takes no pointers. The returned buffer must be freed exactly once
+/// with `sprout_buffer_free`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn sprout_get_stdlib_docs_json() -> SproutBuffer {
     let json = sprout_core::stdlib::get_stdlib_docs_json();
@@ -915,9 +926,7 @@ fn ast_to_json(
                     let last = program.statements.last().unwrap();
                     s.span.merge(&last.span)
                 })
-                .unwrap_or_else(|| {
-                    sprout_core::source::SourceSpan::new("<ast>", 0, 0, 1, 1, 1, 1)
-                });
+                .unwrap_or_else(|| sprout_core::source::SourceSpan::new("<ast>", 0, 0, 1, 1, 1, 1));
             push_ast_node(
                 &mut json,
                 "Program",
@@ -974,7 +983,14 @@ fn push_statement_ast_json(json: &mut String, statement: &sprout_core::ast::Stat
         StatementKind::ImportPython { module, alias } => {
             let label = format!("import python \"{module}\" as {alias}");
             let detail = format!("Python module: {module}");
-            push_ast_node(json, "ImportPython", &label, &detail, &statement.span, |_| {});
+            push_ast_node(
+                json,
+                "ImportPython",
+                &label,
+                &detail,
+                &statement.span,
+                |_| {},
+            );
         }
         StatementKind::Variable { name, initializer } => {
             let label = format!("has {name} = ...");
@@ -991,16 +1007,27 @@ fn push_statement_ast_json(json: &mut String, statement: &sprout_core::ast::Stat
             });
         }
         StatementKind::Expression(expr) => {
-            push_ast_node(json, "ExpressionStatement", "Expression", "", &statement.span, |j| {
-                push_expression_ast_json(j, expr);
-            });
+            push_ast_node(
+                json,
+                "ExpressionStatement",
+                "Expression",
+                "",
+                &statement.span,
+                |j| {
+                    push_expression_ast_json(j, expr);
+                },
+            );
         }
         StatementKind::If {
             condition,
             then_branch,
             else_branch,
         } => {
-            let detail = format!("then: {} stmts, else: {} stmts", then_branch.len(), else_branch.len());
+            let detail = format!(
+                "then: {} stmts, else: {} stmts",
+                then_branch.len(),
+                else_branch.len()
+            );
             push_ast_node(json, "If", "if condition", &detail, &statement.span, |j| {
                 push_expression_ast_json(j, condition);
                 for stmt in then_branch {
@@ -1015,13 +1042,20 @@ fn push_statement_ast_json(json: &mut String, statement: &sprout_core::ast::Stat
         }
         StatementKind::Repeat { count, body } => {
             let detail = format!("body: {} stmts", body.len());
-            push_ast_node(json, "Repeat", "repeat loop", &detail, &statement.span, |j| {
-                push_expression_ast_json(j, count);
-                for stmt in body {
-                    j.push(',');
-                    push_statement_ast_json(j, stmt);
-                }
-            });
+            push_ast_node(
+                json,
+                "Repeat",
+                "repeat loop",
+                &detail,
+                &statement.span,
+                |j| {
+                    push_expression_ast_json(j, count);
+                    for stmt in body {
+                        j.push(',');
+                        push_statement_ast_json(j, stmt);
+                    }
+                },
+            );
         }
         StatementKind::While { condition, body } => {
             let detail = format!("body: {} stmts", body.len());
@@ -1062,7 +1096,11 @@ fn push_statement_ast_json(json: &mut String, statement: &sprout_core::ast::Stat
             });
         }
         StatementKind::Return(value) => {
-            let detail = if value.is_some() { "returns value" } else { "returns void" };
+            let detail = if value.is_some() {
+                "returns value"
+            } else {
+                "returns void"
+            };
             push_ast_node(json, "Return", "return", detail, &statement.span, |j| {
                 if let Some(val) = value {
                     push_expression_ast_json(j, val);
@@ -1093,31 +1131,73 @@ fn push_expression_ast_json(json: &mut String, expression: &sprout_core::ast::Ex
     match &expression.kind {
         ExpressionKind::Integer(v) => {
             let label = v.to_string();
-            push_ast_node(json, "Integer", &label, "Int literal", &expression.span, |_| {});
+            push_ast_node(
+                json,
+                "Integer",
+                &label,
+                "Int literal",
+                &expression.span,
+                |_| {},
+            );
         }
         ExpressionKind::Float(v) => {
             let label = v.to_string();
-            push_ast_node(json, "Float", &label, "Float literal", &expression.span, |_| {});
+            push_ast_node(
+                json,
+                "Float",
+                &label,
+                "Float literal",
+                &expression.span,
+                |_| {},
+            );
         }
         ExpressionKind::Bool(v) => {
             let label = v.to_string();
-            push_ast_node(json, "Bool", &label, "Bool literal", &expression.span, |_| {});
+            push_ast_node(
+                json,
+                "Bool",
+                &label,
+                "Bool literal",
+                &expression.span,
+                |_| {},
+            );
         }
         ExpressionKind::String(v) => {
             let label = format!("\"{v}\"");
-            push_ast_node(json, "String", &label, "String literal", &expression.span, |_| {});
+            push_ast_node(
+                json,
+                "String",
+                &label,
+                "String literal",
+                &expression.span,
+                |_| {},
+            );
         }
         ExpressionKind::Nil => {
             push_ast_node(json, "Nil", "nil", "Nil literal", &expression.span, |_| {});
         }
         ExpressionKind::Variable(name) => {
-            push_ast_node(json, "VariableIdentifier", name, "Variable reference", &expression.span, |_| {});
+            push_ast_node(
+                json,
+                "VariableIdentifier",
+                name,
+                "Variable reference",
+                &expression.span,
+                |_| {},
+            );
         }
         ExpressionKind::Unary { operator, operand } => {
             let label = format!("{operator:?}");
-            push_ast_node(json, "Unary", &label, "Unary operator", &expression.span, |j| {
-                push_expression_ast_json(j, operand);
-            });
+            push_ast_node(
+                json,
+                "Unary",
+                &label,
+                "Unary operator",
+                &expression.span,
+                |j| {
+                    push_expression_ast_json(j, operand);
+                },
+            );
         }
         ExpressionKind::Binary {
             left,
@@ -1125,11 +1205,18 @@ fn push_expression_ast_json(json: &mut String, expression: &sprout_core::ast::Ex
             right,
         } => {
             let label = format!("{operator:?}");
-            push_ast_node(json, "Binary", &label, "Binary operator", &expression.span, |j| {
-                push_expression_ast_json(j, left);
-                j.push(',');
-                push_expression_ast_json(j, right);
-            });
+            push_ast_node(
+                json,
+                "Binary",
+                &label,
+                "Binary operator",
+                &expression.span,
+                |j| {
+                    push_expression_ast_json(j, left);
+                    j.push(',');
+                    push_expression_ast_json(j, right);
+                },
+            );
         }
         ExpressionKind::Call { callee, arguments } => {
             let detail = format!("{} arguments", arguments.len());
@@ -1147,16 +1234,30 @@ fn push_expression_ast_json(json: &mut String, expression: &sprout_core::ast::Ex
             member_span: _,
         } => {
             let label = format!(".{name}");
-            push_ast_node(json, "Member", &label, "Member access", &expression.span, |j| {
-                push_expression_ast_json(j, object);
-            });
+            push_ast_node(
+                json,
+                "Member",
+                &label,
+                "Member access",
+                &expression.span,
+                |j| {
+                    push_expression_ast_json(j, object);
+                },
+            );
         }
         ExpressionKind::Index { object, index } => {
-            push_ast_node(json, "Index", "[index]", "Index access", &expression.span, |j| {
-                push_expression_ast_json(j, object);
-                j.push(',');
-                push_expression_ast_json(j, index);
-            });
+            push_ast_node(
+                json,
+                "Index",
+                "[index]",
+                "Index access",
+                &expression.span,
+                |j| {
+                    push_expression_ast_json(j, object);
+                    j.push(',');
+                    push_expression_ast_json(j, index);
+                },
+            );
         }
     }
 }
@@ -1440,7 +1541,10 @@ mod tests {
     #[test]
     fn get_ast_json_returns_serialized_ast_tree() {
         use std::ffi::CString;
-        let source = CString::new("import math\nhas x = 10\naction add(a, b)\n    return a + b\nend\nprint(add(x, 20))\n").unwrap();
+        let source = CString::new(
+            "import math\nhas x = 10\naction add(a, b)\n    return a + b\nend\nprint(add(x, 20))\n",
+        )
+        .unwrap();
         let buffer = unsafe { sprout_get_ast_json(source.as_ptr()) };
         let text = unsafe { slice::from_raw_parts(buffer.data, buffer.length) };
         let text = str::from_utf8(text).unwrap();

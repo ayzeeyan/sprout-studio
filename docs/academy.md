@@ -54,7 +54,7 @@ Intermediate and Advanced profiles go directly to their selected goals; they are
 
 Sprout-only, computer-science, game, and Python tracks enroll immediately. Rust, Go, and Java are validated only when the user selects **Enroll** for the corresponding track. Merely starting Studio or opening Academy does not invoke an external toolchain.
 
-If validation fails, the Academy shows the exact Phase 7 status and validated components, then provides working actions:
+If validation fails, the Academy shows the exact toolchain status and validated components, then provides working actions:
 
 - **Auto Detect** clears a custom location and searches PATH and common locations again.
 - **Locate Installation** validates and persists a selected installation folder.

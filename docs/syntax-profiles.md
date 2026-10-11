@@ -2,7 +2,7 @@
 
 Sprout has one canonical language with three source profiles. Each frontend tokenizes and parses its own grammar directly into the same AST; profiles are not implemented by rewriting source text.
 
-Select a profile explicitly in Phase 3:
+Select a profile explicitly:
 
 ```powershell
 sprout run --profile guided examples/hello.spr
@@ -44,7 +44,7 @@ repeat (3) {
 }
 ```
 
-Phase 3 accepts type names syntactically and normalizes declarations into the canonical inferred-type AST. Enforcing explicit surface annotations is deferred until canonical type annotations are introduced.
+Sprout currently accepts type names syntactically and normalizes declarations into the canonical inferred-type AST. Enforcing explicit surface annotations is deferred until canonical type annotations are introduced.
 
 ## Advanced
 
@@ -60,7 +60,7 @@ repeat 3 =>
     addScore(1)
 ```
 
-Indentation must align with an enclosing block. Tabs count as one column in Phase 3; spaces are recommended.
+Indentation must align with an enclosing block. Tabs count as one column; spaces are recommended.
 
 ## Shared constructs
 

@@ -19,7 +19,7 @@ Sprout Studio 0.2.0 Alpha turns Studio into an Academy IDE: learning is woven th
 
 - New layered dark theme with five accent themes (Sprout, Ocean, Amethyst, Ember, Rose) that recolor the shell instantly.
 - Slim activity rail, title-bar command center, run toolbar capsule, pill tabs with unsaved-change dots, and a richer status bar with the engine version and architecture.
-- New Sprout seedling logo, plus real Java, Go, Rust, and Python logos throughout Studio and Academy.
+- New Sprout seedling logo everywhere, including the Windows app icon and the installer, plus real Java, Go, Rust, and Python logos throughout Studio and Academy.
 - Redesigned Settings, command palette, welcome page, and Academy tracks.
 
 ## Editor
@@ -45,6 +45,8 @@ Sprout Studio 0.2.0 Alpha turns Studio into an Academy IDE: learning is woven th
 - Source Control no longer reports a null-reference error for projects that are not Git repositories.
 - Selecting the Canvas inspector tab no longer jumps back to Properties.
 - Progress bars, the title bar, welcome cards, and Academy layouts no longer overlap at narrow window sizes.
+- The Explorer's Git footer, the Source Control branch badge, the Packages form, and the Search scope label no longer clip or overlap.
+- Documentation page titles no longer mention internal development phases.
 
 ## Install
 
@@ -52,7 +54,11 @@ Run `SproutStudio-Setup-x64.exe`, or extract `SproutStudio-Portable-x64.zip` for
 
 ## Alpha Notice
 
-This is an early alpha intended for testing and feedback. Back up important projects and report reproducible issues with the diagnostics information available from **About**.
+This is the last alpha before Sprout Studio leaves preview. Back up important projects and report reproducible issues with the diagnostics information available from **About**.
+
+## What's next
+
+The next releases are 0.3 Beta, 0.9 Release Candidate, and 1.0.0. The plan, including what 1.0 promises and what it does not include, is in [docs/roadmap.md](docs/roadmap.md) and in Studio under **Documentation > Roadmap to 1.0**.
 
 ---
 

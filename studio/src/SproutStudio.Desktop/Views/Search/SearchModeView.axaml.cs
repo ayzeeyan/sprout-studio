@@ -24,9 +24,11 @@ public sealed partial class SearchModeView : UserControl, IStudioModeView
         DataContext = workspace;
         bool hasProject = workspace.CurrentProject is not null;
         this.FindControl<Button>("SearchButton")!.IsEnabled = hasProject;
-        this.FindControl<TextBlock>("SearchStatus")!.Text = hasProject
-            ? $"Root: {workspace.CurrentProject!.RootPath}"
+        TextBlock status = this.FindControl<TextBlock>("SearchStatus")!;
+        status.Text = hasProject
+            ? $"Searching in {Path.GetFileName(workspace.CurrentProject!.RootPath.TrimEnd('\\', '/'))}"
             : "Open a project to search its files.";
+        ToolTip.SetTip(status, hasProject ? workspace.CurrentProject!.RootPath : null);
         return Task.CompletedTask;
     }
 

@@ -12,9 +12,16 @@ Generated output is ignored by Git:
 
 ```text
 artifacts/release/SproutStudio-Setup-x64.exe
+artifacts/release/SproutStudio-Setup.exe          (identical copy used by in-app update checks)
 artifacts/release/SproutStudio-Portable-x64.zip
 artifacts/release/SHA256SUMS.txt
 ```
+
+The script finds NSIS 3 in Program Files, `%LOCALAPPDATA%\Programs\NSIS`, a Scoop installation (`scoop bucket add extras; scoop install nsis`), or on `PATH`.
+
+## Publishing on GitHub
+
+Pushing a `v*` tag that matches `VERSION` (for example `v0.2.0`) runs `.github/workflows/release.yml`, which rebuilds and validates everything on a clean Windows runner and attaches the installer, portable archive, and checksums to a GitHub Release. To publish a locally built release instead, create the release by hand and upload all four files from `artifacts/release`; Studio's update check looks for `SproutStudio-Setup.exe` and `SHA256SUMS.txt` on the latest release.
 
 ## Installer decision
 

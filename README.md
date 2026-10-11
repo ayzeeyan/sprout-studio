@@ -1,10 +1,37 @@
 # Sprout Studio
 
-Sprout Studio is the Windows home for the Sprout programming language. The repository contains a Rust language engine, project system, CLI, versioned C ABI, and a native C#/.NET 10/Avalonia 12 desktop application. Together they create, validate, load, check, debug, build, and execute Guided, Structured, and Advanced Sprout projects.
+**An IDE that teaches you to code while you write it.** Sprout Studio is a Windows IDE for the Sprout programming language, with a built-in Academy. You learn a concept, read a short guide, practice in a real editor, and see your progress follow you everywhere in the app.
 
-Phase 9 turns Studio into a cohesive multi-mode IDE: engine-backed editing and recorded debugging; integrated Academy, rendered offline Documentation, project Search, Source Control, Packages, and Toolchains; validated interpreted bundle builds; multi-tab workspaces; and honest edit/run/build adapters for additional languages. See [docs/architecture.md](docs/architecture.md) and [docs/advanced-ide.md](docs/advanced-ide.md) for the current boundaries.
+![The Academy workspace: lesson, Handbook link, and exercise editor side by side](docs/images/academy-workspace.png)
 
-## Try Sprout
+## Download
+
+Get the latest release from the [Releases page](https://github.com/ayzeeyan/sprout-studio/releases/latest):
+
+- **`SproutStudio-Setup-x64.exe`**: the installer. It installs for your user account only (no admin rights) into `%LOCALAPPDATA%\Programs\Sprout Studio`, adds Start Menu shortcuts, and can open `.spr` files.
+- **`SproutStudio-Portable-x64.zip`**: a portable copy. Extract it anywhere and run `SproutStudio.exe`.
+- **`SHA256SUMS.txt`**: checksums for verifying your download.
+
+Requires 64-bit Windows 10 or 11. Everything is bundled, including the .NET runtime, the Sprout engine, and Python 3.13, so there is nothing else to install. Sprout Studio is in **alpha**: see the [release notes](RELEASE_NOTES.md) and the [roadmap to 1.0](docs/roadmap.md).
+
+## Features
+
+**Learn**
+- **Academy** tracks for Sprout, Python, Java, Rust, and Go, with coding exercises checked by the real engine and toolchains.
+- **Handbook**: short, plain-language guides with a one-click switch to the full reference docs. Every code sample is tested.
+- **Learn inspector**: detects the concepts in the file you're editing, explains them, and compares them across languages.
+- Streaks, a daily XP goal, levels, achievements, and a 12-week activity heatmap. You can turn them all off.
+
+**Build**
+- Three syntax styles for the same language: Guided (plain English), Structured, and Advanced.
+- Engine-backed completion, hover, outline, go-to-definition, formatting, and recorded time-travel debugging.
+- Syntax highlighting for 13 languages, and run/build support for Rust, Go, Python, and Java projects.
+- Project search, Git source control, Python and Sprout package management, a REPL, and a Canvas for graphics.
+- Five accent themes, zen mode, editor zoom, and a command palette for everything.
+
+![The Academy home page with continue-learning card, tasks, and courses](docs/images/academy-home.png)
+
+## Try Sprout from source
 
 Install a current Rust toolchain, clone the repository, and run:
 
@@ -63,7 +90,21 @@ dotnet run --project studio/tests/SproutStudio.Tests/SproutStudio.Tests.csproj
 dotnet build studio/SproutStudio.sln -c Debug -p:Platform=x64
 ```
 
-Detailed build instructions are in [docs/building.md](docs/building.md), advanced editor/debugger behavior is documented in [docs/advanced-ide.md](docs/advanced-ide.md), Academy behavior is documented in [docs/academy.md](docs/academy.md), toolchain behavior is documented in [docs/toolchains.md](docs/toolchains.md), Python interoperability is documented in [docs/python-interop.md](docs/python-interop.md), the project format is documented in [docs/projects.md](docs/projects.md), and the desktop workflow is described in [docs/studio.md](docs/studio.md). The implemented language is documented in [docs/grammar.md](docs/grammar.md) and [docs/syntax-profiles.md](docs/syntax-profiles.md).
+## Documentation
+
+| Topic | Page |
+| --- | --- |
+| Using Studio | [docs/studio.md](docs/studio.md), [docs/advanced-ide.md](docs/advanced-ide.md) |
+| The Academy and Handbook | [docs/academy.md](docs/academy.md) |
+| The Sprout language | [docs/grammar.md](docs/grammar.md), [docs/syntax-profiles.md](docs/syntax-profiles.md), [docs/stdlib.md](docs/stdlib.md) |
+| Projects, packages, and Python | [docs/projects.md](docs/projects.md), [docs/python-interop.md](docs/python-interop.md) |
+| Other languages | [docs/toolchains.md](docs/toolchains.md) |
+| How it's built | [docs/architecture.md](docs/architecture.md), [docs/building.md](docs/building.md) |
+| What's next | [docs/roadmap.md](docs/roadmap.md) |
+
+The repository contains a Rust language engine, project system, CLI, and versioned C ABI, plus the C#/.NET 10/Avalonia 12 desktop application.
+
+## Release
 
 Create the validated self-contained Windows release, installer, portable archive, and SHA-256 checksums with:
 
